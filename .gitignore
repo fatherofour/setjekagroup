@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+.next/
+*.log
+
+# Self-signed TLS keypair generated on the deployment host, never committed
+deploy/certs/

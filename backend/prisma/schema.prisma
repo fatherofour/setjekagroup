@@ -1,0 +1,426 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+// Setjeka Group's own project delivery stage standard (Requirements Register
+// R17: "Setjeka group standard Initiation>Inception>Concept>Design>
+// Documentation & Procurement>Construction>Closeout"), confirmed verbatim in
+// the 3rd client meeting. Not the generic external PROCSA stage numbering.
+enum ProjectStage {
+  INITIATION
+  INCEPTION
+  CONCEPT
+  DESIGN
+  DOCUMENTATION_PROCUREMENT
+  CONSTRUCTION
+  CLOSEOUT
+}
+
+// Requirements Register R13 / Meeting 3 (Stage 0 review): development type
+// must not be fixed to new-build only.
+enum ProjectType {
+  NEW_BUILD
+  REFURBISHMENT
+  REDEVELOPMENT
+  RENEWAL
+  ADDITION
+}
+
+// Meeting 002 §2.6: contract form drives role titles, terminology,
+// procurement rules, variation workflow and contractual time periods.
+enum ContractForm {
+  FIDIC
+  JBCC
+  GCC
+  NEC
+  OTHER
+}
+
+// Setjeka works with only dollar and rand (carried over, trimmed, from the
+// OpenConstructionERP create-project form).
+enum Currency {
+  USD
+  ZAR
+}
+
+// The two classification standards relevant to Setjeka's African market
+// (same trim as OpenConstructionERP's create-project form).
+enum ClassificationStandard {
+  ASAQS
+  NRM
+}
+
+// Requirements Register R15: project > phase > building > floor > zone >
+// work package > activity. Activity belongs to the Schedule module (not
+// built here yet); the rest is a flexible self-referencing tree so a project
+// that has no "buildings" (e.g. a single-zone site) isn't forced into levels
+// it doesn't need.
+enum ProjectNodeType {
+  PHASE
+  BUILDING
+  FLOOR
+  ZONE
+  WORK_PACKAGE
+}
+
+// Requirements Register R14: team directory covers both Setjeka staff
+// (linked User) and external parties (client contacts, consultants,
+// contractors, vendors) who have no platform login yet.
+enum ProjectMemberRole {
+  DEVELOPMENT_MANAGER
+  PROJECT_MANAGER
+  PLANNER_SCHEDULER
+  QUANTITY_SURVEYOR
+  PROCUREMENT_MANAGER
+  ARCHITECT_ENGINEER
+  SITE_MANAGER
+  QA_QC_MANAGER
+  HSE_MANAGER
+  CONTRACTOR
+  CLIENT
+  OTHER
+}
+
+// An organisation is never permanently "one thing" — the same company can be
+// a main contractor on one project and a subcontractor on another, and can
+// simultaneously supply materials. Stored as an array so multi-classification
+// is a first-class fact about the organisation, not bolted on.
+enum OrganisationClassification {
+  CONTRACTOR
+  CONSULTANT
+  SUPPLIER
+  SUBCONTRACTOR
+  SERVICE_PROVIDER
+  MANUFACTURER
+  SPECIALIST_CONTRACTOR
+  OTHER
+}
+
+// The registration/onboarding lifecycle for an organisation record itself —
+// separate from prequalification (a contractor can be a fully Approved
+// registered vendor while still Not Assessed for prequalification on a given
+// scope of work).
+enum OrganisationRegistrationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  MORE_INFO_REQUIRED
+  APPROVED
+  REJECTED
+  SUSPENDED
+  ARCHIVED
+}
+
+enum OrganisationPrequalificationStatus {
+  NOT_ASSESSED
+  SUBMITTED
+  UNDER_REVIEW
+  PREQUALIFIED
+  CONDITIONALLY_PREQUALIFIED
+  REJECTED
+  SUSPENDED
+}
+
+// Covers both compliance documents (insurance, licences, HSE certs) and
+// professional registrations (same shape: a number/authority/dates/status
+// record) — one model instead of two near-identical ones.
+enum ComplianceVerificationStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+// Deliberately distinct from ProjectMemberRole: a ProjectMember is an
+// individual person on the team; an OrganisationProjectAppointment is the
+// organisation-level contractual engagement (with a contract value, scope,
+// dates) that a ProjectMember's contractor link doesn't capture.
+enum OrganisationProjectRole {
+  CLIENT
+  DEVELOPMENT_MANAGER
+  PROJECT_MANAGER
+  ARCHITECT
+  QUANTITY_SURVEYOR
+  CIVIL_ENGINEER
+  STRUCTURAL_ENGINEER
+  MAIN_CONTRACTOR
+  SUBCONTRACTOR
+  SUPPLIER
+  CONSULTANT
+  OTHER
+}
+
+enum OrganisationAppointmentStatus {
+  PROPOSED
+  APPOINTED
+  ACTIVE
+  COMPLETED
+  TERMINATED
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  fullName            String
+  role                Role      @default(MEMBER)
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  ownedProjects      Project[]
+  projectMemberOf    ProjectMember[]
+  contractorsCreated Contractor[]
+  complianceRecordsVerified ComplianceRecord[]          @relation("ComplianceVerifiedBy")
+  organisationStatusChanges OrganisationStatusHistory[]
+
+  @@index([resetTokenHash])
+}
+
+// Requirements Register PROC/Procurement & Vendors "Vendor/Contractors
+// Master": Setjeka is purely a project manager — the actual delivery work is
+// done by contractors/vendors it brings onto each project. This is the
+// foundation slice only (company + a default contact), so a project's Team
+// can pull from a real shared directory instead of retyping the same company
+// on every project. Compliance/insurance/certifications and the full
+// onboarding-approval workflow the register describes are a later PROC slice
+// (RFQ/Quotes/Evaluation/PO/Vendor Performance/Vendor Portal), not this one.
+model Contractor {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  tradingName   String?
+  tradeType     String?
+  // Free text, not a fixed enum: the spec's own discipline/category lists
+  // are explicitly "should be configurable" — a fixed taxonomy the client
+  // hasn't confirmed would repeat the PROCSA-stage mistake from earlier in
+  // this project. The frontend offers the spec's example lists as
+  // suggestions, not a closed set.
+  disciplines   String[] @default([])
+  classifications OrganisationClassification[] @default([])
+  registrationNumber String?
+  taxVatNumber  String?
+  country       String?
+  stateProvince String?
+  city          String?
+  yearEstablished Int?
+  website       String?
+  contactName   String?
+  email         String?
+  phone         String?
+  address       String?
+  notes         String?
+  registrationStatus     OrganisationRegistrationStatus     @default(DRAFT)
+  prequalificationStatus OrganisationPrequalificationStatus @default(NOT_ASSESSED)
+  // Financial/payment profile. NOTE: this app has no RBAC enforcement
+  // anywhere (see MEMORY.md) — there is no permission system to gate this
+  // behind, so it is visible to any authenticated user like everything
+  // else here. Documented as a real, known gap, not silently accepted.
+  bankName               String?
+  bankAccountName        String?
+  bankAccountNumber      String?
+  preferredPaymentMethod String?
+  paymentTerms           String?
+  creditTerms            String?
+  withholdingTaxInfo     String?
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  projectMembers ProjectMember[]
+  contacts      OrganisationContact[]
+  complianceRecords ComplianceRecord[]
+  appointments  OrganisationProjectAppointment[]
+  statusHistory OrganisationStatusHistory[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([registrationNumber])
+  @@index([taxVatNumber])
+}
+
+model OrganisationContact {
+  id           String     @id @default(uuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  fullName     String
+  jobTitle     String?
+  department   String?
+  email        String?
+  phone        String?
+  mobile       String?
+  contactType  String?
+  isPrimary    Boolean    @default(false)
+  canReceiveRfqs               Boolean @default(false)
+  canReceiveCorrespondence     Boolean @default(false)
+  canReceivePaymentNotifications Boolean @default(false)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([contractorId])
+}
+
+model ComplianceRecord {
+  id               String                        @id @default(uuid())
+  contractorId     String
+  contractor       Contractor                    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  documentType     String
+  documentNumber   String?
+  issuingAuthority String?
+  issueDate        DateTime?
+  expiryDate       DateTime?
+  verificationStatus ComplianceVerificationStatus @default(PENDING)
+  verifiedById     String?
+  verifiedBy       User?                         @relation("ComplianceVerifiedBy", fields: [verifiedById], references: [id])
+  verifiedAt       DateTime?
+  notes            String?
+  // Local disk storage under UPLOAD_DIR (see uploads.config.ts) — the
+  // stored, sanitized filename on disk. attachmentFilename is the original
+  // name shown to users; the two differ to avoid path-traversal/collision
+  // issues from user-supplied filenames.
+  attachmentStoredName String?
+  attachmentFilename   String?
+  attachmentMimeType   String?
+  attachmentSize       Int?
+  // Populated by a future SharePoint sync once the org provides Azure AD
+  // app credentials (tenant/client id+secret, target site/drive) — not
+  // built yet, this column just avoids another migration when it is.
+  sharePointUrl        String?
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  @@index([contractorId])
+  @@index([expiryDate])
+}
+
+model OrganisationProjectAppointment {
+  id                   String                         @id @default(uuid())
+  contractorId         String
+  contractor           Contractor                     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  projectId            String
+  project              Project                        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role                 OrganisationProjectRole
+  appointmentType      String?
+  appointmentDate      DateTime?
+  appointmentReference String?
+  contractReference    String?
+  contractValue        Float?
+  currency             Currency?
+  scopeOfWork          String?
+  startDate            DateTime?
+  endDate              DateTime?
+  appointmentStatus    OrganisationAppointmentStatus  @default(PROPOSED)
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+
+  @@index([contractorId])
+  @@index([projectId])
+}
+
+model OrganisationStatusHistory {
+  id             String   @id @default(uuid())
+  contractorId   String
+  contractor     Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  previousStatus String
+  newStatus      String
+  changedById    String
+  changedBy      User     @relation(fields: [changedById], references: [id])
+  comment        String?
+  changedAt      DateTime @default(now())
+
+  @@index([contractorId])
+}
+
+model Project {
+  id                     String                  @id @default(uuid())
+  projectCode            String?                 @unique
+  name                   String
+  description            String?
+  status                 ProjectStatus           @default(PLANNING)
+  stage                  ProjectStage            @default(INITIATION)
+  projectType            ProjectType?
+  contractForm           ContractForm?
+  currency               Currency                @default(ZAR)
+  classificationStandard ClassificationStandard  @default(ASAQS)
+  client                 String?
+  developer              String?
+  location               String?
+  value                  Float?
+  contingencyPct         Float?                  @default(25)
+  startDate              DateTime?
+  endDate                DateTime?
+  latitude               Float?
+  longitude              Float?
+  ownerId                String
+  owner                  User                    @relation(fields: [ownerId], references: [id])
+  nodes                  ProjectNode[]
+  members                ProjectMember[]
+  organisationAppointments OrganisationProjectAppointment[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+}
+
+model ProjectNode {
+  id        String          @id @default(uuid())
+  projectId String
+  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    ProjectNode?    @relation("ProjectNodeChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  ProjectNode[]   @relation("ProjectNodeChildren")
+  type      ProjectNodeType
+  name      String
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model ProjectMember {
+  id              String            @id @default(uuid())
+  projectId       String
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?             @relation(fields: [userId], references: [id])
+  // Set when this member is "someone from contractor X" pulled from the
+  // shared Contractors directory rather than typed in one-off. externalName
+  // then holds the specific contact person at that contractor for this
+  // project (optional); externalCompany is unused in that case since the
+  // company comes from the contractor record itself.
+  contractorId    String?
+  contractor      Contractor?       @relation(fields: [contractorId], references: [id])
+  externalName    String?
+  externalCompany String?
+  externalEmail   String?
+  externalPhone   String?
+  role            ProjectMemberRole
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([projectId])
+  @@index([contractorId])
+}

@@ -1,0 +1,531 @@
+# Setjeka ERP — Technical Documentation
+
+This document explains **what has been built, and why**, plus every third-party
+service this app talks to. It complements `MEMORY.md` (which is a running
+decisions log) with a point-in-time technical reference. Update the relevant
+section whenever a feature described here changes.
+
+---
+
+## 1. Architecture
+
+```
+setjeka-erp/
+  frontend/            Next.js 16 (App Router), Tailwind CSS v4
+  backend/             NestJS + Prisma 7 + PostgreSQL
+  converter-service/   Standalone Python/FastAPI microservice (BIM/CAD/PDF takeoff)
+```
+
+Three independent processes in dev: frontend (`:3000`), backend (`:4000`),
+converter-service (`:8100`). The frontend only ever talks to the NestJS
+backend; the backend is the only caller of the converter service (not built
+yet — see §4).
+
+---
+
+## 2. Backend (NestJS)
+
+### 2.1 Authentication
+
+**What:** JWT access tokens (15 min) + refresh tokens, issued at
+`POST /api/auth/login`. No `@nestjs/passport` — auth is a hand-written
+`JwtAccessGuard` (`CanActivate`) that reads the `Authorization: Bearer` header
+and verifies it with `@nestjs/jwt`.
+
+**Why not Passport:** `@nestjs/passport`'s dynamic module wiring (`AuthGuard()`
+mixin → `AuthModuleOptions` provider) hit a DI resolution error in this
+Nest 12 + ESM setup — the guard couldn't resolve its dependency when used
+outside the module that registered `PassportModule`. Rather than fight the
+DI graph, the guard was rewritten as a plain class with two constructor
+dependencies (`JwtService`, `ConfigService`), both made global via
+`JwtModule.register({ global: true })` and `ConfigModule.forRoot({ isGlobal: true })`.
+Fewer moving parts, identical behavior, no framework-internal DI edge case.
+
+**Remember me:** `POST /auth/login` accepts an optional `rememberMe: boolean`.
+- `true` → refresh token TTL = `JWT_REFRESH_TTL_REMEMBER` (14 days, env-configurable), frontend stores tokens in `localStorage`.
+- `false`/omitted → refresh token TTL = `JWT_REFRESH_TTL` (1 day), frontend stores tokens in `sessionStorage` (cleared when the tab closes).
+
+Both are enforced server-side (the JWT itself expires), not just client-side —
+the frontend's storage choice is a UX/persistence layer on top of a TTL the
+server already controls.
+
+**Forgot / reset password:** fully built except the email itself.
+- `POST /auth/forgot-password` — looks up the user; if found, generates a
+  random 32-byte token, stores its **SHA-256 hash** (not the raw token) plus
+  a 1-hour expiry on the `User` row, and logs the reset link via Nest's
+  `Logger` (`AuthService`). Always returns the same generic
+  `{"message": "If that email exists, a reset link has been sent."}`
+  regardless of whether the email matched, to prevent account enumeration.
+- `POST /auth/reset-password` — hashes the submitted token, looks up a user
+  whose stored hash matches AND whose expiry hasn't passed, updates the
+  password, and clears the token fields (single-use).
+- **Why log instead of email:** no email provider is wired up yet (Resend is
+  the planned choice). Logging the link is a deliberate, temporary stand-in
+  that keeps the rest of the flow (token generation, expiry, single-use,
+  UI) fully real and testable today; only the delivery mechanism is a stub.
+
+### 2.2 Projects module — Project Management foundations
+
+This module is being built directly against Setjeka's own **Feature and
+Functional Requirements Register** (115 requirements, confirmed across 3
+client meetings) — specifically the "PRJ / Project Management" rows (R13–R19),
+since project management is core to what Setjeka does. What's built so far
+covers the foundation rows: R13 (project creation, enriched), R14 (team
+directory), R15 (project hierarchy), R17 (milestone/stage tracking).
+
+**`Project` model fields:**
+
+| Field | What | Requirement |
+|---|---|---|
+| `name`, `status` | Existing | — |
+| `stage` | Setjeka's own 7-stage delivery standard — see below | R17 |
+| `projectType` | `NEW_BUILD` / `REFURBISHMENT` / `REDEVELOPMENT` / `RENEWAL` / `ADDITION` | R13, Meeting 3 §6 |
+| `contractForm` | `FIDIC` / `JBCC` / `GCC` / `NEC` / `OTHER` — drives role titles (FIDIC calls the PM a "Project Engineer") | R13, Meeting 002 §2.6 |
+| `client`, `developer`, `location`, `value`, `startDate`, `endDate` | Free-text/numeric project record fields | R13 |
+| `latitude`, `longitude` | Unchanged from before — dashboard map/weather | — |
+| `projectCode` | Unique, auto-generated `PRJ-<year>-NNNN` (per-year sequence) unless overridden; previewed via `GET /api/projects/next-code`, which does **not** reserve the sequence number | R13 |
+| `description` | Free-text project summary, shown on the Overview card and the detail page | R13 |
+| `currency` | `USD` / `ZAR`, default `ZAR` | Ported trim from OpenConstructionERP |
+| `classificationStandard` | `ASAQS` / `NRM`, default `ASAQS` | Ported trim from OpenConstructionERP |
+| `contingencyPct` | Percentage, default `25` — the create form shows a live-computed contingency amount (`value * pct/100`) in the project's currency | Ported trim from OpenConstructionERP |
+
+**Why the stage model was corrected:** the header's stage badge (built in a
+previous session) used generic external PROCSA-2015 numbering (Stage 1
+Inception … Stage 6 Close Out) — an assumption, not something checked
+against what Setjeka actually agreed. Reviewing the requirements register
+(R17) and the 3rd meeting's transcript surfaced the real, verbatim standard:
+**Initiation → Inception → Concept → Design → Documentation & Procurement →
+Construction → Closeout** (7 stages, 0-indexed). The Prisma enum was renamed
+from `ProcsaStage` to `ProjectStage` and every label corrected to match. New
+projects default to `INITIATION` (Stage 0).
+
+**Project hierarchy (`ProjectNode`, R15):** `project → phase → building →
+floor → zone → work package`, modelled as a flexible self-referencing tree
+(`parentId`) rather than fixed levels — a project with no "buildings" isn't
+forced through empty levels. `activity` (the level below work package) is
+deliberately excluded: it belongs to the Schedule module, not built here yet.
+`GET/POST /api/projects/:id/nodes`, `PATCH/DELETE /api/projects/:id/nodes/:nodeId`.
+
+**Team directory (`ProjectMember`, R14):** each row is either a linked
+platform `User` (Setjeka staff) or a lightweight external contact (name,
+company, email, phone) — there's no vendor/consultant master-data module yet
+(that's requirement PROC/R38, a separate future module), so external parties
+are captured inline rather than blocked on that. A member always has a role
+drawn from the same list as the requirements register's User Roles sheet
+(Development Manager, Project Manager, Planner/Scheduler, Quantity Surveyor,
+Procurement Manager, Architect/Engineer, Site Manager, QA/QC Manager, HSE
+Manager, Contractor, Client, Other). `GET/POST /api/projects/:id/members`,
+`PATCH/DELETE /api/projects/:id/members/:memberId`. **Not yet built:** a
+picker for assigning existing Setjeka staff — there's no "list all users"
+endpoint yet, so today every member is added as an external contact even
+when they're actually internal.
+
+**Project detail page (`/projects/[id]`):** new — the app's first per-project
+workspace page. Shows/edits the full project record, the structure tree, and
+the team directory. Visiting it also sets that project as the header's
+"current project" (§3.1's switcher/stage badge), so there's no duplicate
+stage-editing UI between the page and the header.
+
+**Why coordinates:** added specifically to drive two dashboard widgets (site
+map, site weather — see §3.2) with real data instead of fabricated numbers.
+Optional, since not every project has a known site yet.
+
+**Projects Overview (`/projects`) and create form (`/projects/new`):** the
+sidebar's "Projects" entry is now a collapsible group containing a single
+"Overview" item — a responsive card grid, one card per project, matching
+OpenConstructionERP's card layout (non-interactive Leaflet/OSM map thumbnail
+with a location-pin overlay bar when coordinates exist, colored initial
+avatar, name, 2-line-clamped description, currency/stage tag chips, a
+"Total value" stat block, relative-updated footer) but scoped to fields that
+actually exist here. **Deliberately not ported to the card:** MasterFormat
+classification tag, BOQ count, PDF-export badge, "On map" toggle — those
+modules (classification taxonomy, BOQ, document export, map-visibility
+preference) don't exist in this repo. The create form is a single trimmed
+form (`Basics` / `Classification & currency` / `Location` / `Budget`
+sections), not OpenConstructionERP's full multi-step wizard with
+role-of-development presets and module-applicability scoring — it ports
+only the fields that survived that repo's own earlier trimming pass:
+currency, classification standard, auto-generated project code (editable),
+and contingency % with a live preview. The `/projects/[id]` detail page's
+view and edit modes were extended to cover every field the create form
+collects (description, currency, classification standard, contingency %),
+so the create → view → edit round-trip has no gaps.
+
+**Client/owner dropdown tied to Opportunities** is still not ported —
+deferred until the Opportunities module exists here (see `MEMORY.md`).
+
+**What the requirements register says is still ahead for Project Management**
+(not built yet, listed here so scope isn't lost): R16 task management, R18
+the project "control tower" dashboard (progress/schedule/cost/documents/
+risk/quality/procurement/approvals in one view), R19 issue register. Plus
+the cross-cutting decisions from the meetings that will shape those: RFIs
+route through Setjeka in both directions (never contractor↔client directly);
+"messaging" means leave-a-note-and-assign-as-action, never chat; risk
+register's primary users are PM/Client/QS; client-portal approvals are
+restricted solely to the client as a hard rule (Setjeka can never approve on
+the client's behalf).
+
+### 2.3 Contractors module — Organisation/Party registration
+
+Setjeka is purely a project manager — it never performs delivery work
+itself, so every project's team is inherently made up of external
+contractors, consultants, suppliers and other organisations. This module
+covers the requirements register's **PROC / Procurement & Vendors →
+"Vendor/Contractors Master"** row plus a much larger client-supplied spec
+("Contractor/Consultant/Supplier/Vendor Registration module") that was
+deliberately scoped down: a codebase audit found this app has no RBAC
+enforcement, no file/document storage, no notification system, and no
+generic audit log, so the parts of that spec which assumed that
+infrastructure exists were not built (see the deferred table below) — only
+the reusable-organisation architecture the spec itself frames as most
+important (§29 of that spec: never hardcode one role/type per organisation)
+was.
+
+**`Contractor` model** (the organisation/party record): `name` (unique),
+`tradingName`, `registrationNumber`, `taxVatNumber`, `country`,
+`stateProvince`, `city`, `yearEstablished`, `website`, `classifications`
+(enum array — Contractor/Consultant/Supplier/Subcontractor/ServiceProvider/
+Manufacturer/SpecialistContractor/Other; an organisation can be several at
+once), `disciplines` (free text list — not a fixed enum, since the source
+spec itself says these catalogs should be configurable and the client
+hasn't confirmed one; same reasoning as the PROCSA-stage correction in
+§2.2), `tradeType`/`contactName`/`email`/`phone`/`address`/`notes`,
+`registrationStatus` (Draft/Submitted/UnderReview/MoreInfoRequired/
+Approved/Rejected/Suspended/Archived) and `prequalificationStatus`
+(NotAssessed/Submitted/UnderReview/Prequalified/
+ConditionallyPrequalified/Rejected/Suspended) — **two independent fields**,
+since an org can be a fully approved vendor while still unassessed for
+prequalification on a given scope. Global list, not scoped per project
+owner — Setjeka's own shared directory.
+
+**Related models**, each with its own nested CRUD sub-routes:
+
+| Model | Purpose | Routes |
+|---|---|---|
+| `OrganisationContact` | Multiple named contacts per org, with `isPrimary`/`canReceiveRfqs`/`canReceiveCorrespondence`/`canReceivePaymentNotifications` flags | `/api/contractors/:id/contacts` |
+| `ComplianceRecord` | Covers both compliance documents (insurance, licences, HSE certs) and professional registrations — same shape, one model. `verificationStatus` (Pending/Submitted/Verified/Rejected) is stored; a `computedStatus` (Valid/ExpiringSoon [30-day window]/Expired/PendingVerification) is **derived at read time from `expiryDate`**, never stored. Supports a real file attachment (see below) | `/api/contractors/:id/compliance`, `/api/contractors/:id/compliance/:recordId/document` |
+| `OrganisationProjectAppointment` | The architecture fix the spec calls out explicitly: role, contract value/dates/scope live on a per-project appointment, **never on the organisation itself** — so the same contractor can be Main Contractor on one project and Subcontractor on another | `/api/contractors/:id/appointments` |
+| `OrganisationStatusHistory` | Audit trail scoped to just this entity's status changes (not an app-wide log, which doesn't exist) | Written automatically by `PATCH /api/contractors/:id/status` |
+
+**Duplicate detection:** `GET /api/contractors/check-duplicate?name=&registrationNumber=&taxVatNumber=`
+returns any matches (case-insensitive name, exact reg/tax numbers); the
+frontend shows a warning but never blocks creation, per spec.
+
+**A real bug found during this build:** creating a contractor whose `name`
+collided with an existing one threw an unhandled `500` (nothing caught
+Prisma's `P2002` unique-constraint error) instead of a friendly message.
+Fixed by mapping `P2002` to a `409 ConflictException` in both `create` and
+`update`. This mattered specifically because duplicate detection is a
+*warning*, not a block — a user proceeding past the warning was always a
+real path to this collision, not just a test artifact.
+
+**`/contractors` page:** list with search, a registration-status filter,
+and classification toggle-chips, under the "Procurement" sidebar group.
+**`/contractors/new`:** a single focused create step (not a multi-step
+wizard) that posts immediately (status defaults to Draft) and redirects to
+the detail page — mirrors `projects/new` → `projects/[id]` exactly.
+**`/contractors/[id]`:** the app's first tabbed workspace page
+(`components/ui/Tabs.tsx` — plain buttons, no dependency added), with
+Overview (edit basics/classification/disciplines, the two status fields
+plus a "Change status" action and its history), Contacts, Compliance (with
+a "Required: X · Uploaded: Y · Verified: Z" counter computed against a
+small static per-classification required-document list, plus per-record
+upload/replace/remove/view), Project Associations, and Financial tabs.
+
+**Document upload (added after user request, superseding the original
+"link-only placeholder" plan):** `POST /api/contractors/:id/compliance/:recordId/document`
+(multer `diskStorage`, field name `file`) stores to `UPLOAD_DIR`
+(`backend/uploads/vendor-documents/` by default, gitignored) under a
+generated UUID filename — the original filename, mime type and size are
+kept on the record (`attachmentFilename`/`attachmentMimeType`/
+`attachmentSize`); a 20MB limit and an extension allowlist (pdf, jpg/jpeg/
+png, doc/docx, xls/xlsx) are enforced server-side via multer's `limits` and
+a custom `fileFilter`. `GET .../document` streams the file back
+(`Content-Disposition: inline`) behind the same `JwtAccessGuard` as
+everything else — not a public static path, so the frontend can't use a
+plain `<a href>` and instead fetches the bytes as a blob
+(`apiFetchBlobUrl` in `lib/api-client.ts`) and opens an object URL.
+`DELETE .../document` detaches just the file, keeping the record. A
+`sharePointUrl` column exists on the model but is **not populated by
+anything yet** — SharePoint sync needs an Azure AD app registration
+(tenant/client id+secret, target site+drive) the user hasn't supplied.
+
+**Financial tab (added after user request, reversing the original
+deferral):** bank name/account name/account number, preferred payment
+method, payment terms, credit terms, and withholding-tax info live directly
+on `Contractor` (a single profile per organisation, not a list) and are
+editable via the normal `PATCH /api/contractors/:id`. The tab renders a
+visible on-page warning that this app still has no RBAC, so — like every
+other page — it's reachable by any signed-in user; the user chose to accept
+that known gap rather than defer the feature further.
+
+**Deliberately still not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| SharePoint sync for compliance documents | Needs Azure AD app credentials the user hasn't provided yet — local disk storage covers the need in the meantime |
+| RBAC permission catalog | No RBAC enforcement exists anywhere in the app to hook a permission check into — flagged as a known gap on the Financial tab rather than faked |
+| Notifications | No notification system exists |
+| Project Experience, Equipment records | No consuming workflow yet (Tender/Prequalification, Resource Planning aren't built) |
+| Deep Contractor/Consultant/Supplier-specific sub-profiles (grade/capacity, staff counts, MOQ/lead time) | V1 ships the shared core architecture; type-specific fields are a natural follow-up once something consumes them |
+
+**Team panel integration (`ProjectMembersPanel`):** the "add team member"
+form leads with a contractor picker (now showing classification alongside
+name) sourced from `GET /api/contractors` instead of a bare "Company" text
+field. Picking a contractor sets `ProjectMember.contractorId`; the existing
+`externalName` field is reused to mean "the specific contact person at that
+contractor for this project" (optional). A "— One-off contact —" option
+keeps the fully manual entry path for externals not worth adding to the
+master list.
+
+**New shared UI primitives added for this module:** `components/ui/Tabs.tsx`
+(segmented control), `components/ui/ToggleChips.tsx` (multi-select chips —
+used for classification selection and filtering), `components/ui/TagInput.tsx`
+(free-text multi-value input with datalist suggestions — used for
+disciplines).
+
+---
+
+## 3. Frontend (Next.js)
+
+### 3.1 App shell
+
+| Piece | What | Why this shape |
+|---|---|---|
+| **Logo** | Setjeka wordmark (`/setjeka/logo.png`, inverted white), top of the sidebar only | Matches OpenConstructionERP's placement exactly — the header never carries a logo there either |
+| **Sidebar nav** | "Overview" is a collapsible group containing "My Day" and "Dashboard"; "Projects" is a separate top-level link. Collapse state persists to `localStorage`, auto-expands when a child route is active | Mirrors the donor app's `grp_overview` nav-group pattern (a parent group with children), requested explicitly instead of three flat links |
+| **Header** | Left: mobile hamburger (below `lg`) + project switcher + stage badge (below `md` hides, see next rows) + breadcrumb chevron + page title/icon (both `lg`+ only). Center: functional project search (`⌘K`, icon-only below `sm`). Right: notifications bell (placeholder), help icon (placeholder), theme toggle, user avatar menu (sign out) — the placeholder icons hide below `sm` to keep the mobile header from overflowing | Same left→center→right zoning as the donor app's header, scoped down to only the pieces that have something behind them right now |
+| **Project switcher ("select project pane")** | A pill button (dashed border + "Select a project" when nothing's chosen; solid green once one is) that opens a dropdown: a filter input plus every project, click to select. Selecting sets it as the header's "current project" — persisted to `localStorage` (`setjeka_current_project`), survives reload/navigation | Visiting a project's detail page (`/projects/[id]`, §2.2) also sets it as current, so the switcher and the page stay in sync automatically |
+| **Stage badge** | Shows once a project is selected: "Stage N — {label}", click opens a dropdown of Setjeka's 7 delivery stages (Initiation → Closeout, §2.2). Picking one updates optimistically, PATCHes `/api/projects/:id`, and rolls back on failure. Hidden below `md` (no room) | Originally built against generic external PROCSA-2015 labels — corrected to Setjeka's own verbatim stage standard once the requirements register was checked (§2.2 explains the correction) |
+| **Functional search** | Click the center search box (or press `⌘K`/`Ctrl K` anywhere) to open a command-palette-style overlay: type to filter projects by name, click a result (or the switcher does the same job) to set it as the current project. Closes on Escape or backdrop click | The donor app's search was a full command palette across many entity types; scoped down here to the one thing that exists to search — projects — same interaction pattern (⌘K, overlay, live filter) so it's a straightforward extension point later |
+| **Sidebar responsiveness** | Below the `lg` breakpoint, the sidebar is an off-canvas drawer (slides in from the left, dark backdrop, closes on backdrop click or navigation) triggered by the header's hamburger; at `lg`+ it's always visible in normal flow | Caught during dashboard QA: the sidebar had no mobile handling at all and ate ~60% of a 390px-wide screen. Fixed with a `translate-x` + `lg:translate-x-0` pattern so the same markup serves both layouts with no JS media-query logic |
+| **Dark/light toggle** | Cycles light → dark → system on click, persisted to `localStorage` (`setjeka_theme`), applied via a `.dark` class on `<html>`. An inline `<script>` (via `next/script`, `beforeInteractive`) sets the class before first paint to avoid a flash of the wrong theme | Same 3-state cycle and persistence key pattern as the donor app's `useThemeStore`, reimplemented as a small React context since this is a fresh app with no Zustand dependency yet |
+| **Sidebar color** | Always brand green (`#0E3D2C`), in both light and dark mode | Matches the donor app's sidebar, which never follows the light/dark toggle |
+| **AI chat widget** | Floating circular button, bottom-right, opens a slide-in panel (message list + input). The button itself carries the Setjeka icon-mark (`/setjeka/icon-mark.png`, inverted white) rather than a generic chat icon | Same placement/look as the donor app's `FloatingChatButton`/`FloatingChatPanel`. **Not wired to an LLM** — sending a message shows a fixed placeholder reply. This was an explicit scoping decision: building a real AI backend needs a provider decision (OpenAI/Anthropic/etc.) and API key, which hasn't been made yet |
+| **Main content bottom clearance** | `<main>` uses `pb-24`/`sm:pb-28` (asymmetric — more than the top padding) instead of a symmetrical `py-*` | Found during Projects-Overview mobile QA: the fixed AI chat button permanently covered the last card's content at full scroll-to-bottom rest, since no page reserved clearance for it. Fixed once at the shared layout level rather than per-page, since every scrollable page shares the same `<main>` |
+| **Custom `Select` component** (`components/ui/Select.tsx`) | Every dropdown in the app (New/Edit Project selects, hierarchy type picker, Team role/contractor pickers, weather site picker) uses this instead of a native `<select>` | The open-dropdown highlight color on a native `<select>` is OS-rendered on Chrome/Windows — CSS `accent-color` does not reliably override it (verified: still blue after setting it globally). A fully custom button+listbox makes the highlight (and everything else about the dropdown's look) actually within the app's control, styled in brand emerald |
+| **Collapsible sidebar** (`lg`+ only) | A `PanelLeftClose`/`PanelLeftOpen` toggle pinned to the bottom of the sidebar shrinks it to a `68px` icon-only rail (`lg:w-[68px]`); state persists to `localStorage` (`setjeka_sidebar_collapsed`). Mobile's existing off-canvas drawer is untouched — collapse only applies at `lg`+. Clicking a nav group's icon while collapsed re-expands the sidebar rather than attempting a flyout | Requested directly; the icon-rail pattern was chosen over a flyout/tooltip-menu approach for simplicity, matching this app's general preference for plain markup over new interaction patterns |
+| **App shell height (`(app)/layout.tsx` root wrapper)** | `h-dvh` instead of `flex-1` | **Real pre-existing bug found while testing the collapse toggle**: `<main>` has always had `overflow-y-auto`, but nothing in its ancestor chain was actually height-bound to the viewport (`body` used `min-h-full`, a floor not a ceiling) — so on any sufficiently tall page the *whole document* scrolled as one unit instead of just `<main>`, meaning the sidebar/header scrolled out of view too. This had been true since the sidebar was first built; it just never surfaced because QA screenshots were taken at scroll-top or as full-page composites. It surfaced now because the new collapse button sits at the very bottom of the sidebar and Playwright's click auto-scrolled the unbounded page to reach it. `h-dvh` is viewport-relative (not a percentage of an ancestor), so it fixes this without touching `body`/`html`/`RootLayout` and without risk to `/login` or any other route group. Verified: scrolling `<main>` by 600px now leaves `<aside>`'s bounding box at exactly `{x:0, y:0}` matching the viewport height |
+
+### 3.2 Dashboard — every widget currently on the page
+
+First pass deliberately omitted widgets for modules that don't exist yet
+(BIM coverage, RFIs, financial summary, etc.). On review, the call was made
+to bring back full structural parity with the donor dashboard — every
+section it has, this one has too — but **never with a fabricated number**.
+Where there's no real data source yet, the widget says so plainly ("Coming
+soon" / "Not tracked yet") instead of showing a fake stat.
+
+**Real, live widgets** (backed by actual data):
+
+| Widget | What it shows | Data source |
+|---|---|---|
+| **Greeting header** | "Good morning/afternoon/evening, {first name}" in green serif (Merriweather), + a "New Project" button | `useAuth()` user + `Date` |
+| **Getting started checklist** | 4 steps: 2 real and checkable ("Create your first project", "Add site coordinates"), 2 marked "Soon" (AI assistant, invite team). Auto-hides once all 4 are done | Derived from `GET /projects` (project count, coordinate presence) |
+| **KPI ribbon** | 5 stat tiles: Total projects (excludes archived), Planning, Active, On hold, Completed | Real counts from `GET /projects`, computed client-side. Shows a pulse skeleton while loading rather than flashing `0` |
+| **Portfolio overview** | Active projects (real) + Total budget / With budget set (both "Not tracked yet" — no budget field exists) | `GET /projects` |
+| **Today** | Open tasks / Open RFIs / Safety incidents — all "Not tracked yet", no such modules exist | — |
+| **Project sites map** | Leaflet map (OpenStreetMap tiles), one marker per project with `latitude`/`longitude` set | `GET /projects`, filtered to sited projects — see §5.1 for a tile-usage caveat |
+| **Site weather** | Current temperature, condition, wind speed. A dropdown picks which sited project when there's more than one | Open-Meteo, called directly from the browser — see §5.2 |
+| **Sites** | Compact list of every sited project's name + coordinates | `GET /projects` |
+| **Activity** | Real event feed: "`{project}` was created/updated", relative timestamps, newest first | Derived from each project's `createdAt`/`updatedAt` |
+| **Projects by status** | Hand-rolled horizontal bar chart, one bar per status present, with count + percentage | `GET /projects`, grouped client-side — the donor app's own philosophy of skipping vanity metrics applies here too: this shows a real, answerable breakdown rather than a chart for its own sake |
+| **Recent projects list** | Up to 5 most recently created projects, avatar-letter tile + name + date | `GET /projects` |
+
+**"Coming soon" widgets** (structural placeholders, explicitly labelled, no fake data): Finance summary, Estimate resources, BIM coverage, Operations snapshot, Latest site photos, Upcoming milestones, RFI turnaround, Submittals pending, Inspections quality, Punch list quality, Cases. Each names the module it depends on so it's obvious what unblocks it.
+
+---
+
+## 4. Converter microservice (`converter-service/`)
+
+### 4.1 What this is
+
+A standalone Python/FastAPI service, **extracted from OpenConstructionERP**,
+that turns BIM/CAD files and 2D PDF plans into structured quantities. It has
+no database, no auth beyond a single shared-secret header
+(`X-Internal-Token`), and no dependency on anything else in this repo — it's
+designed to be called by the NestJS backend over HTTP (that call site is
+**not built yet** — see §4.4).
+
+### 4.2 Why extraction instead of a straight port
+
+OpenConstructionERP's BIM/takeoff code totals roughly 46,000 lines across 4
+modules (`bim_hub`, `takeoff`, `dwg_takeoff`, `boq/cad_import.py`), and most
+of that is deeply wired into that app's own database, RBAC, and BOQ models —
+dragging it wholesale into this stack would have imported that coupling too.
+
+Investigation found the actual **algorithmic core** — the part that reads a
+file and produces quantities, with no database or auth involved at all — is
+a much smaller, cleanly separated slice:
+
+| Source file (OpenConstructionERP) | Lines | Coupling found |
+|---|---|---|
+| `boq/cad_import.py` | 2,392 | none |
+| `boq/dxf_native.py` | 271 | none |
+| `dwg_takeoff/dxf_processor.py` | 548 | none |
+| `dwg_takeoff/intl.py` | 582 | none |
+| `dwg_takeoff/extents.py` | 174 | none |
+| `takeoff/pdf_extract_worker.py` | 422 | none |
+| `takeoff/scale_detect.py` | 386 | none |
+| `takeoff/recognize.py` | 484 | none |
+| `takeoff/raster_recognize.py` | 387 | none |
+| `takeoff/plan_read.py` (scale-math functions only) | 628 | none |
+
+**~6,270 lines total**, verified via `grep` to contain zero imports of
+`app.database`, `app.dependencies`, `app.config`, or any RBAC/DB helper —
+confirmed file by file before copying, not assumed. Everything else in those
+four modules (routers, services, repositories, SQLAlchemy models — the
+other ~40,000 lines) is UI/persistence/multi-tenant plumbing this new app
+doesn't need and wasn't copied.
+
+One small exception: `dxf_processor.py` called a single function,
+`infer_units_from_extents`, out of a much larger, DDC-XML-specific file
+(`ddc_dwg_parser.py`, 47 KB) that was *not* otherwise needed. That one
+~40-line function was copied into `extents.py` (its natural home) instead of
+dragging in the whole file it used to live in.
+
+### 4.3 What it does, endpoint by endpoint
+
+- **`GET /health`** — liveness check, no auth.
+- **`GET /converters`** — per-format (`rvt`/`ifc`/`dwg`/`dgn`) status: is the
+  DDC converter binary installed, does it pass a smoke test, what version.
+- **`POST /convert/bim`** — upload a `.rvt`/`.ifc`/`.dwg`/`.dgn`/`.rfa`/`.dxf`
+  file. `.dxf` is read natively (pure Python, via `ezdxf` — no external
+  binary needed); the other formats are converted via the matching
+  DataDrivenConstruction (DDC) exporter binary, then the resulting Excel is
+  parsed and grouped by category/type into quantities (count, volume m³,
+  area m², length m).
+- **`POST /convert/bim/group`** — re-group a previously-returned element list
+  by different columns, without re-uploading (the service is stateless, so
+  the caller re-sends the `elements` array from the first call).
+- **`POST /convert/pdf`** — upload a PDF plan page. Reads the page's vector
+  drawing layer (via PyMuPDF) and runs deterministic area/length/count
+  detectors; if the page has no vector layer (a scanned/raster plan), it
+  rasterizes the page and runs an OpenCV-based room/wall detector instead.
+  Also runs text-based scale-note detection ("SCALE 1:100") across the PDF
+  as an informational hint. `scale_pixels_per_unit` is optional — omit it to
+  get geometry-only candidates (`value: null`) for a human to confirm.
+- **`POST /convert/pdf/calibrate`** — given two reference points and a known
+  real-world length (e.g., "this line is 4.10 m"), returns the derived
+  `scale_pixels_per_unit` to feed back into `/convert/pdf`. This mirrors the
+  donor app's calibration-dialog step exactly — the source code documents a
+  hard rule that a detected quantity is *never* auto-confirmed, only
+  proposed for a human to accept, and this endpoint preserves that.
+
+### 4.4 Verified, not guessed
+
+Every endpoint was tested against real files before being called done:
+
+- `.dxf` — a real fixture (`frontend/e2e/fixtures/test.dxf` from
+  OpenConstructionERP) converted correctly (5 elements, walls + circle,
+  correct lengths).
+- `.ifc` — a real 2.4 MB fixture
+  (`frontend/e2e/fixtures/dashboards/sample-project.ifc`) converted via the
+  **actual DDC `IfcExporter` binary** already installed on this machine: 297
+  elements across 21 IFC categories (walls, slabs, windows, storeys, etc.).
+- PDF vector takeoff — a real fixture (`frontend/e2e/fixtures/test-drawing.pdf`)
+  correctly detected a closed rectangle as an area candidate.
+- Scale calibration — verified the math against a known example (a 72-pixel
+  reference line over 4.10 m → 17.56 points/metre).
+- Regrouping, unsupported-extension rejection (400), and missing-auth-token
+  rejection (401) all confirmed.
+
+### 4.5 What's explicitly not done yet
+
+- **NestJS integration** — the backend has no route that calls this service
+  yet. It runs standalone (`:8100`) and is ready to be called, but nothing
+  in `backend/` does so.
+- **AI-vision plan reading** — the donor app has an optional path where an
+  AI vision model reads a scanned plan directly. Only the pure
+  scale-math half of that (`plan_read.py`'s `derive_scale_ratio` etc.) was
+  ported; no AI provider call was built, matching the same "no AI backend
+  decided yet" scoping as the chat widget (§3.1).
+- **Deployment** — a `Dockerfile` exists (installs the DDC Linux `.deb`
+  packages at build time, same pattern as OpenConstructionERP's backend
+  image) but has not been deployed anywhere yet.
+
+---
+
+## 5. Third-party services in use
+
+### 5.1 OpenStreetMap tiles (via Leaflet)
+
+**Used for:** the dashboard's "Project sites" map.
+**Auth:** none — no API key, no account.
+**Cost:** free.
+**Important caveat:** the default `tile.openstreetmap.org` server used here
+is meant for **light development/evaluation use only** — OSM's tile usage
+policy prohibits heavy or commercial production traffic against it without
+prior arrangement. Before this app has real production traffic, the tile
+source should move to either a self-hosted tile server or a paid provider
+(e.g., MapTiler, Stadia Maps, Mapbox) that fronts OSM data under a proper
+commercial agreement. Flagging this now so it isn't discovered the hard way
+(rate-limited or blocked) after launch.
+
+### 5.2 Open-Meteo (weather)
+
+**Used for:** the dashboard's "Site weather" widget.
+**Endpoint:** `https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&current_weather=true`
+**Auth:** none — no API key.
+**Cost:** free for non-commercial use under Open-Meteo's terms; they ask
+heavy/commercial users to self-host their open-source stack or use their
+paid tier. Worth revisiting if usage grows.
+
+### 5.3 DataDrivenConstruction (DDC) converter binaries
+
+Not a network API, but a third-party dependency worth listing: the
+`RvtExporter`/`IfcExporter`/`DwgExporter`/`DgnExporter` binaries that do the
+actual BIM/CAD file conversion are DataDrivenConstruction's free "Community"
+tier, distributed as signed `.deb` packages from
+`pkg.datadrivenconstruction.io` (Linux) or bundled `.exe` files (Windows).
+No API key; no network call at conversion time (everything runs locally,
+offline, once the binaries are installed).
+
+---
+
+## 6. Local dev quick reference
+
+| Service | Port | Start command |
+|---|---|---|
+| Frontend | 3000 | `npm run dev` in `frontend/` |
+| Backend | 4000 | `npm run start:dev` in `backend/` |
+| Converter service | 8100 | `./.venv/Scripts/uvicorn app.main:app --port 8100` in `converter-service/` |
+
+Postgres: native install, database `setjeka_erp`, role `setjeka_erp` /
+`setjeka_erp_dev`. Demo login stored at `~/.setjeka-erp/.demo_credentials.json`.
+
+## 7. Production deployment
+
+Live at `https://173.212.202.149` (raw IP, self-signed cert — no domain
+registered yet) on the VPS that previously ran OpenConstructionERP; that
+stack was torn down and this one deployed in its place. Full first-time
+setup and redeploy steps: `deploy/README.md`. Summary:
+
+- `docker-compose.prod.yml` (repo root): `postgres` (plain `postgres:16-
+  alpine`) + `backend` + `frontend` + `nginx`, each with healthchecks and
+  `restart: unless-stopped`.
+- `backend/Dockerfile`, `frontend/Dockerfile`: multi-stage builds. The
+  frontend uses `output: "standalone"` (`next.config.ts`) — static export
+  isn't viable since `/projects/[id]` and `/contractors/[id]` are fully
+  dynamic, unbounded-at-build-time routes.
+- `deploy/nginx.conf`: TLS termination (nginx, not Caddy — same proven
+  choice as OpenConstructionERP on this VPS) + reverse proxy to
+  `frontend:3000` and `backend:4000`. Unlike OpenConstructionERP's nginx
+  (which served a static SPA build directly from its own image), this one
+  is a pure proxy to two live Node processes, since the frontend needs a
+  running server, not just static files.
+- Compliance document uploads persist in the `vendor_documents` named
+  volume (`/data/vendor-documents` in the backend container), independent
+  of the image/container lifecycle.
+- Two real bugs surfaced and fixed during the first deploy (see
+  `MEMORY.md`'s "Production deployment" section for the full detail): (1)
+  Next's standalone server binds to `process.env.HOSTNAME`, which Docker
+  auto-sets to the container ID, so without an explicit `ENV
+  HOSTNAME=0.0.0.0` override the frontend was unreachable from outside its
+  own container; (2) `prisma/seed.ts` runs via `tsx` against the Prisma
+  client's **source** path, so the backend image needs `src/generated`
+  copied in alongside `dist/`, not just the compiled output.
+- **Not yet done**: pushing this repo to GitHub (blocked on credentials —
+  see `MEMORY.md`), a real domain + Let's Encrypt cert (self-signed for
+  now), and SharePoint sync for compliance documents (blocked on Azure AD
+  app credentials).

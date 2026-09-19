@@ -1,0 +1,9 @@
+node_modules
+dist
+uploads
+.env
+.env.*
+src/generated
+tsconfig.build.tsbuildinfo
+*.log
+test
