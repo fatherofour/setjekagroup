@@ -221,3 +221,13 @@ export function requiredDocumentTypes(classifications: OrganisationClassificatio
   if (set.size === 0) for (const doc of REQUIRED_DOCS_BY_CLASSIFICATION.OTHER) set.add(doc);
   return Array.from(set);
 }
+
+export type RaterType = 'INTERNAL' | 'CLIENT';
+
+export const RATER_TYPE_LABEL: Record<RaterType, string> = {
+  INTERNAL: 'Setjeka (internal)',
+  CLIENT: 'Client',
+};
+
+export const RATER_TYPES = Object.keys(RATER_TYPE_LABEL) as RaterType[];
+

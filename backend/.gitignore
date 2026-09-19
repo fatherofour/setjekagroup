@@ -6,3 +6,7 @@ node_modules
 
 # Uploaded vendor/compliance documents — local disk storage, not versioned
 /uploads
+
+# TypeScript incremental build cache — machine-local, regenerated on every
+# build, not source
+*.tsbuildinfo

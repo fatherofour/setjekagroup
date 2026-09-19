@@ -7,7 +7,7 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const email = 'admin@setjekagroup.co.za';
+  const email = 'setjeka@setjekagroup.co.za';
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!password) {
     throw new Error('Set SEED_ADMIN_PASSWORD before running the seed script');

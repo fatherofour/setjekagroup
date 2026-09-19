@@ -353,6 +353,44 @@ that step gets skipped.
   group. Verified: after the fix, scrolling `<main>` by 600px leaves the
   `<aside>`'s bounding box exactly at `{x:0, y:0}` matching the viewport
   height, confirmed via Playwright `boundingBox()` before/after.
+- **Payment records + contractor performance ratings, on user request.**
+  Two more additions to the Contractors module:
+  - `PaymentRecord` (contractorId, an *optional* link to a specific
+    `OrganisationProjectAppointment` since not every payment ties to one
+    project, amount, currency, paymentDate, reference, method, notes) —
+    surfaced as a "Payments made" list inside the existing Financial tab
+    (not a separate tab), per how the request was phrased ("the financial
+    should have a record of payment made to vendors"). Totals are summed
+    **per currency, never combined** — adding raw USD + ZAR numbers
+    together would be meaningless.
+  - `OrganisationRating` (contractorId, a *required* link to an
+    appointment — rating is about performance on a specific completed
+    engagement, matching the user's own example: "we close off on
+    Radisson Blu project... we rate them"; `raterType` INTERNAL/CLIENT;
+    `stars` 1-5; `comment`) — a new **"Ratings" tab**, positioned right
+    after Financial per the request ("the next close to financial should
+    be rating"). Shows a running average (overall, and split by rater
+    type) at the top of the tab.
+  - **"Client gets to rate them from the client portal" is only
+    half-built, deliberately.** There is no client-facing portal in this
+    app — no client user accounts, no client auth, nothing for a client to
+    log into. Building that is a significant separate undertaking (a whole
+    second auth surface), not a natural extension of today's session. What
+    *is* built: the `CLIENT` rater type exists and can be recorded today —
+    just by Setjeka staff, on the client's behalf (e.g. after a phone call
+    or email), through the same authenticated form as an internal rating.
+    The UI says this plainly rather than implying self-service submission
+    exists. Deliberately **not** built: an unauthenticated public rating
+    endpoint — that would be a spam/abuse vector with zero portal
+    infrastructure (no client identity, no rate limiting, no way to tie a
+    submission to a real engagement) to guard it.
+  - New `StarRating` UI primitive (`components/ui/StarRating.tsx`):
+    read-only (`pointer-events-none`) when used for display in a list,
+    interactive click-to-set when given an `onChange` — verified during
+    testing that the read-only mode is genuinely inert (a test script
+    accidentally targeted a list-display star and Playwright correctly
+    refused the click, confirming the `pointer-events-none` guard works
+    as intended rather than being dead code).
 
 ## Local dev environment
 
@@ -363,7 +401,30 @@ that step gets skipped.
 - Frontend: Next.js dev server on port 3000 (`npm run dev` in `frontend/`).
 - Demo login credentials are stored locally (not in the repo) at
   `~/.setjeka-erp/.demo_credentials.json`, matching the pattern used for
-  OpenConstructionERP's own demo account.
+  OpenConstructionERP's own demo account. **Admin email changed** (user
+  request) from `admin@setjekagroup.co.za` to
+  `setjeka@setjekagroup.co.za` — same password, same user row (just the
+  email column updated via `UPDATE "User" SET email = ...`, not a
+  delete+recreate), applied to both local dev and production. The
+  credentials file above was updated to match. Also fixed
+  `prisma/seed.ts`, which still hardcoded the old email — left as-is it
+  would have created a second, duplicate admin user on any future fresh
+  install/reseed instead of the intended one.
+
+## Favicon
+
+Replaced the default Next.js favicon with the Setjeka "S" mark
+(`public/setjeka/icon-mark-512.png`, flattened onto white — the app's
+other uses of that mark are white-on-green via a CSS invert filter, which
+doesn't suit a favicon shown on a light browser-tab background). No image
+tool was available in this environment (no PIL, no ImageMagick, no
+`sharp` pre-installed) — installed `sharp` + `png-to-ico` in a scratch
+directory just for this one conversion (16/32/48/64px PNGs → one
+multi-resolution `.ico`), then discarded the scratch install. Replaces
+`frontend/src/app/favicon.ico`, which Next.js's App Router picks up
+automatically (no metadata config needed). Deployed to both local dev and
+production (the frontend Docker image needed a rebuild for prod, since the
+favicon is baked into the build).
 
 ## Production deployment
 

@@ -96,6 +96,31 @@ export interface OrganisationStatusHistoryEntry {
   changedAt: string;
 }
 
+export interface PaymentRecord {
+  id: string;
+  contractorId: string;
+  appointmentId: string | null;
+  amount: number;
+  currency: 'USD' | 'ZAR';
+  paymentDate: string;
+  reference: string | null;
+  method: string | null;
+  notes: string | null;
+  appointment: { id: string; project: { id: string; name: string; projectCode: string | null } } | null;
+}
+
+export interface OrganisationRating {
+  id: string;
+  contractorId: string;
+  appointmentId: string;
+  raterType: import('./organisationMeta').RaterType;
+  stars: number;
+  comment: string | null;
+  createdAt: string;
+  appointment: { id: string; project: { id: string; name: string; projectCode: string | null } };
+  recordedBy: { id: string; fullName: string };
+}
+
 export interface ContractorDetail extends Contractor {
   contacts: OrganisationContact[];
   complianceRecords: ComplianceRecord[];

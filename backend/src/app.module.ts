@@ -12,6 +12,8 @@ import { ContractorsModule } from './contractors/contractors.module.js';
 import { OrganisationContactsModule } from './organisation-contacts/organisation-contacts.module.js';
 import { ComplianceRecordsModule } from './compliance-records/compliance-records.module.js';
 import { OrganisationAppointmentsModule } from './organisation-appointments/organisation-appointments.module.js';
+import { PaymentRecordsModule } from './payment-records/payment-records.module.js';
+import { OrganisationRatingsModule } from './organisation-ratings/organisation-ratings.module.js';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { OrganisationAppointmentsModule } from './organisation-appointments/orga
     OrganisationContactsModule,
     ComplianceRecordsModule,
     OrganisationAppointmentsModule,
+    PaymentRecordsModule,
+    OrganisationRatingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

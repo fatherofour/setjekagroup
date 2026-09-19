@@ -257,7 +257,25 @@ on `Contractor` (a single profile per organisation, not a list) and are
 editable via the normal `PATCH /api/contractors/:id`. The tab renders a
 visible on-page warning that this app still has no RBAC, so — like every
 other page — it's reachable by any signed-in user; the user chose to accept
-that known gap rather than defer the feature further.
+that known gap rather than defer the feature further. The same tab also
+lists **`PaymentRecord`s** ("Payments made") — amount, currency, date,
+an optional link to a specific `OrganisationProjectAppointment`,
+reference, method — via `/api/contractors/:id/payments`. Totals are
+grouped and displayed **per currency**, never summed together.
+
+**Ratings tab** (`/api/contractors/:id/ratings`, model
+`OrganisationRating`): a star rating (1-5, `components/ui/StarRating.tsx`)
+plus a comment, tied to a **specific `OrganisationProjectAppointment`**
+(rating is about performance on one completed engagement, not the
+organisation in the abstract) and a `raterType` of `INTERNAL` or `CLIENT`.
+Shows a running average at the top (overall, and split by rater type).
+**"Client" ratings are recorded by Setjeka staff on the client's behalf**
+— there is no client-facing portal (no client user accounts/auth exist in
+this app), so a true self-service client submission isn't built; the UI
+says this explicitly rather than implying it. Deliberately not built: an
+unauthenticated public rating endpoint, which would need real portal
+infrastructure (client identity, rate limiting, engagement verification)
+to be safe against spam/abuse.
 
 **Deliberately still not built, and why:**
 
@@ -266,6 +284,7 @@ that known gap rather than defer the feature further.
 | SharePoint sync for compliance documents | Needs Azure AD app credentials the user hasn't provided yet — local disk storage covers the need in the meantime |
 | RBAC permission catalog | No RBAC enforcement exists anywhere in the app to hook a permission check into — flagged as a known gap on the Financial tab rather than faked |
 | Notifications | No notification system exists |
+| Client-facing portal for self-service client ratings | Needs its own auth surface (client accounts, login) that doesn't exist yet — client ratings are recorded by staff on the client's behalf in the meantime |
 | Project Experience, Equipment records | No consuming workflow yet (Tender/Prequalification, Resource Planning aren't built) |
 | Deep Contractor/Consultant/Supplier-specific sub-profiles (grade/capacity, staff counts, MOQ/lead time) | V1 ships the shared core architecture; type-specific fields are a natural follow-up once something consumes them |
 

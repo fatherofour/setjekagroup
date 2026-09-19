@@ -14,6 +14,7 @@ import { OrganisationContactsTab } from '@/components/organisation/OrganisationC
 import { OrganisationComplianceTab } from '@/components/organisation/OrganisationComplianceTab';
 import { OrganisationAppointmentsTab } from '@/components/organisation/OrganisationAppointmentsTab';
 import { OrganisationFinancialTab } from '@/components/organisation/OrganisationFinancialTab';
+import { OrganisationRatingsTab } from '@/components/organisation/OrganisationRatingsTab';
 
 export default function ContractorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -80,6 +81,7 @@ export default function ContractorDetailPage() {
           { value: 'compliance', label: 'Compliance', count: contractor.complianceRecords.length },
           { value: 'appointments', label: 'Project Associations', count: contractor.appointments.length },
           { value: 'financial', label: 'Financial' },
+          { value: 'ratings', label: 'Ratings' },
         ]}
       />
 
@@ -97,6 +99,9 @@ export default function ContractorDetailPage() {
       </div>
       <div hidden={tab !== 'financial'}>
         <OrganisationFinancialTab contractor={contractor} onSaved={load} />
+      </div>
+      <div hidden={tab !== 'ratings'}>
+        <OrganisationRatingsTab contractor={contractor} onChange={load} />
       </div>
     </div>
   );

@@ -198,6 +198,8 @@ model User {
   contractorsCreated Contractor[]
   complianceRecordsVerified ComplianceRecord[]          @relation("ComplianceVerifiedBy")
   organisationStatusChanges OrganisationStatusHistory[]
+  paymentRecordsRecorded   PaymentRecord[]
+  organisationRatingsRecorded OrganisationRating[]
 
   @@index([resetTokenHash])
 }
@@ -254,6 +256,8 @@ model Contractor {
   complianceRecords ComplianceRecord[]
   appointments  OrganisationProjectAppointment[]
   statusHistory OrganisationStatusHistory[]
+  paymentRecords PaymentRecord[]
+  ratings       OrganisationRating[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -333,11 +337,62 @@ model OrganisationProjectAppointment {
   startDate            DateTime?
   endDate              DateTime?
   appointmentStatus    OrganisationAppointmentStatus  @default(PROPOSED)
+  payments             PaymentRecord[]
+  ratings              OrganisationRating[]
   createdAt            DateTime                       @default(now())
   updatedAt            DateTime                       @updatedAt
 
   @@index([contractorId])
   @@index([projectId])
+}
+
+model PaymentRecord {
+  id            String                          @id @default(uuid())
+  contractorId  String
+  contractor    Contractor                      @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   OrganisationProjectAppointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  amount        Float
+  currency      Currency
+  paymentDate   DateTime
+  reference     String?
+  method        String?
+  notes         String?
+  recordedById  String
+  recordedBy    User                            @relation(fields: [recordedById], references: [id])
+  createdAt     DateTime                        @default(now())
+  updatedAt     DateTime                        @updatedAt
+
+  @@index([contractorId])
+  @@index([appointmentId])
+}
+
+// Only two rater types exist today. CLIENT ratings are recorded by
+// Setjeka staff on the client's behalf (phone/email feedback) — there is
+// no client-facing portal/auth in this app yet for clients to submit their
+// own rating directly (see MEMORY.md); this is deliberately NOT an
+// unauthenticated public endpoint until that exists.
+enum RaterType {
+  INTERNAL
+  CLIENT
+}
+
+model OrganisationRating {
+  id            String                         @id @default(uuid())
+  contractorId  String
+  contractor    Contractor                     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  appointmentId String
+  appointment   OrganisationProjectAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  raterType     RaterType
+  stars         Int
+  comment       String?
+  recordedById  String
+  recordedBy    User                           @relation(fields: [recordedById], references: [id])
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+
+  @@index([contractorId])
+  @@index([appointmentId])
 }
 
 model OrganisationStatusHistory {
