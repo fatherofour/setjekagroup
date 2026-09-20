@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, GanttChart } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useCurrentProject } from '@/lib/current-project-context';
 import { ApiError } from '@/lib/api-client';
@@ -146,13 +146,22 @@ export default function ProjectDetailPage() {
             </p>
           </div>
           {!editing && (
-            <button
-              onClick={startEdit}
-              className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              <Pencil size={14} />
-              Edit details
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/projects/${project.id}/schedule`}
+                className="flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-800"
+              >
+                <GanttChart size={14} />
+                Schedule
+              </Link>
+              <button
+                onClick={startEdit}
+                className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <Pencil size={14} />
+                Edit details
+              </button>
+            </div>
           )}
         </div>
       </div>

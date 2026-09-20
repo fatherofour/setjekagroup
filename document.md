@@ -305,6 +305,121 @@ disciplines).
 
 ---
 
+### 2.4 Schedule module — Gantt/Calendar/Card/Grid programme management
+
+Covers the requirements register's SCH / Planning & Scheduling section,
+confirmed in full for the first release by Meeting 002 decision 2.1
+(critical path, schedule variance, resource planning) alongside decision
+2.3's MS Project import requirement ("the platform must ... calculate the
+critical path itself ... full MS Project capability, not a summary view").
+Decision 2.2 explicitly **removed** 4D/BIM-linked schedule simulation from
+scope even though the register still lists it — the meeting decision
+overrides the stale register row, the same lesson as the PROCSA
+stage-naming correction in §2.2 above.
+
+**`ScheduleActivity` model:** a self-referencing tree (`parentId`, same
+pattern as `ProjectNode.parentId`) for the WBS outline, plus optional links
+to `ProjectNode` (which phase/building/floor/zone) and `Contractor`/
+`ProjectMember` (who's executing it) — confirmed against a real client
+progress report (`Project Solar_Progress Report 03 August 2026.pptx`)
+which shows activities grouped by floor with parallel per-contractor
+forecast/actual date columns. `activityType` is `TASK` or `MILESTONE`
+(a milestone is a zero-duration activity, matching MS Project/Smartsheet
+convention — not a separate model). `earlyStart`/`earlyFinish`/`lateStart`/
+`lateFinish`/`totalFloatDays`/`isCriticalPath` are computed by the CPM
+engine and **cached** on the row, recalculated and rewritten on every
+activity/dependency write via `ScheduleService.recalculate()` — not derived
+live on every read, since a project can have hundreds of activities.
+`ScheduleDependency` (FS/SS/FF/SF + `lagDays`, unique on
+predecessor+successor) and `ScheduleBaseline`/`ScheduleBaselineSnapshot`
+(a copy-on-save row per activity at the moment a baseline is taken, so
+later edits never disturb the comparison) round out the model.
+
+**CPM engine (`schedule-cpm.util.ts`), two design decisions worth
+recording:**
+
+- **Working-day (Mon-Fri) calendar only.** No holiday/non-working-day
+  exception data exists anywhere in this app yet, so a fixed 5-day week is
+  the CPM default for V1 — deliberately simple rather than fabricating a
+  holiday calendar the client never supplied.
+- **Inclusive duration convention** (matches MS Project/construction
+  norms): a duration-5 task starting Monday finishes that same Friday, not
+  the following Monday. This required two distinct helper functions —
+  `addWorkingDays` (a pure offset, used for dependency lag) and
+  `endDateFromStart`/`startDateFromEnd` (an inclusive duration span) — and,
+  critically, an **implicit +1 working day gap on Finish-to-Start
+  dependencies specifically**: under the inclusive convention the
+  predecessor's finish day is still occupied by it, so its successor can't
+  start until the next working day even at zero explicit lag. Getting this
+  wrong the first time produced an off-by-one (a 5-day task starting Monday
+  landing on the *following* Monday instead of that Friday) caught by
+  hand-tracing a worked example before shipping. Hand-verified end to end
+  via curl against a small FS/SS chain with known-by-hand dates, float and
+  critical-path flags — every value matched exactly, including the
+  edge case of two *independent* activities (no dependency between them)
+  where the shorter one still shows positive float against the longer one's
+  finish date, since with no explicit dependency edge each activity's late
+  finish defaults to the overall project end.
+- Cycle detection is a separate, cheap `assertAcyclic()` (Kahn's algorithm,
+  cycle-check only) split out from the full date-math `computeSchedule()`,
+  used both by `createDependency` (validated before persisting) and by the
+  MS Project importer (validated against the **entire** candidate
+  dependency set before any bulk insert — a partial-insert-then-crash on a
+  cyclic source file was a real bug caught before shipping; a cyclic import
+  now skips all of that file's dependencies and reports the count honestly
+  rather than partially applying them).
+
+**MS Project XML import** (`msproject-xml.util.ts` +
+`schedule-import.service.ts`): parses the documented MS Project "Project
+XML" interchange format (stable since Project 2003, `File > Save As >
+XML`) — **not** the binary `.mpp` format (proprietary, no public spec) and
+**not** Primavera P6's `.xer`, since which format the client's files
+actually use was an open, unconfirmed question as of Meeting 002 action
+6.5 ("Confirm whether MS Project files originate from MS Project or
+Primavera P6"). Reads only core scheduling fields (dates, duration,
+`OutlineLevel` hierarchy, `PredecessorLink` dependencies, milestone flag,
+percent complete) — resource/assignment/cost fields in the file are
+ignored, matching decision 2.4's boundary that Setjeka is not a system of
+record for cost. The platform always recalculates critical path itself
+after import rather than trusting anything the file claims, per decision
+2.3. **A real bug found and fixed during this build:** MS Project XML
+timestamps carry no timezone offset (e.g. `2026-02-02T08:00:00`), so a
+plain `new Date(...)` parses them as the *server's* local time — on a
+server in a different timezone than whoever produced the file, that could
+silently shift the parsed value into the adjacent UTC day and corrupt the
+working-day calendar. Fixed by taking only the date portion and anchoring
+it at UTC midnight, the same convention every other date in this app
+already uses.
+
+**Frontend (`/projects/[id]/schedule`, `components/schedule/`):** one
+shared `useScheduleData` hook feeds all four views (Grid, Gantt, Calendar,
+Card) from the same flat activity+dependency payload — no server-side
+view-specific endpoint — and one shared `ActivityDetailPanel` slide-over
+handles every create/edit/delete plus predecessor management, so editing
+stays consistent no matter which view it's opened from. Grid is the
+default/primary editable table (WBS-indented, reusing `ProjectNodeTree`'s
+buildTree-by-`parentId` technique); Gantt is a from-scratch SVG/CSS bar
+chart (no charting library) with elbow-routed dependency arrows and
+critical-path bars in red; Calendar is a plain month grid; Card is a
+Kanban board grouped by status. A `Schedule` nav entry under the Projects
+sidebar group, and a direct button on `/projects/[id]`, both resolve to
+`/projects/<currentProjectId>/schedule` via `useCurrentProject()`.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| 4D/BIM-linked schedule simulation | Explicitly removed from scope, Meeting 002 decision 2.2 |
+| Primavera P6 (`.xer`) import | Open, unconfirmed client question (action 6.5) — building for an unconfirmed format would be guessing |
+| Cost/budget fields on activities | Decision 2.4: QS retains its own cost systems, platform is not the system of record for cost |
+| A dedicated Equipment resource pool | No consuming workflow beyond this module yet; V1 covers people (`ProjectMember`) and companies (`Contractor`), matching what the real progress-report example shows being tracked |
+| Drag-to-resize/reschedule directly on Gantt bars | V1 Gantt is read + click-to-open-editor, all edits go through the one shared `ActivityDetailPanel` |
+| Baseline vs. current variance overlay/display | Save/list/delete baseline is built and backend-verified (snapshots every activity's current dates); the Gantt ghost-bar comparison and a variance report view are not built yet |
+| Client-portal / external visibility, RBAC-gated schedule sharing | No client portal or RBAC exists anywhere in this app (same gap as Financial/Ratings) — the data model is built so a portal can be added later without a schema change |
+| Holiday/non-working-day calendars beyond a Mon-Fri week | No calendar-exception data exists yet |
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

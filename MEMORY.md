@@ -392,6 +392,27 @@ that step gets skipped.
     refused the click, confirming the `pointer-events-none` guard works
     as intended rather than being dead code).
 
+- **Compliance document in-app preview** (user request): a
+  `DocumentPreviewModal` renders images/PDFs inline (`<img>`/`<iframe>` on
+  a blob URL) instead of always opening a new tab; Word/Excel show a
+  "Download to view" fallback since there's no in-browser renderer for
+  those without a third-party service — not viable for private,
+  auth-gated documents.
+
+- **Schedule module** (user request — full detail in `document.md` §2.4):
+  Gantt/Calendar/Card/Grid views over one shared activity+dependency
+  dataset, a from-scratch CPM engine (working-day calendar, inclusive
+  duration convention, forward/backward pass, float, critical path — no
+  charting library used anywhere), and MS Project XML import (not
+  Primavera — that format was an open, unconfirmed client question).
+  Two real bugs caught and fixed before shipping: an off-by-one in the
+  duration convention (found by hand-tracing a worked example), and MS
+  Project XML's timezone-naive timestamps silently shifting a day
+  depending on server timezone (found by inspecting actual import output,
+  not assumed). Baseline save/list/delete is built and verified; the
+  Gantt ghost-bar variance *display* against a baseline is not — see the
+  deferred table in `document.md` §2.4.
+
 ## Local dev environment
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in
@@ -519,6 +540,15 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   hard-rule-on-approvals are all specified in the meeting notes but not yet
   built — they sit in modules adjacent to Project Management (RFI/SUB/RISK/
   CLI in the requirements register) rather than inside it.
+- Schedule module (see `document.md` §2.4 for the full deferred table):
+  Primavera P6 import, 4D/BIM schedule simulation (explicitly out of
+  scope per Meeting 002), cost/budget fields on activities, drag-to-
+  resize/reschedule directly on Gantt bars, and the baseline-vs-current
+  variance overlay/report (save/list/delete baseline works; the
+  comparison view doesn't exist yet) are all not built. No production
+  deployment yet for this module — same tar-over-SSH + `docker compose
+  up -d --build` cycle as every other feature this session, still
+  pending.
 - Converter service deployment (Dockerfile exists, not deployed anywhere).
 - OpenStreetMap tile usage: fine for dev, but its usage policy disallows
   heavy production traffic against the free tile server — needs a

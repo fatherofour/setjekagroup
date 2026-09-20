@@ -14,6 +14,7 @@ import { ComplianceRecordsModule } from './compliance-records/compliance-records
 import { OrganisationAppointmentsModule } from './organisation-appointments/organisation-appointments.module.js';
 import { PaymentRecordsModule } from './payment-records/payment-records.module.js';
 import { OrganisationRatingsModule } from './organisation-ratings/organisation-ratings.module.js';
+import { ScheduleModule } from './schedule/schedule.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OrganisationRatingsModule } from './organisation-ratings/organisation-r
     OrganisationAppointmentsModule,
     PaymentRecordsModule,
     OrganisationRatingsModule,
+    ScheduleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

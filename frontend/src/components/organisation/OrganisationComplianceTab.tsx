@@ -14,6 +14,7 @@ import {
   type OrganisationClassification,
 } from '@/lib/organisationMeta';
 import { Select } from '@/components/ui/Select';
+import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -39,6 +40,7 @@ export function OrganisationComplianceTab({
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [preview, setPreview] = useState<{ filename: string; mimeType: string | null; blobUrl: string } | null>(null);
 
   const [documentType, setDocumentType] = useState('');
   const [documentNumber, setDocumentNumber] = useState('');
@@ -138,14 +140,18 @@ export function OrganisationComplianceTab({
     }
   }
 
-  async function viewDocument(recordId: string) {
+  async function viewDocument(record: ComplianceRecord) {
     try {
-      const url = await apiFetchBlobUrl(`/contractors/${contractorId}/compliance/${recordId}/document`, accessToken);
-      window.open(url, '_blank');
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const url = await apiFetchBlobUrl(`/contractors/${contractorId}/compliance/${record.id}/document`, accessToken);
+      setPreview({ filename: record.attachmentFilename ?? record.documentType, mimeType: record.attachmentMimeType, blobUrl: url });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to open document.');
     }
+  }
+
+  function closePreview() {
+    if (preview) URL.revokeObjectURL(preview.blobUrl);
+    setPreview(null);
   }
 
   return (
@@ -199,7 +205,7 @@ export function OrganisationComplianceTab({
                 </p>
                 {r.attachmentFilename ? (
                   <button
-                    onClick={() => viewDocument(r.id)}
+                    onClick={() => viewDocument(r)}
                     className="mt-1 flex items-center gap-1 text-xs text-emerald-700 hover:underline dark:text-emerald-400"
                   >
                     <Paperclip size={11} />
@@ -290,6 +296,10 @@ export function OrganisationComplianceTab({
           server for now — a SharePoint sync can be added once the org provides Azure app credentials.
         </p>
       </form>
+
+      {preview && (
+        <DocumentPreviewModal filename={preview.filename} mimeType={preview.mimeType} blobUrl={preview.blobUrl} onClose={closePreview} />
+      )}
     </div>
   );
 }

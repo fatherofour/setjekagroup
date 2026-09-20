@@ -1,9 +1,12 @@
-import { LayoutDashboard, Sun, FolderKanban, Handshake, HardHat, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Sun, FolderKanban, Handshake, HardHat, GanttChart, type LucideIcon } from 'lucide-react';
 
 export interface NavLeaf {
   label: string;
   href: string;
   icon: LucideIcon;
+  // Resolved against the current project at render time (see Sidebar.tsx) —
+  // `href` here is a fallback for when no project is selected yet.
+  requiresProject?: boolean;
 }
 
 export interface NavGroup {
@@ -30,7 +33,10 @@ export const NAV: NavEntry[] = [
   {
     label: 'Projects',
     icon: FolderKanban,
-    children: [{ label: 'Overview', href: '/projects', icon: FolderKanban }],
+    children: [
+      { label: 'Overview', href: '/projects', icon: FolderKanban },
+      { label: 'Schedule', href: '/projects', icon: GanttChart, requiresProject: true },
+    ],
   },
   {
     label: 'Procurement',

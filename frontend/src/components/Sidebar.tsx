@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { GREEN } from '@/lib/auth-theme';
+import { useCurrentProject } from '@/lib/current-project-context';
 import { NAV, isNavGroup } from './nav';
 
 const OPEN_GROUPS_KEY = 'setjeka_sidebar_open_groups';
@@ -20,6 +21,7 @@ function defaultOpenState(): Record<string, boolean> {
 
 export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname();
+  const { currentProject } = useCurrentProject();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpenState);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -119,12 +121,14 @@ export function Sidebar({ open }: { open: boolean }) {
                 {isOpen && (
                   <div className={`mt-0.5 space-y-0.5 pl-4 ${collapsed ? 'lg:hidden' : ''}`}>
                     {entry.children.map((child) => {
-                      const active = pathname === child.href;
+                      const href = child.requiresProject && currentProject ? `/projects/${currentProject.id}/schedule` : child.href;
+                      const active = child.requiresProject ? pathname === href && href !== child.href : pathname === child.href;
                       const ChildIcon = child.icon;
                       return (
                         <Link
-                          key={child.href}
-                          href={child.href}
+                          key={child.label}
+                          href={href}
+                          title={child.requiresProject && !currentProject ? 'Select a project first' : undefined}
                           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition ${
                             active ? 'bg-emerald-800 text-white' : 'text-emerald-100 hover:bg-black/10'
                           }`}

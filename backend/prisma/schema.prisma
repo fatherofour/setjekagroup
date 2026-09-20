@@ -200,6 +200,7 @@ model User {
   organisationStatusChanges OrganisationStatusHistory[]
   paymentRecordsRecorded   PaymentRecord[]
   organisationRatingsRecorded OrganisationRating[]
+  scheduleBaselinesCreated ScheduleBaseline[]
 
   @@index([resetTokenHash])
 }
@@ -258,6 +259,7 @@ model Contractor {
   statusHistory OrganisationStatusHistory[]
   paymentRecords PaymentRecord[]
   ratings       OrganisationRating[]
+  scheduleActivities ScheduleActivity[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -434,6 +436,9 @@ model Project {
   nodes                  ProjectNode[]
   members                ProjectMember[]
   organisationAppointments OrganisationProjectAppointment[]
+  scheduleActivities     ScheduleActivity[]
+  scheduleDependencies   ScheduleDependency[]
+  scheduleBaselines      ScheduleBaseline[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -448,6 +453,7 @@ model ProjectNode {
   type      ProjectNodeType
   name      String
   sortOrder Int             @default(0)
+  scheduleActivities ScheduleActivity[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -473,9 +479,148 @@ model ProjectMember {
   externalEmail   String?
   externalPhone   String?
   role            ProjectMemberRole
+  scheduleActivitiesAssigned ScheduleActivity[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
   @@index([projectId])
   @@index([contractorId])
+}
+
+// SCH / Planning & Scheduling (Requirements Register), confirmed in full
+// for the first release per Meeting 002 decision 2.1 — including critical
+// path, schedule variance and resource planning. 4D/BIM-linked simulation
+// is in the register but was explicitly removed from scope in that same
+// meeting (decision 2.2) and is deliberately not modelled here.
+//
+// A SUMMARY row (an activity with children, in MS Project/Smartsheet terms)
+// is not a stored type — it's computed at read time from whether an
+// activity has children, so it can never go stale relative to the actual
+// tree shape.
+enum ScheduleActivityType {
+  TASK
+  MILESTONE
+}
+
+enum SchedulePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ScheduleActivityStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  DELAYED
+}
+
+// Matches MS Project's own four link types so an imported .xml file's
+// PredecessorLink Type values map directly across.
+enum ScheduleDependencyType {
+  FS
+  SS
+  FF
+  SF
+}
+
+model ScheduleActivity {
+  id          String                 @id @default(uuid())
+  projectId   String
+  project     Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      ScheduleActivity?      @relation("ScheduleActivityChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    ScheduleActivity[]     @relation("ScheduleActivityChildren")
+  // Which phase/building/floor/zone/work package this activity happens in —
+  // matches how a real Setjeka progress report actually groups activities
+  // (by floor), independent of the WBS outline hierarchy above.
+  projectNodeId String?
+  projectNode   ProjectNode?         @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  contractorId  String?
+  contractor    Contractor?          @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  assignedToId  String?
+  assignedTo    ProjectMember?       @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  name        String
+  description String?
+  activityType ScheduleActivityType  @default(TASK)
+  startDate   DateTime
+  endDate     DateTime
+  // Working days (Mon-Fri), not calendar days — see schedule-cpm.util.ts.
+  // Stored (not derived) since it's the primary user input; startDate/
+  // endDate are kept in sync with it by the service layer.
+  durationDays Float                 @default(1)
+  percentComplete Int                @default(0)
+  priority    SchedulePriority       @default(MEDIUM)
+  status      ScheduleActivityStatus @default(NOT_STARTED)
+  sortOrder   Int                    @default(0)
+  // Cached CPM output — recalculated and rewritten for every activity in
+  // the project whenever an activity or dependency changes (see
+  // schedule-cpm.util.ts). Never hand-edited.
+  earlyStart  DateTime?
+  earlyFinish DateTime?
+  lateStart   DateTime?
+  lateFinish  DateTime?
+  totalFloatDays Float?
+  isCriticalPath Boolean             @default(false)
+  importedFromMsProject Boolean      @default(false)
+  // "As predecessor" = other activities depend on this one; "as successor"
+  // = this activity depends on others.
+  asPredecessorOf ScheduleDependency[] @relation("DependencyPredecessor")
+  asSuccessorOf   ScheduleDependency[] @relation("DependencySuccessor")
+  baselineSnapshots ScheduleBaselineSnapshot[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([projectId])
+  @@index([parentId])
+  @@index([projectNodeId])
+  @@index([contractorId])
+  @@index([assignedToId])
+}
+
+model ScheduleDependency {
+  id            String                 @id @default(uuid())
+  projectId     String
+  project       Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  predecessorId String
+  predecessor   ScheduleActivity       @relation("DependencyPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successorId   String
+  successor     ScheduleActivity       @relation("DependencySuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+  type          ScheduleDependencyType @default(FS)
+  lagDays       Float                  @default(0)
+  createdAt     DateTime               @default(now())
+
+  @@unique([predecessorId, successorId])
+  @@index([projectId])
+  @@index([predecessorId])
+  @@index([successorId])
+}
+
+model ScheduleBaseline {
+  id          String                     @id @default(uuid())
+  projectId   String
+  project     Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  createdById String
+  createdBy   User                       @relation(fields: [createdById], references: [id])
+  snapshots   ScheduleBaselineSnapshot[]
+  createdAt   DateTime                   @default(now())
+
+  @@index([projectId])
+}
+
+model ScheduleBaselineSnapshot {
+  id                  String           @id @default(uuid())
+  baselineId          String
+  baseline            ScheduleBaseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
+  activityId          String
+  activity            ScheduleActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  baselineStart       DateTime
+  baselineEnd         DateTime
+  baselineDurationDays Float
+
+  @@index([baselineId])
+  @@index([activityId])
 }
