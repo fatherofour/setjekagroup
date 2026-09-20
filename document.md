@@ -728,6 +728,105 @@ as a deferred, cross-cutting item blocked on a real second auth surface.
 
 ---
 
+### 2.9 Administration — users, RBAC, audit trail
+
+Closes the standing gap flagged after every module above: until now,
+`ProjectsService.findOneForOwner(id, ownerId)` gated every project-nested
+service on "does `ownerId` equal `project.ownerId`" — no broader
+visibility model, no user-management API (`UsersModule` had no
+controller), and `User.role` was set at login but never enforced. Built
+from the requirements register's PLT (Platform Administration) section,
+OpenConstructionERP's `PortalAccessRule`/`Team`+`TeamMembership` research,
+and three scoping answers the user gave explicitly: **internal staff see
+every project, externals need a grant**; **real password accounts, with
+invite links shared manually** (no email provider is connected); and —
+the one place this session the user chose the larger, non-default
+option — **the full role × project × module × record × action
+permission matrix now**, not a coarser first version.
+
+**Visibility**: `User` gains `accountType` (`INTERNAL`/`EXTERNAL`,
+default `INTERNAL`) and `status` (`ACTIVE`/`SUSPENDED`/`DEACTIVATED`).
+`ProjectsService.findOneForOwner`/`findAllForOwner` — the single
+chokepoint every other service already calls — now means: `ADMIN` or
+`accountType: INTERNAL` sees everything; everyone else needs a
+`ProjectMember` row linked to their account. This was a one-file change;
+every dependent service got correct new behavior for free. (The method
+keeps its original name — renaming it would mean touching all ~20
+call sites for a cosmetic gain.)
+
+**User management**: a real `UsersController` (list/invite/update/
+suspend/resend-invite) reuses `AuthService`'s existing password-reset
+token machinery for invites — `generateResetLink(user)`, extracted from
+`requestPasswordReset`, now backs both the "forgot password" flow and a
+brand-new account's first set-password link. Invited accounts get an
+unusable random password hash (never a guessable blank), and the
+generated link is returned directly in the API response for the admin to
+copy — consistent with "no email integration, share manually."
+Extending "Add project member" (`ProjectMembersService.create`) with an
+`inviteAsUser` flag creates or reuses that `User` inline, so granting an
+external contact real login access happens from the same form that
+already adds them as a contact.
+
+**Permission engine**: `RolePermission` (the default matrix — one row
+per `ProjectMemberRole` × `PermissionModule` × `PermissionAction`, seeded
+with sensible defaults in `prisma/seed.ts`, admin-editable afterwards)
+plus `MemberPermissionOverride` (a per-project-member, optionally
+per-record, optionally time-boxed exception — the "record" and
+external-sharing case the register's own wording asks for).
+`PermissionsService.can()` is the engine: `ADMIN` bypasses; a caller with
+no `ProjectMember` row on the project defaults to allow if internal
+(preserves every existing internal workflow) or deny if external; a
+record-specific override wins over a module-wide override, which wins
+over the `RolePermission` default. `PermissionsGuard` +
+`@RequirePermission(module, action)` enforce this on every route of
+every project-nested controller (Schedule, Tasks, Issues, Risks,
+Documents, Transmittals, RFIs, Submittals, Comments, Members, Nodes,
+Dashboard) — GET → `VIEW`, POST → `CREATE`, PATCH/PUT → `EDIT`, DELETE →
+`DELETE`, and the handful of approval-shaped routes (`rfis/:id/respond`,
+`submittals/:id/status`, a document revision review) → `APPROVE`. The
+shared Contractors/vendor directory (`contractors` and its five
+sub-resources) isn't project-scoped, so it stays gated by a simpler
+`InternalOnlyGuard` instead of the module/action matrix.
+
+**Audit trail**: a generic `AuditLogEntry` model, written by
+`AuditLogInterceptor` — registered once, globally, as a no-op on any
+route without `@RequirePermission` metadata — whenever a mutating
+(`POST`/`PATCH`/`DELETE`) permission-checked route succeeds. This is the
+first true app-wide audit log in this codebase; the existing
+entity-scoped ones (`OrganisationStatusHistory`, `SubmittalStatusHistory`,
+`DocumentAccessLog`) are untouched and still serve their own narrower
+purpose.
+
+**Frontend**: a new admin-only `Administration` nav group (hidden unless
+`role === 'ADMIN'`) with Users/Permissions/Audit Log tabs; the
+permissions tab is a role × action grid scoped to one module at a time
+via a dropdown (66 cells across all 11 modules at once was unusable in
+one table). A "Share externally" action on a document grants one project
+member view access to just that document, with an optional expiry — the
+one concrete record-level override UI built now; the schema supports the
+same pattern for any module, added later if a real need shows up for it.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Multi-organization/portfolio management | Single-tenant reality today — no client ask for managing other companies' portfolios |
+| Configurable workflow/approval-routing engine | The register's "workflow builder" row is a BPM-scale undertaking on its own, separate from permission enforcement |
+| Real transactional email delivery | Per the user's own choice — links are generated and shared manually; a provider (Resend) is a clean follow-up once one is connected |
+| Passwordless/magic-link auth | User chose real password accounts instead |
+| Field-level permission masking | Register asks for record-level, not field-level |
+| Record-level override UI for every module (tasks, risks, RFIs, …) | The engine/schema supports any module + record; Documents is the one built now — the clearest external-sharing case |
+| Session/device management, 2FA | Not asked for; the existing JWT access/refresh model is untouched otherwise |
+
+This closes the "no RBAC exists anywhere in this app" gap referenced by
+every module built earlier this session, and is the real second auth
+surface the Client Portal (CLI) item in `MEMORY.md` was blocked on —
+external accounts with scoped, permissioned access now exist, though a
+dedicated client-facing portal UI (vs. the same app shell) remains a
+separate, still-deferred piece of work.
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

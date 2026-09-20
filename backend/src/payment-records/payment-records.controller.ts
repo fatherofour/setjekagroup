@@ -3,11 +3,12 @@ import { PaymentRecordsService } from './payment-records.service.js';
 import { CreatePaymentRecordDto } from './dto/create-payment-record.dto.js';
 import { UpdatePaymentRecordDto } from './dto/update-payment-record.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 
 @Controller('contractors/:contractorId/payments')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class PaymentRecordsController {
   constructor(private readonly paymentsService: PaymentRecordsService) {}
 

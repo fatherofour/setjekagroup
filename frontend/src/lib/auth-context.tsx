@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  accountType: string;
 }
 
 interface TokenPair {

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { User } from '../generated/prisma/client.js';
+import type { User, UserAccountType, UserStatus, Role } from '../generated/prisma/client.js';
 
 @Injectable()
 export class UsersService {
@@ -33,5 +35,35 @@ export class UsersService {
       where: { id },
       data: { passwordHash, resetTokenHash: null, resetTokenExpiresAt: null },
     });
+  }
+
+  listAll(): Promise<User[]> {
+    return this.prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  /** Creates a brand-new account with an unusable random password hash -
+   * the account can only ever be accessed via the set-password link this
+   * generates (see AuthService.generateResetLink), never by guessing an
+   * empty/blank password. */
+  async invite(data: { email: string; fullName: string; accountType: UserAccountType; role?: Role }): Promise<User> {
+    const unusablePassword = randomBytes(32).toString('hex');
+    const passwordHash = await bcrypt.hash(unusablePassword, 10);
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        fullName: data.fullName,
+        accountType: data.accountType,
+        role: data.role ?? 'MEMBER',
+        passwordHash,
+      },
+    });
+  }
+
+  updateProfile(id: string, data: { fullName?: string; role?: Role; accountType?: UserAccountType }): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data });
+  }
+
+  setStatus(id: string, status: UserStatus): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { status } });
   }
 }

@@ -1,22 +1,42 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateProjectDto } from './dto/create-project.dto.js';
 import type { UpdateProjectDto } from './dto/update-project.dto.js';
 
+/** Every project-nested service in this app calls `findOneForOwner`
+ * (and callers pass the current user's id as `ownerId`, unchanged) for its
+ * authorization check - this is the single chokepoint the Administration
+ * module's project-visibility model hooks into, so no other service needs
+ * to change. Internal Setjeka staff (`accountType: INTERNAL`, or platform
+ * `role: ADMIN`) see every project; external users only see projects
+ * where they hold a `ProjectMember` row linked to their account. The
+ * method keeps its original name/signature despite no longer meaning
+ * "owns this project" - renaming it would mean touching every one of its
+ * ~20 call sites for a purely cosmetic gain. */
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllForOwner(ownerId: string) {
+  async findAllForOwner(callerId: string) {
+    const caller = await this.prisma.user.findUnique({ where: { id: callerId } });
+    if (caller?.role === 'ADMIN' || caller?.accountType === 'INTERNAL') {
+      return this.prisma.project.findMany({ orderBy: { createdAt: 'desc' } });
+    }
     return this.prisma.project.findMany({
-      where: { ownerId },
+      where: { members: { some: { userId: callerId } } },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOneForOwner(id: string, ownerId: string) {
-    const project = await this.prisma.project.findFirst({ where: { id, ownerId } });
+  async findOneForOwner(id: string, callerId: string) {
+    const project = await this.prisma.project.findUnique({ where: { id } });
     if (!project) throw new NotFoundException('Project not found');
+
+    const caller = await this.prisma.user.findUnique({ where: { id: callerId } });
+    if (caller?.role === 'ADMIN' || caller?.accountType === 'INTERNAL') return project;
+
+    const membership = await this.prisma.projectMember.findFirst({ where: { projectId: id, userId: callerId } });
+    if (!membership) throw new ForbiddenException('You do not have access to this project');
     return project;
   }
 

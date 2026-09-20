@@ -18,6 +18,50 @@ enum Role {
   MEMBER
 }
 
+// Administration module: internal Setjeka staff see every project by
+// default; external users (contractors/consultants/clients) only see
+// projects where they hold a ProjectMember row linked to their account —
+// see ProjectsService.findOneForOwner/findAllForOwner.
+enum UserAccountType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+// Requirements Register PLT / Identity & Access "Role-based access
+// control": permissions enforced by role, project, module, record and
+// action. Module is the coarse project-nested area; RolePermission is the
+// default matrix per ProjectMemberRole, MemberPermissionOverride is a
+// per-project-member (optionally per-record, optionally time-boxed)
+// exception to that default — see permissions.service.ts.
+enum PermissionModule {
+  SCHEDULE
+  TASKS
+  ISSUES
+  RISKS
+  DOCUMENTS
+  TRANSMITTALS
+  RFIS
+  SUBMITTALS
+  PROJECT_STRUCTURE
+  TEAM
+  COMMENTS
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  APPROVE
+  COMMENT
+}
+
 enum ProjectStatus {
   PLANNING
   ACTIVE
@@ -183,15 +227,17 @@ enum OrganisationAppointmentStatus {
 }
 
 model User {
-  id                  String    @id @default(uuid())
-  email               String    @unique
+  id                  String          @id @default(uuid())
+  email               String          @unique
   passwordHash        String
   fullName            String
-  role                Role      @default(MEMBER)
+  role                Role            @default(MEMBER)
+  accountType         UserAccountType @default(INTERNAL)
+  status              UserStatus      @default(ACTIVE)
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   ownedProjects      Project[]
   projectMemberOf    ProjectMember[]
@@ -209,6 +255,7 @@ model User {
   documentAccessLogs DocumentAccessLog[]
   transmittalsCreated Transmittal[]
   submittalStatusChanges SubmittalStatusHistory[]
+  auditLogEntries    AuditLogEntry[]
 
   @@index([resetTokenHash])
 }
@@ -457,6 +504,7 @@ model Project {
   risks                  ProjectRisk[]
   rfis                   Rfi[]
   submittals             Submittal[]
+  auditLogEntries        AuditLogEntry[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -510,6 +558,7 @@ model ProjectMember {
   rfisBallInCourt Rfi[]             @relation("RfiBallInCourt")
   submittalsSubmitted Submittal[]   @relation("SubmittalSubmittedBy")
   submittalsReviewing Submittal[]   @relation("SubmittalReviewer")
+  permissionOverrides MemberPermissionOverride[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -1091,4 +1140,66 @@ model SubmittalStatusHistory {
   changedAt      DateTime  @default(now())
 
   @@index([submittalId])
+}
+
+// Requirements Register PLT / Identity & Access "Role-based access
+// control". The default permission matrix: one row per (role, module,
+// action). Seeded on migration with sensible defaults, then admin-editable
+// via PermissionsController. No @@unique on (role, module, action) — the
+// service layer upserts rather than relying on a DB constraint, matching
+// this app's existing preference for service-level dedupe over composite
+// unique indexes on enum triples.
+model RolePermission {
+  id      String            @id @default(uuid())
+  role    ProjectMemberRole
+  module  PermissionModule
+  action  PermissionAction
+  allowed Boolean           @default(true)
+
+  @@unique([role, module, action])
+}
+
+// A per-project-member exception to the RolePermission default — optionally
+// scoped to one record (recordId null = the whole module) and optionally
+// time-boxed (expiresAt). This is the "record" and external-sharing case
+// from the register's ask ("by role, project, module, record and action"):
+// e.g. granting one CLIENT view access to one specific document for two
+// weeks, independent of what their role would normally allow.
+model MemberPermissionOverride {
+  id              String        @id @default(uuid())
+  projectMemberId String
+  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
+  module          PermissionModule
+  action          PermissionAction
+  recordId        String?
+  allowed         Boolean
+  expiresAt       DateTime?
+  createdAt       DateTime      @default(now())
+
+  @@index([projectMemberId])
+  @@index([projectMemberId, module, action])
+}
+
+// Requirements Register PLT / Security "Audit trail": uploads, downloads,
+// approvals, edits, deletions and workflow decisions. Written automatically
+// by AuditLogInterceptor whenever a @RequirePermission-decorated mutating
+// route succeeds — deliberately generic and app-wide, unlike the existing
+// entity-scoped OrganisationStatusHistory/SubmittalStatusHistory/
+// DocumentAccessLog logs, which stay as they are for their own entities.
+model AuditLogEntry {
+  id         String            @id @default(uuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id])
+  action     PermissionAction
+  module     PermissionModule
+  entityType String?
+  entityId   String?
+  projectId  String?
+  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([createdAt])
 }

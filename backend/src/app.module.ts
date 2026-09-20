@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -26,6 +27,9 @@ import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
 import { SubmittalsModule } from './submittals/submittals.module.js';
+import { PermissionsModule } from './permissions/permissions.module.js';
+import { AuditLogModule } from './audit-log/audit-log.module.js';
+import { AuditLogInterceptor } from './audit-log/interceptors/audit-log.interceptor.js';
 
 @Module({
   imports: [
@@ -54,8 +58,10 @@ import { SubmittalsModule } from './submittals/submittals.module.js';
     ProjectRisksModule,
     RfisModule,
     SubmittalsModule,
+    PermissionsModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor }],
 })
 export class AppModule {}

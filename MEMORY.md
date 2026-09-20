@@ -486,6 +486,40 @@ that step gets skipped.
   Gantt ghost-bar variance *display* against a baseline is not — see the
   deferred table in `document.md` §2.4.
 
+- **Administration module — users, RBAC, audit trail** (user request,
+  explicitly framed around external-party collaboration and granting
+  access to the software — full detail in `document.md` §2.9): closes
+  the standing "no RBAC exists anywhere in this app" gap flagged after
+  every module above. Three binding scoping answers came from the user
+  before any code was written: internal staff see every project,
+  externals need an explicit grant; real password accounts with
+  invite/set-password links shared manually (no email provider
+  connected); and — the one place this session the user picked the
+  larger, **non-default** option over my recommendation — the full
+  role × project × module × record × action permission matrix now, not
+  a coarser first version. `ProjectsService.findOneForOwner` (the single
+  chokepoint every other service already calls) is the only existing
+  service file that had to change for the new visibility model — every
+  dependent module got correct behavior for free. `RolePermission`
+  (default matrix, seeded in `prisma/seed.ts`) + `MemberPermissionOverride`
+  (per-member, per-record, time-boxed exceptions) + `PermissionsGuard`/
+  `@RequirePermission()` enforce this on every route of every
+  project-nested controller; a generic `AuditLogEntry` + a globally-
+  registered `AuditLogInterceptor` (a no-op without `@RequirePermission`
+  metadata) is the first true app-wide audit log here, separate from the
+  existing entity-scoped ones. Verified end-to-end via curl (an external
+  CONTRACTOR sees only the one project they're a member of, can create a
+  Submittal but not delete a Document per the seeded default matrix, an
+  expired `MemberPermissionOverride` correctly still denies while a
+  valid one grants, mutating actions produced matching `AuditLogEntry`
+  rows) and Playwright (Administration nav hidden for non-admins,
+  invite-a-user flow surfaces a working set-password link, toggling a
+  permission-matrix cell persists across reload, a project's "Add
+  member" form invites an external contact as a real login inline — all
+  clean, zero console errors). This is the real second auth surface the
+  Client Portal (CLI) item below was blocked on; a dedicated
+  client-facing portal UI is still separate, deferred work.
+
 ## Local dev environment
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in
@@ -593,12 +627,22 @@ since there was no GitHub remote pushed yet at deploy time (see below).
 - Search is functional but scoped to projects-by-name only, since that's
   the only searchable entity that exists — will need to expand as more
   modules land.
-- Team directory has no internal-user picker yet (no "list users" endpoint) —
-  external-contact entry only, even for Setjeka staff.
-- Organisation/Party registration: no RBAC exists anywhere in this app, so
-  the status/review endpoints **and now the Financial tab** are open to any
-  authenticated user — a real, known gap the user chose to accept rather
-  than defer the feature further (see decisions above). Compliance document
+- Team directory ("Add project member") still has no picker for assigning
+  an *existing* internal user account to a project — a `GET /users` list
+  endpoint now exists (Administration module, `document.md` §2.9), but
+  the Team tab's add-member form only builds new external accounts via
+  the "Invite as user" checkbox; wiring an existing-user picker into that
+  same form is a small follow-up, not a backend gap.
+- Organisation/Party registration (Contractors/vendor directory): RBAC
+  now exists project-wide (Administration module, `document.md` §2.9),
+  but the shared Contractors directory itself is gated by a simple
+  internal-staff-only check (`InternalOnlyGuard`), not the fine-grained
+  role×module×action matrix — it's a company-wide directory, not
+  project-scoped, and no register ask exists for external vendor-
+  directory access. The status/review endpoints and Financial tab are
+  therefore visible to any internal user, not any authenticated user as
+  before — a narrower, but still coarse-grained, gap than previously
+  documented here. Compliance document
   storage is local-disk-only; **SharePoint sync is asked-for but not built
   — blocked on the user providing Azure AD app credentials** (tenant ID,
   client ID/secret, target SharePoint site+drive). Project Experience,
@@ -608,9 +652,13 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   Performance scorecard, Vendor Portal) is still fully ahead.
 - The client-portal hard-rule-on-approvals is specified in the meeting
   notes but not yet built — CLI in the requirements register is the one
-  remaining module adjacent to Project Management, blocked on a real
-  second auth surface (client accounts) that doesn't exist anywhere in
-  this app. RFI, Submittals, Risk Register, and Document Control
+  remaining module adjacent to Project Management. It's no longer
+  blocked on a missing auth surface: external, permissioned accounts now
+  exist (Administration module, `document.md` §2.9) and a CLIENT
+  project-member role already has its own default permission set. What's
+  still missing is a dedicated client-facing portal UI (a trimmed,
+  approval-focused view) rather than the same full app shell an internal
+  user gets. RFI, Submittals, Risk Register, and Document Control
   (RFI/SUB/RISK/DOC) are all now built — see `document.md` §§2.6-2.8.
 - Schedule module (see `document.md` §2.4 for the full deferred table):
   Primavera P6 import, 4D/BIM schedule simulation (explicitly out of
@@ -622,19 +670,22 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   deferred table): comment threading/replies, real email/SMS/push
   notifications, and websocket real-time updates (the bell polls every
   60s instead) are not built. The frontend still has no picker for
-  linking a `ProjectMember` to a real platform login (`userId`) — the
-  backend already accepts it, this is a UI gap only. Document Control
-  (§2.6), Risk Register (§2.7), and RFI + Submittals (§2.8) are all now
-  built — the full four-module "what else belongs under Projects"
-  sequence is complete. Client Portal (CLI) is the one remaining
-  register module adjacent to Project Management, blocked on a real
-  second auth surface this app doesn't have.
+  linking a `ProjectMember` to a real platform login (`userId`) for an
+  *existing* internal user — the backend already accepts it (and the
+  Administration module's invite flow now covers the *new external
+  account* case), this remaining picker is a UI gap only. Document
+  Control (§2.6), Risk Register (§2.7), and RFI + Submittals (§2.8) are
+  all now built — the full four-module "what else belongs under
+  Projects" sequence is complete. Client Portal (CLI) is the one
+  remaining register module adjacent to Project Management — see the
+  updated note above; it now has a real auth surface to build on, just
+  not yet a dedicated portal UI.
 - No production deployment yet for the Schedule, Project collaboration,
-  Document Control, Risk Register, or RFI/Submittals modules — the
-  tar-over-SSH + `docker compose up -d --build` deploy is blocked in
-  this session's current permission mode (see below), still pending.
-  The GitHub push itself is unblocked and up to date as of the RFI +
-  Submittals commit.
+  Document Control, Risk Register, RFI/Submittals, or Administration
+  modules — the tar-over-SSH + `docker compose up -d --build` deploy is
+  blocked in this session's current permission mode (see below), still
+  pending. The GitHub push itself is unblocked and up to date as of the
+  Administration commit.
 - **A free temporary domain was identified but not fully wired up**:
   `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
   the IP in the hostname — no signup, works instantly), and `certbot` is

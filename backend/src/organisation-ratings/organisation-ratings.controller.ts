@@ -3,11 +3,12 @@ import { OrganisationRatingsService } from './organisation-ratings.service.js';
 import { CreateRatingDto } from './dto/create-rating.dto.js';
 import { UpdateRatingDto } from './dto/update-rating.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 
 @Controller('contractors/:contractorId/ratings')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class OrganisationRatingsController {
   constructor(private readonly ratingsService: OrganisationRatingsService) {}
 

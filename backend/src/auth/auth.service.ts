@@ -5,6 +5,7 @@ import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service.js';
 import type { JwtPayload } from './jwt-payload.js';
+import type { User } from '../generated/prisma/client.js';
 
 export interface TokenPair {
   accessToken: string;
@@ -26,6 +27,7 @@ export class AuthService {
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) return null;
+    if (user.status !== 'ACTIVE') return null;
     const matches = await bcrypt.compare(password, user.passwordHash);
     if (!matches) return null;
     return user;
@@ -35,14 +37,19 @@ export class AuthService {
     email: string,
     password: string,
     rememberMe = false,
-  ): Promise<TokenPair & { user: { id: string; email: string; fullName: string; role: string } }> {
+  ): Promise<
+    TokenPair & { user: { id: string; email: string; fullName: string; role: string; accountType: string } }
+  > {
     const user = await this.validateUser(email, password);
     if (!user) throw new UnauthorizedException('Invalid email or password');
 
-    const tokens = await this.issueTokens({ sub: user.id, email: user.email, role: user.role }, rememberMe);
+    const tokens = await this.issueTokens(
+      { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },
+      rememberMe,
+    );
     return {
       ...tokens,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, accountType: user.accountType },
     };
   }
 
@@ -57,9 +64,12 @@ export class AuthService {
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user) throw new UnauthorizedException('User no longer exists');
+    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User no longer exists');
 
-    return this.issueTokens({ sub: user.id, email: user.email, role: user.role }, Boolean(payload.rememberMe));
+    return this.issueTokens(
+      { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },
+      Boolean(payload.rememberMe),
+    );
   }
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -70,17 +80,25 @@ export class AuthService {
       return;
     }
 
+    const resetLink = await this.generateResetLink(user);
+    // Email delivery (Resend) is not wired up yet - logging the link here is
+    // the deliberate stand-in so the reset flow can be tested end to end
+    // until that's in place.
+    this.logger.log(`Password reset requested for ${user.email}: ${resetLink}`);
+  }
+
+  /** Generates a fresh set-password/reset link for `user` and stores its
+   * hash, reusing the same token mechanism for both "forgot password" and
+   * the Administration invite flow (no email provider is connected yet -
+   * both flows return/log the link for manual sharing). */
+  async generateResetLink(user: User): Promise<string> {
     const token = randomBytes(32).toString('hex');
     const tokenHash = this.hashResetToken(token);
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await this.usersService.setResetToken(user.id, tokenHash, expiresAt);
 
     const frontendOrigin = this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:3000';
-    const resetLink = `${frontendOrigin}/reset-password?token=${token}`;
-    // Email delivery (Resend) is not wired up yet - logging the link here is
-    // the deliberate stand-in so the reset flow can be tested end to end
-    // until that's in place.
-    this.logger.log(`Password reset requested for ${user.email}: ${resetLink}`);
+    return `${frontendOrigin}/reset-password?token=${token}`;
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

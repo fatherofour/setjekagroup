@@ -24,12 +24,13 @@ import { ComplianceRecordsService } from './compliance-records.service.js';
 import { CreateComplianceRecordDto } from './dto/create-compliance-record.dto.js';
 import { UpdateComplianceRecordDto } from './dto/update-compliance-record.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 import { MAX_UPLOAD_BYTES, fileFilter, generateStoredName, uploadRootDir } from './upload.util.js';
 
 @Controller('contractors/:contractorId/compliance')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class ComplianceRecordsController {
   constructor(private readonly complianceService: ComplianceRecordsService) {}
 

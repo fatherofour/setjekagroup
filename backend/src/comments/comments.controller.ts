@@ -5,15 +5,18 @@ import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 import { CommentEntityType } from '../generated/prisma/enums.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 const VALID_ENTITY_TYPES = Object.values(CommentEntityType);
 
 @Controller('projects/:projectId/comments')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
   @Get()
+  @RequirePermission('COMMENTS', 'VIEW')
   findAll(
     @Param('projectId') projectId: string,
     @Query('entityType') entityType: string,
@@ -25,12 +28,14 @@ export class CommentsController {
   }
 
   @Post()
+  @RequirePermission('COMMENTS', 'COMMENT')
   create(@Param('projectId') projectId: string, @Body() dto: CreateCommentDto, @CurrentUser() user: JwtPayload) {
     return this.commentsService.create(projectId, user.sub, user.sub, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('COMMENTS', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.commentsService.remove(projectId, user.sub, id, user.sub);
   }

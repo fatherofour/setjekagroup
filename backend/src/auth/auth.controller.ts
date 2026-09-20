@@ -48,6 +48,12 @@ export class AuthController {
   async me(@CurrentUser() user: JwtPayload) {
     const record = await this.usersService.findById(user.sub);
     if (!record) return null;
-    return { id: record.id, email: record.email, fullName: record.fullName, role: record.role };
+    return {
+      id: record.id,
+      email: record.email,
+      fullName: record.fullName,
+      role: record.role,
+      accountType: record.accountType,
+    };
   }
 }

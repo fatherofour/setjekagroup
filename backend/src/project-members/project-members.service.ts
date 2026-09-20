@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { UsersService } from '../users/users.service.js';
+import { AuthService } from '../auth/auth.service.js';
 import type { CreateMemberDto } from './dto/create-member.dto.js';
 import type { UpdateMemberDto } from './dto/update-member.dto.js';
 
@@ -14,6 +16,8 @@ export class ProjectMembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectsService: ProjectsService,
+    private readonly usersService: UsersService,
+    private readonly authService: AuthService,
   ) {}
 
   async findAll(projectId: string, ownerId: string) {
@@ -33,11 +37,28 @@ export class ProjectMembersService {
   async create(projectId: string, ownerId: string, dto: CreateMemberDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     if (dto.contractorId) await this.assertContractorExists(dto.contractorId);
-    return this.prisma.projectMember.create({
+
+    let userId = dto.userId;
+    let setPasswordLink: string | undefined;
+    if (dto.inviteAsUser) {
+      if (!dto.externalEmail) throw new BadRequestException('externalEmail is required to invite a user');
+      const existing = await this.usersService.findByEmail(dto.externalEmail);
+      const user =
+        existing ??
+        (await this.usersService.invite({
+          email: dto.externalEmail,
+          fullName: dto.externalName ?? dto.externalEmail,
+          accountType: 'EXTERNAL',
+        }));
+      userId = user.id;
+      setPasswordLink = await this.authService.generateResetLink(user);
+    }
+
+    const member = await this.prisma.projectMember.create({
       data: {
         projectId,
         role: dto.role,
-        userId: dto.userId,
+        userId,
         contractorId: dto.contractorId,
         externalName: dto.externalName,
         externalCompany: dto.externalCompany,
@@ -46,6 +67,7 @@ export class ProjectMembersService {
       },
       include: MEMBER_INCLUDE,
     });
+    return setPasswordLink ? { ...member, setPasswordLink } : member;
   }
 
   private async findOwnedMember(projectId: string, ownerId: string, memberId: string) {

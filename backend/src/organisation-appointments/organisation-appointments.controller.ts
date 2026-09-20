@@ -3,11 +3,12 @@ import { OrganisationAppointmentsService } from './organisation-appointments.ser
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 
 @Controller('contractors/:contractorId/appointments')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class OrganisationAppointmentsController {
   constructor(private readonly appointmentsService: OrganisationAppointmentsService) {}
 

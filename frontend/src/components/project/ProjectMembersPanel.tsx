@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { PROJECT_MEMBER_ROLES, projectMemberRoleLabel, type ProjectMemberRole } from '@/lib/projectMemberRoles';
@@ -38,7 +38,10 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
+  const [inviteAsUser, setInviteAsUser] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = async () => {
     try {
@@ -70,22 +73,42 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
     if (!usingContractor && !name.trim()) return;
     setSaving(true);
     setError(null);
+    setInviteLink(null);
     try {
-      await authedFetch(`/projects/${projectId}/members`, {
+      const result = await authedFetch<{ setPasswordLink?: string }>(`/projects/${projectId}/members`, {
         method: 'POST',
         body: usingContractor
           ? { role, contractorId, externalName: name.trim() || undefined, externalEmail: email.trim() || undefined }
-          : { role, externalName: name.trim(), externalCompany: company.trim() || undefined, externalEmail: email.trim() || undefined },
+          : {
+              role,
+              externalName: name.trim(),
+              externalCompany: company.trim() || undefined,
+              externalEmail: email.trim() || undefined,
+              inviteAsUser: inviteAsUser && !!email.trim() ? true : undefined,
+            },
       });
+      if (result.setPasswordLink) setInviteLink(result.setPasswordLink);
       setName('');
       setCompany('');
       setEmail('');
+      setInviteAsUser(false);
       setContractorId(ONE_OFF);
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to add team member.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable - the link is still shown for manual copy.
     }
   }
 
@@ -108,6 +131,19 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
         <p role="alert" className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">
           {error}
         </p>
+      )}
+
+      {inviteLink && (
+        <div className="mb-3 flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+          <span className="min-w-0 flex-1 truncate">Set-password link: {inviteLink}</span>
+          <button
+            onClick={copyInviteLink}
+            className="flex shrink-0 items-center gap-1 rounded bg-emerald-700 px-2 py-1 font-medium text-white hover:bg-emerald-800"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
       )}
 
       {members === null ? (
@@ -188,24 +224,36 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
             </button>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={`${inputClass} flex-1`} />
-            <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company (optional)" className={`${inputClass} flex-1`} />
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email (optional)"
-              type="email"
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              type="submit"
-              disabled={saving || !name.trim()}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-medium text-white transition hover:bg-emerald-800 disabled:opacity-50"
-            >
-              <UserPlus size={13} />
-              Add
-            </button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={`${inputClass} flex-1`} />
+              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company (optional)" className={`${inputClass} flex-1`} />
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email (optional)"
+                type="email"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                type="submit"
+                disabled={saving || !name.trim()}
+                className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-medium text-white transition hover:bg-emerald-800 disabled:opacity-50"
+              >
+                <UserPlus size={13} />
+                Add
+              </button>
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <input
+                type="checkbox"
+                checked={inviteAsUser}
+                disabled={!email.trim()}
+                onChange={(e) => setInviteAsUser(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300"
+              />
+              Invite as user (grants login access to this project) — needs an email above
+            </label>
           </div>
         )}
       </form>
@@ -214,7 +262,7 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
         <Link href="/contractors" className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
           Add it to Contractors
         </Link>
-        . Assigning existing Setjeka staff (not just external contacts) needs a user picker — deferred until there's a user directory to pick from.
+        . No email provider is connected yet, so the set-password link above must be copied and shared manually.
       </p>
     </div>
   );

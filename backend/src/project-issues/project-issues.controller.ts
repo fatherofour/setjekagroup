@@ -5,23 +5,28 @@ import { UpdateIssueDto } from './dto/update-issue.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 @Controller('projects/:projectId/issues')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class ProjectIssuesController {
   constructor(private readonly issuesService: ProjectIssuesService) {}
 
   @Get()
+  @RequirePermission('ISSUES', 'VIEW')
   findAll(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
     return this.issuesService.findAll(projectId, user.sub);
   }
 
   @Post()
+  @RequirePermission('ISSUES', 'CREATE')
   create(@Param('projectId') projectId: string, @Body() dto: CreateIssueDto, @CurrentUser() user: JwtPayload) {
     return this.issuesService.create(projectId, user.sub, dto);
   }
 
   @Patch(':id')
+  @RequirePermission('ISSUES', 'EDIT')
   update(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -33,6 +38,7 @@ export class ProjectIssuesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('ISSUES', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.issuesService.remove(projectId, user.sub, id);
   }

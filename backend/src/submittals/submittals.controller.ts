@@ -6,23 +6,28 @@ import { ChangeSubmittalStatusDto } from './dto/change-status.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 @Controller('projects/:projectId/submittals')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class SubmittalsController {
   constructor(private readonly submittalsService: SubmittalsService) {}
 
   @Get()
+  @RequirePermission('SUBMITTALS', 'VIEW')
   findAll(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
     return this.submittalsService.findAll(projectId, user.sub);
   }
 
   @Post()
+  @RequirePermission('SUBMITTALS', 'CREATE')
   create(@Param('projectId') projectId: string, @Body() dto: CreateSubmittalDto, @CurrentUser() user: JwtPayload) {
     return this.submittalsService.create(projectId, user.sub, dto);
   }
 
   @Patch(':id')
+  @RequirePermission('SUBMITTALS', 'EDIT')
   update(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -33,6 +38,7 @@ export class SubmittalsController {
   }
 
   @Patch(':id/status')
+  @RequirePermission('SUBMITTALS', 'APPROVE')
   changeStatus(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -43,12 +49,14 @@ export class SubmittalsController {
   }
 
   @Get(':id/history')
+  @RequirePermission('SUBMITTALS', 'VIEW')
   getHistory(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.submittalsService.getHistory(projectId, user.sub, id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('SUBMITTALS', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.submittalsService.remove(projectId, user.sub, id);
   }

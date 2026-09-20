@@ -10,6 +10,9 @@ import {
   AlertTriangle,
   ShieldAlert,
   HelpCircle,
+  ShieldCheck,
+  Users,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -31,6 +34,9 @@ export interface NavGroup {
   label: string;
   icon: LucideIcon;
   children: NavLeaf[];
+  // Hidden entirely unless the signed-in user's platform Role is ADMIN
+  // (see Sidebar.tsx) - used for the Administration group only.
+  adminOnly?: boolean;
 }
 
 export type NavEntry = NavLeaf | NavGroup;
@@ -65,5 +71,15 @@ export const NAV: NavEntry[] = [
     label: 'Procurement',
     icon: Handshake,
     children: [{ label: 'Contractors', href: '/contractors', icon: HardHat }],
+  },
+  {
+    label: 'Administration',
+    icon: ShieldCheck,
+    adminOnly: true,
+    children: [
+      { label: 'Users', href: '/administration?tab=users', icon: Users },
+      { label: 'Permissions', href: '/administration?tab=permissions', icon: ShieldCheck },
+      { label: 'Audit Log', href: '/administration?tab=audit-log', icon: ScrollText },
+    ],
   },
 ];

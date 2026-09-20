@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Trash2, Upload as UploadIcon, Eye, Download, Check, XCircle, RotateCcw } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Trash2, Upload as UploadIcon, Eye, Download, Check, XCircle, RotateCcw, Share2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
@@ -9,6 +9,13 @@ import { Select } from '@/components/ui/Select';
 import { CommentThread } from './CommentThread';
 import { RevisionCompareModal } from './RevisionCompareModal';
 import type { ProjectDocument } from './DocumentsPanel';
+
+interface ShareableMember {
+  id: string;
+  role: string;
+  externalName: string | null;
+  user: { fullName: string; email: string } | null;
+}
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -45,8 +52,41 @@ export function DocumentDetailPanel({
   const [preview, setPreview] = useState<{ filename: string; mimeType: string | null; blobUrl: string } | null>(null);
   const [compareWith, setCompareWith] = useState<string | null>(null);
   const [compareRevisionId, setCompareRevisionId] = useState('');
+  const [members, setMembers] = useState<ShareableMember[] | null>(null);
+  const [shareMemberId, setShareMemberId] = useState('');
+  const [shareExpiresAt, setShareExpiresAt] = useState('');
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
   const current = document.revisions[0];
+
+  useEffect(() => {
+    authedFetch<ShareableMember[]>(`/projects/${projectId}/members`)
+      .then(setMembers)
+      .catch(() => setMembers([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  async function shareExternally() {
+    if (!shareMemberId) return;
+    setShareMessage(null);
+    try {
+      await authedFetch(`/projects/${projectId}/members/${shareMemberId}/permission-overrides`, {
+        method: 'POST',
+        body: {
+          module: 'DOCUMENTS',
+          action: 'VIEW',
+          recordId: document.id,
+          allowed: true,
+          expiresAt: shareExpiresAt ? new Date(shareExpiresAt).toISOString() : undefined,
+        },
+      });
+      setShareMessage('Access granted.');
+      setShareMemberId('');
+      setShareExpiresAt('');
+    } catch (err) {
+      setShareMessage(err instanceof ApiError ? err.message : 'Failed to grant access.');
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -248,6 +288,48 @@ export function DocumentDetailPanel({
               </button>
             </div>
           )}
+        </div>
+
+        <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Share2 size={12} />
+            Share externally
+          </h3>
+          {shareMessage && <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">{shareMessage}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={shareMemberId}
+              onChange={setShareMemberId}
+              className={`${inputClass} flex-1`}
+              options={[
+                { value: '', label: 'Grant a project member access to this document…' },
+                ...(members ?? []).map((m) => ({
+                  value: m.id,
+                  label: `${m.user?.fullName ?? m.externalName ?? 'Unnamed'} (${m.role})`,
+                })),
+              ]}
+            />
+            <input
+              type="date"
+              value={shareExpiresAt}
+              onChange={(e) => setShareExpiresAt(e.target.value)}
+              title="Expires on (optional)"
+              className={inputClass}
+            />
+            <button
+              onClick={shareExternally}
+              disabled={!shareMemberId}
+              className="flex h-8 items-center gap-1.5 rounded-md bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <Share2 size={13} />
+              Grant access
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+            Grants view access to just this document, independent of the member&apos;s usual role permissions —
+            useful for a client or reviewer who shouldn&apos;t see the rest of the project. Leave the date blank for
+            no expiry.
+          </p>
         </div>
 
         {current && (

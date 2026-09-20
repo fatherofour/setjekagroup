@@ -5,23 +5,28 @@ import { UpdateRiskDto } from './dto/update-risk.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 @Controller('projects/:projectId/risks')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class ProjectRisksController {
   constructor(private readonly risksService: ProjectRisksService) {}
 
   @Get()
+  @RequirePermission('RISKS', 'VIEW')
   findAll(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
     return this.risksService.findAll(projectId, user.sub);
   }
 
   @Post()
+  @RequirePermission('RISKS', 'CREATE')
   create(@Param('projectId') projectId: string, @Body() dto: CreateRiskDto, @CurrentUser() user: JwtPayload) {
     return this.risksService.create(projectId, user.sub, dto);
   }
 
   @Patch(':id')
+  @RequirePermission('RISKS', 'EDIT')
   update(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -33,6 +38,7 @@ export class ProjectRisksController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('RISKS', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.risksService.remove(projectId, user.sub, id);
   }

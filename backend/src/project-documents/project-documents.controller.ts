@@ -30,6 +30,8 @@ import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 import { MAX_UPLOAD_BYTES, fileFilter, generateStoredName, uploadRootDir } from './upload.util.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 const uploadInterceptor = FileInterceptor('file', {
   storage: diskStorage({
@@ -41,17 +43,19 @@ const uploadInterceptor = FileInterceptor('file', {
 });
 
 @Controller('projects/:projectId/documents')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class ProjectDocumentsController {
   constructor(private readonly documentsService: ProjectDocumentsService) {}
 
   @Get()
+  @RequirePermission('DOCUMENTS', 'VIEW')
   findAll(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
     return this.documentsService.findAll(projectId, user.sub);
   }
 
   @Post()
   @UseInterceptors(uploadInterceptor)
+  @RequirePermission('DOCUMENTS', 'CREATE')
   create(
     @Param('projectId') projectId: string,
     @Body() dto: CreateDocumentDto,
@@ -63,6 +67,7 @@ export class ProjectDocumentsController {
   }
 
   @Patch(':id')
+  @RequirePermission('DOCUMENTS', 'EDIT')
   update(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -74,12 +79,14 @@ export class ProjectDocumentsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermission('DOCUMENTS', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.documentsService.remove(projectId, user.sub, id);
   }
 
   @Post(':id/revisions')
   @UseInterceptors(uploadInterceptor)
+  @RequirePermission('DOCUMENTS', 'CREATE')
   addRevision(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -92,6 +99,7 @@ export class ProjectDocumentsController {
   }
 
   @Patch(':id/revisions/:revisionId/review')
+  @RequirePermission('DOCUMENTS', 'APPROVE')
   reviewRevision(
     @Param('projectId') projectId: string,
     @Param('id') id: string,
@@ -103,6 +111,7 @@ export class ProjectDocumentsController {
   }
 
   @Get(':id/revisions/:revisionId/file')
+  @RequirePermission('DOCUMENTS', 'VIEW')
   async getRevisionFile(
     @Param('projectId') projectId: string,
     @Param('id') id: string,

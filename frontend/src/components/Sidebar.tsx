@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { GREEN } from '@/lib/auth-theme';
 import { useCurrentProject } from '@/lib/current-project-context';
+import { useAuth } from '@/lib/auth-context';
 import { NAV, isNavGroup } from './nav';
 
 const OPEN_GROUPS_KEY = 'setjeka_sidebar_open_groups';
@@ -24,6 +25,8 @@ export function Sidebar({ open }: { open: boolean }) {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab');
   const { currentProject } = useCurrentProject();
+  const { user } = useAuth();
+  const visibleNav = NAV.filter((entry) => !(isNavGroup(entry) && entry.adminOnly && user?.role !== 'ADMIN'));
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpenState);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -98,7 +101,7 @@ export function Sidebar({ open }: { open: boolean }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {NAV.map((entry) => {
+        {visibleNav.map((entry) => {
           if (isNavGroup(entry)) {
             const GroupIcon = entry.icon;
             const isOpen = openGroups[entry.label] ?? true;
@@ -129,12 +132,13 @@ export function Sidebar({ open }: { open: boolean }) {
                           : child.href;
                       const [hrefPath, hrefQuery] = href.split('?');
                       const hrefTab = hrefQuery ? new URLSearchParams(hrefQuery).get('tab') : null;
-                      // Query-based entries (e.g. Documents, ?tab=documents) only
+                      // Query-based entries (e.g. Documents, ?tab=documents, or a
+                      // non-project page like Administration's own tabs) only
                       // highlight when that exact tab is active; path-based
                       // entries (e.g. Schedule, its own route) just match the path.
-                      const active = child.requiresProject
-                        ? pathname === hrefPath && hrefPath !== child.href && (hrefTab ? currentTab === hrefTab : !currentTab)
-                        : pathname === child.href;
+                      const active = hrefTab
+                        ? pathname === hrefPath && currentTab === hrefTab
+                        : pathname === hrefPath && (!child.requiresProject || hrefPath !== child.href) && !currentTab;
                       const ChildIcon = child.icon;
                       return (
                         <Link

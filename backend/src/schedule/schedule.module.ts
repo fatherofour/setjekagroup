@@ -7,9 +7,10 @@ import { ScheduleService } from './schedule.service.js';
 import { ScheduleBaselinesService } from './schedule-baselines.service.js';
 import { ScheduleImportService } from './schedule-import.service.js';
 import { ProjectsModule } from '../projects/projects.module.js';
+import { PermissionsModule } from '../permissions/permissions.module.js';
 
 @Module({
-  imports: [ProjectsModule],
+  imports: [ProjectsModule, PermissionsModule],
   controllers: [ScheduleActivitiesController, ScheduleDependenciesController, ScheduleBaselinesController, ScheduleImportController],
   providers: [ScheduleService, ScheduleBaselinesService, ScheduleImportService],
 })

@@ -5,11 +5,12 @@ import { UpdateContractorDto } from './dto/update-contractor.dto.js';
 import { FindContractorsDto } from './dto/find-contractors.dto.js';
 import { UpdateStatusDto } from './dto/update-status.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 
 @Controller('contractors')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class ContractorsController {
   constructor(private readonly contractorsService: ContractorsService) {}
 

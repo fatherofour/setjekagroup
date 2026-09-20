@@ -6,17 +6,20 @@ import { ScheduleImportService } from './schedule-import.service.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
+import { PermissionsGuard } from '../permissions/guards/permissions.guard.js';
+import { RequirePermission } from '../permissions/decorators/require-permission.decorator.js';
 
 const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
 
 @Controller('projects/:projectId/schedule/import')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, PermissionsGuard)
 export class ScheduleImportController {
   constructor(private readonly importService: ScheduleImportService) {}
 
   // Parsed in memory and discarded — unlike compliance documents, an
   // imported schedule file isn't kept as an attachment, only its data.
   @Post('msproject')
+  @RequirePermission('SCHEDULE', 'CREATE')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),

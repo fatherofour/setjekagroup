@@ -3,9 +3,10 @@ import { OrganisationContactsService } from './organisation-contacts.service.js'
 import { CreateContactDto } from './dto/create-contact.dto.js';
 import { UpdateContactDto } from './dto/update-contact.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 
 @Controller('contractors/:contractorId/contacts')
-@UseGuards(JwtAccessGuard)
+@UseGuards(JwtAccessGuard, InternalOnlyGuard)
 export class OrganisationContactsController {
   constructor(private readonly contactsService: OrganisationContactsService) {}
 
