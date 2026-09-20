@@ -4,7 +4,6 @@ import {
   ClassificationStandard,
   ContractForm,
   Currency,
-  ProjectStage,
   ProjectStatus,
   ProjectType,
 } from '../../generated/prisma/enums.js';
@@ -27,9 +26,9 @@ export class UpdateProjectDto {
   @IsEnum(ProjectStatus)
   status?: ProjectStatus;
 
-  @IsOptional()
-  @IsEnum(ProjectStage)
-  stage?: ProjectStage;
+  // Deliberately not editable here — once a project exists, its stage
+  // can only change through an approved StageTransition (see
+  // stage-transitions.service.ts), not a bare PATCH.
 
   @IsOptional()
   @IsEnum(ProjectType)

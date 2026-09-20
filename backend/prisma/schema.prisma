@@ -51,6 +51,7 @@ enum PermissionModule {
   PROJECT_STRUCTURE
   TEAM
   COMMENTS
+  STAGE_GATE
 }
 
 enum PermissionAction {
@@ -256,6 +257,8 @@ model User {
   transmittalsCreated Transmittal[]
   submittalStatusChanges SubmittalStatusHistory[]
   auditLogEntries    AuditLogEntry[]
+  stageTransitionsRequested StageTransition[] @relation("StageTransitionRequestedBy")
+  stageTransitionsDecided   StageTransition[] @relation("StageTransitionDecidedBy")
 
   @@index([resetTokenHash])
 }
@@ -505,6 +508,7 @@ model Project {
   rfis                   Rfi[]
   submittals             Submittal[]
   auditLogEntries        AuditLogEntry[]
+  stageTransitions       StageTransition[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -792,6 +796,7 @@ enum CommentEntityType {
   RISK
   RFI
   SUBMITTAL
+  STAGE_TRANSITION
 }
 
 model Comment {
@@ -824,6 +829,8 @@ enum NotificationType {
   RISK_ESCALATED
   RFI_BALL_IN_COURT
   SUBMITTAL_STATUS_CHANGED
+  STAGE_TRANSITION_REQUESTED
+  STAGE_TRANSITION_DECIDED
 }
 
 model Notification {
@@ -1202,4 +1209,37 @@ model AuditLogEntry {
   @@index([userId])
   @@index([projectId])
   @@index([createdAt])
+}
+
+enum StageTransitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A stage-gate sign-off: a request to move a project from its current
+// stage to the next one in the fixed PROJECT_STAGES order (see
+// stage-transitions.service.ts), decided by whoever has STAGE_GATE/
+// APPROVE permission on the project. Deliberately one fixed workflow,
+// not the register's configurable "workflow builder" - see document.md
+// for the scoping reasoning. Same shape as the existing
+// SubmittalStatusHistory/OrganisationStatusHistory pattern, applied to a
+// request/decision instead of a plain log.
+model StageTransition {
+  id              String                @id @default(uuid())
+  projectId       String
+  project         Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fromStage       ProjectStage
+  toStage         ProjectStage
+  status          StageTransitionStatus @default(PENDING)
+  requestedById   String
+  requestedBy     User                  @relation("StageTransitionRequestedBy", fields: [requestedById], references: [id])
+  requestComment  String?
+  decidedById     String?
+  decidedBy       User?                 @relation("StageTransitionDecidedBy", fields: [decidedById], references: [id])
+  decisionComment String?
+  decidedAt       DateTime?
+  createdAt       DateTime              @default(now())
+
+  @@index([projectId])
 }

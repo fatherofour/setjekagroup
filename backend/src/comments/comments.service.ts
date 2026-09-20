@@ -24,6 +24,7 @@ export class CommentsService {
       RISK: () => this.prisma.projectRisk.findFirst({ where: { id: entityId, projectId } }),
       RFI: () => this.prisma.rfi.findFirst({ where: { id: entityId, projectId } }),
       SUBMITTAL: () => this.prisma.submittal.findFirst({ where: { id: entityId, projectId } }),
+      STAGE_TRANSITION: () => this.prisma.stageTransition.findFirst({ where: { id: entityId, projectId } }),
     })[entityType]();
     if (!found) throw new BadRequestException(`${entityType} not found in this project`);
   }

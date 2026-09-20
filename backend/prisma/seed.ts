@@ -29,9 +29,10 @@ async function main() {
 // control" default matrix. The internal delivery-team roles get full
 // access everywhere; CONTRACTOR gets view/comment broadly plus create/
 // edit on the modules they actually submit into; CLIENT gets view/comment
-// plus approve on the two review workflows; OTHER is view/comment only.
-// Admin-editable afterwards via PermissionsController - this is only the
-// starting default.
+// plus approve on the review/sign-off workflows (RFIs, Submittals, and
+// the project stage gate); OTHER is view/comment only. Admin-editable
+// afterwards via PermissionsController - this is only the starting
+// default.
 const FULL_ACCESS_ROLES: ProjectMemberRole[] = [
   'DEVELOPMENT_MANAGER', 'PROJECT_MANAGER', 'PLANNER_SCHEDULER', 'QUANTITY_SURVEYOR',
   'PROCUREMENT_MANAGER', 'ARCHITECT_ENGINEER', 'SITE_MANAGER', 'QA_QC_MANAGER', 'HSE_MANAGER',
@@ -39,7 +40,7 @@ const FULL_ACCESS_ROLES: ProjectMemberRole[] = [
 const ALL_ROLES: ProjectMemberRole[] = [...FULL_ACCESS_ROLES, 'CONTRACTOR', 'CLIENT', 'OTHER'];
 const ALL_MODULES: PermissionModule[] = [
   'SCHEDULE', 'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS',
-  'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS',
+  'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS', 'STAGE_GATE',
 ];
 const ALL_ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];
 const CONTRACTOR_EDIT_MODULES: PermissionModule[] = ['DOCUMENTS', 'RFIS', 'SUBMITTALS', 'TASKS', 'ISSUES'];
@@ -53,7 +54,7 @@ function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, actio
   }
   if (role === 'CLIENT') {
     if (action === 'VIEW' || action === 'COMMENT') return true;
-    if (action === 'APPROVE' && (module === 'RFIS' || module === 'SUBMITTALS')) return true;
+    if (action === 'APPROVE' && (module === 'RFIS' || module === 'SUBMITTALS' || module === 'STAGE_GATE')) return true;
     return false;
   }
   // OTHER

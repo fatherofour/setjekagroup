@@ -100,7 +100,6 @@ export class ProjectsService {
         description: dto.description,
         projectCode: dto.projectCode,
         status: dto.status,
-        stage: dto.stage,
         projectType: dto.projectType,
         contractForm: dto.contractForm,
         currency: dto.currency,

@@ -30,6 +30,7 @@ import { SubmittalsModule } from './submittals/submittals.module.js';
 import { PermissionsModule } from './permissions/permissions.module.js';
 import { AuditLogModule } from './audit-log/audit-log.module.js';
 import { AuditLogInterceptor } from './audit-log/interceptors/audit-log.interceptor.js';
+import { StageTransitionsModule } from './stage-transitions/stage-transitions.module.js';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AuditLogInterceptor } from './audit-log/interceptors/audit-log.intercep
     SubmittalsModule,
     PermissionsModule,
     AuditLogModule,
+    StageTransitionsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor }],

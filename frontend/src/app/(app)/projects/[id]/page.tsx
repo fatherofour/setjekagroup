@@ -20,6 +20,7 @@ import {
   type ClassificationStandard,
 } from '@/lib/projectMeta';
 import { ProjectNodeTree } from '@/components/project/ProjectNodeTree';
+import { StageGatePanel } from '@/components/project/StageGatePanel';
 import { ProjectMembersPanel } from '@/components/project/ProjectMembersPanel';
 import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
 import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
@@ -103,8 +104,8 @@ export default function ProjectDetailPage() {
     if (requested && WORKSPACE_TABS.some((t) => t.value === requested)) setTab(requested);
   }, [searchParams]);
 
-  useEffect(() => {
-    authedFetch<Project>(`/projects/${id}`)
+  function loadProject() {
+    return authedFetch<Project>(`/projects/${id}`)
       .then((p) => {
         setProject(p);
         setCurrentProject({ id: p.id, name: p.name, status: p.status, stage: p.stage });
@@ -121,6 +122,10 @@ export default function ProjectDetailPage() {
         }
         setError(err instanceof ApiError ? err.message : 'Failed to load project.');
       });
+  }
+
+  useEffect(() => {
+    loadProject();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -391,6 +396,7 @@ export default function ProjectDetailPage() {
       </div>
       )}
 
+      {tab === 'overview' && <StageGatePanel currentStage={project.stage} projectId={project.id} onStageChanged={loadProject} />}
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
       {tab === 'tasks' && <ProjectTasksPanel projectId={project.id} />}
       {tab === 'issues' && <ProjectIssuesPanel projectId={project.id} />}

@@ -827,6 +827,79 @@ separate, still-deferred piece of work.
 
 ---
 
+### 2.10 Stage-gate approval — project stage transitions
+
+Walking through how a PM runs PROCSA Stage 1 (Inception) on the platform
+surfaced a real gap: `Project.stage` was set at creation and then never
+editable anywhere in the UI, and the one API route that could change it
+(`PATCH /projects/:id`) accepted it as a bare field with zero gating — no
+request, no sign-off, no record of who approved moving from one stage to
+the next. This closes that gap with **one fixed workflow** (sequential
+stage sign-off), not the register's configurable "workflow builder" —
+that remains correctly out of scope; see §2.9's deferred table. It also
+plugs directly into the Administration module's permission engine: who
+can request a stage move and who can approve one is a normal role
+permission, configurable from Administration → Permissions rather than
+hardcoded.
+
+**`StageTransition`**: a request to move a project from its current
+stage to the *next* stage in the fixed sequence (Initiation→Inception→
+Concept→Design→Documentation & Procurement→Construction→Closeout) — no
+skipping stages, no going backward in this V1. Records `fromStage`/
+`toStage`, `status` (`PENDING`/`APPROVED`/`REJECTED`), who requested it
+and why, who decided it and why, and when — the same shape as the
+existing `SubmittalStatusHistory`/`OrganisationStatusHistory` pattern,
+applied to a request/decision instead of a plain log. Only one pending
+transition per project at a time.
+
+A new `PermissionModule` value, `STAGE_GATE`, governs `CREATE` (request)
+and `APPROVE` (decide) the same way every other module already works —
+seeded so internal delivery roles get both, `CLIENT` gets `APPROVE` only
+(client sign-off), `CONTRACTOR`/`OTHER` get neither. **Closing the
+existing hole**: `stage` was removed from `UpdateProjectDto` entirely —
+once a project exists, its stage can only change through an approved
+`StageTransition`, never a bare `PATCH` (verified: a `stage` field in a
+`PATCH /projects/:id` body is now silently stripped by the global
+`ValidationPipe`'s whitelist, not merely rejected).
+
+On request, `StageTransitionsService.notifyApprovers` fans out a
+`STAGE_TRANSITION_REQUESTED` notification to every `ProjectMember` whose
+role currently passes `PermissionsService.can(..., 'STAGE_GATE',
+'APPROVE')` — reusing the permission engine itself rather than a
+separate "who approves" configuration, so it automatically follows
+whatever the Administration matrix (or a per-member override) says. On
+decision, the requester gets `STAGE_TRANSITION_DECIDED` either way.
+Approval updates `Project.stage` atomically with the `StageTransition`
+row in one `$transaction`, mirroring `SubmittalsService.changeStatus`'s
+existing pattern exactly.
+
+**Frontend**: a **Stage gate** card on the project's Overview tab —
+current stage, a pending request with Approve/Reject if one exists, a
+"Request advancement to `<next stage>`" action otherwise, and a
+collapsible history list. No client-side permission-hiding, consistent
+with every other panel in this app — a denial surfaces as the usual
+error banner.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Configurable approval routing by record type/discipline/value | Still the full "workflow builder" the register describes — correctly out of scope; this is one fixed workflow, not a designer for arbitrary ones |
+| Skipping stages / moving backward | Not how a stage-gate review works in practice; easy to add to the same model later if a real correction need comes up |
+| Multi-approver / quorum sign-off | Not asked for; single-decision approve/reject matches every other workflow-decision point already built (RFI respond, Submittal status) |
+| A dedicated cross-project approvals inbox | The per-project Stage gate card plus the existing Notification bell covers it |
+
+Verified end-to-end via curl (a CONTRACTOR is denied both requesting and
+deciding; a PM requests Inception→Concept; a second concurrent request
+is rejected; skipping a stage is rejected; the CLIENT — and only the
+CLIENT — gets notified and can approve; `Project.stage` updates and the
+requester is notified; the closed `PATCH` hole confirmed) and Playwright
+(the PM requests an advancement, the client sees and approves it in a
+separate session, the header's "Stage N · Label" and the Stage gate card
+both update live — zero console errors either side).
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

@@ -520,6 +520,27 @@ that step gets skipped.
   Client Portal (CLI) item below was blocked on; a dedicated
   client-facing portal UI is still separate, deferred work.
 
+- **Stage-gate approval — project stage transitions** (user request,
+  surfaced while walking through how a PM runs PROCSA Stage 1/Inception
+  on the platform — full detail in `document.md` §2.10): found and
+  closed a real gap in the same conversation — `Project.stage` had no
+  edit UI anywhere and the one API route that touched it (`PATCH
+  /projects/:id`) accepted it as a bare, ungated field. Built one fixed
+  workflow (sequential stage sign-off via a new `StageTransition` model
+  + `STAGE_GATE` permission module), not the register's configurable
+  "workflow builder" — that stays correctly out of scope. `stage` is now
+  removed from `UpdateProjectDto` entirely; the only way to change it is
+  an approved transition. Notification fan-out to approvers reuses
+  `PermissionsService.can()` directly (whoever currently has
+  `STAGE_GATE`/`APPROVE` gets notified), so who approves is governed by
+  the same admin-editable matrix as everything else, not a separate
+  config. Verified end-to-end via curl (CONTRACTOR denied both
+  requesting and deciding, duplicate-pending and stage-skip both
+  rejected, CLIENT notified and able to approve, `Project.stage` updates
+  atomically, the old `PATCH` hole confirmed closed) and Playwright (PM
+  requests, client approves in a separate session, the header and Stage
+  gate card both update live — zero console errors).
+
 ## Local dev environment
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in
@@ -681,11 +702,11 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   updated note above; it now has a real auth surface to build on, just
   not yet a dedicated portal UI.
 - No production deployment yet for the Schedule, Project collaboration,
-  Document Control, Risk Register, RFI/Submittals, or Administration
-  modules — the tar-over-SSH + `docker compose up -d --build` deploy is
-  blocked in this session's current permission mode (see below), still
-  pending. The GitHub push itself is unblocked and up to date as of the
-  Administration commit.
+  Document Control, Risk Register, RFI/Submittals, Administration, or
+  Stage-gate modules — the tar-over-SSH + `docker compose up -d --build`
+  deploy is blocked in this session's current permission mode (see
+  below), still pending. The GitHub push itself is unblocked and up to
+  date as of the stage-gate commit.
 - **A free temporary domain was identified but not fully wired up**:
   `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
   the IP in the hostname — no signup, works instantly), and `certbot` is
