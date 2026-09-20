@@ -40,10 +40,14 @@ const FULL_ACCESS_ROLES: ProjectMemberRole[] = [
 const ALL_ROLES: ProjectMemberRole[] = [...FULL_ACCESS_ROLES, 'CONTRACTOR', 'CLIENT', 'OTHER'];
 const ALL_MODULES: PermissionModule[] = [
   'SCHEDULE', 'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS',
-  'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS', 'STAGE_GATE',
+  'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS', 'STAGE_GATE', 'PROCUREMENT',
 ];
 const ALL_ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];
-const CONTRACTOR_EDIT_MODULES: PermissionModule[] = ['DOCUMENTS', 'RFIS', 'SUBMITTALS', 'TASKS', 'ISSUES'];
+// PROCUREMENT is included so a vendor (CONTRACTOR role) can submit and
+// revise their own RFQ quote - safe because the service layer scopes
+// which records they can even load to their own contractorId (the
+// "Vendor Portal" ask - see rfqs.service.ts and its siblings).
+const CONTRACTOR_EDIT_MODULES: PermissionModule[] = ['DOCUMENTS', 'RFIS', 'SUBMITTALS', 'TASKS', 'ISSUES', 'PROCUREMENT'];
 
 function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, action: PermissionAction): boolean {
   if (FULL_ACCESS_ROLES.includes(role)) return true;

@@ -70,7 +70,10 @@ export const NAV: NavEntry[] = [
   {
     label: 'Procurement',
     icon: Handshake,
-    children: [{ label: 'Contractors', href: '/contractors', icon: HardHat }],
+    children: [
+      { label: 'Contractors', href: '/contractors', icon: HardHat },
+      { label: 'RFQs & POs', href: '/projects', icon: Handshake, requiresProject: true, projectPathSuffix: '?tab=procurement' },
+    ],
   },
   {
     label: 'Administration',

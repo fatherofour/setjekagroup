@@ -15,6 +15,7 @@ import { OrganisationComplianceTab } from '@/components/organisation/Organisatio
 import { OrganisationAppointmentsTab } from '@/components/organisation/OrganisationAppointmentsTab';
 import { OrganisationFinancialTab } from '@/components/organisation/OrganisationFinancialTab';
 import { OrganisationRatingsTab } from '@/components/organisation/OrganisationRatingsTab';
+import { VendorScorecardPanel } from '@/components/organisation/VendorScorecardPanel';
 
 export default function ContractorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -102,6 +103,7 @@ export default function ContractorDetailPage() {
       </div>
       <div hidden={tab !== 'ratings'}>
         <OrganisationRatingsTab contractor={contractor} onChange={load} />
+        <VendorScorecardPanel contractor={contractor} />
       </div>
     </div>
   );

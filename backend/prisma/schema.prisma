@@ -52,6 +52,7 @@ enum PermissionModule {
   TEAM
   COMMENTS
   STAGE_GATE
+  PROCUREMENT
 }
 
 enum PermissionAction {
@@ -259,6 +260,10 @@ model User {
   auditLogEntries    AuditLogEntry[]
   stageTransitionsRequested StageTransition[] @relation("StageTransitionRequestedBy")
   stageTransitionsDecided   StageTransition[] @relation("StageTransitionDecidedBy")
+  rfqsCreated        Rfq[]
+  quotesSubmitted    Quote[]
+  purchaseOrderStatusChanges PurchaseOrderStatusHistory[]
+  vendorScorecardsRecorded   VendorScorecard[]
 
   @@index([resetTokenHash])
 }
@@ -266,11 +271,12 @@ model User {
 // Requirements Register PROC/Procurement & Vendors "Vendor/Contractors
 // Master": Setjeka is purely a project manager — the actual delivery work is
 // done by contractors/vendors it brings onto each project. This is the
-// foundation slice only (company + a default contact), so a project's Team
-// can pull from a real shared directory instead of retyping the same company
-// on every project. Compliance/insurance/certifications and the full
-// onboarding-approval workflow the register describes are a later PROC slice
-// (RFQ/Quotes/Evaluation/PO/Vendor Performance/Vendor Portal), not this one.
+// foundation slice - company + a default contact + compliance/insurance -
+// so a project's Team can pull from a real shared directory instead of
+// retyping the same company on every project. RFQ/Quotes/Evaluation/PO/
+// Vendor Performance/Vendor Portal are their own models further down this
+// file (see StageTransition's neighbours: Rfq, Quote, PurchaseOrder,
+// Delivery, VendorScorecard).
 model Contractor {
   id            String   @id @default(uuid())
   name          String   @unique
@@ -297,10 +303,10 @@ model Contractor {
   notes         String?
   registrationStatus     OrganisationRegistrationStatus     @default(DRAFT)
   prequalificationStatus OrganisationPrequalificationStatus @default(NOT_ASSESSED)
-  // Financial/payment profile. NOTE: this app has no RBAC enforcement
-  // anywhere (see MEMORY.md) — there is no permission system to gate this
-  // behind, so it is visible to any authenticated user like everything
-  // else here. Documented as a real, known gap, not silently accepted.
+  // Financial/payment profile. Gated by InternalOnlyGuard (Administration
+  // module) - visible to internal staff, not the fine-grained
+  // role×module×action matrix, since this is a company-wide directory,
+  // not project-scoped.
   bankName               String?
   bankAccountName        String?
   bankAccountNumber      String?
@@ -318,6 +324,9 @@ model Contractor {
   paymentRecords PaymentRecord[]
   ratings       OrganisationRating[]
   scheduleActivities ScheduleActivity[]
+  rfqInvitations RfqInvitation[]
+  quotes        Quote[]
+  purchaseOrders PurchaseOrder[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -399,6 +408,8 @@ model OrganisationProjectAppointment {
   appointmentStatus    OrganisationAppointmentStatus  @default(PROPOSED)
   payments             PaymentRecord[]
   ratings              OrganisationRating[]
+  purchaseOrders       PurchaseOrder[]
+  vendorScorecards     VendorScorecard[]
   createdAt            DateTime                       @default(now())
   updatedAt            DateTime                       @updatedAt
 
@@ -509,6 +520,8 @@ model Project {
   submittals             Submittal[]
   auditLogEntries        AuditLogEntry[]
   stageTransitions       StageTransition[]
+  rfqs                   Rfq[]
+  purchaseOrders         PurchaseOrder[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -563,6 +576,7 @@ model ProjectMember {
   submittalsSubmitted Submittal[]   @relation("SubmittalSubmittedBy")
   submittalsReviewing Submittal[]   @relation("SubmittalReviewer")
   permissionOverrides MemberPermissionOverride[]
+  deliveriesAccepted Delivery[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -894,6 +908,8 @@ model ProjectDocument {
   revisions   DocumentRevision[]
   rfis        Rfi[]
   submittals  Submittal[]
+  rfqs        Rfq[]
+  quotes      Quote[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -1242,4 +1258,201 @@ model StageTransition {
   createdAt       DateTime              @default(now())
 
   @@index([projectId])
+}
+
+// Requirements Register PROC / Procurement & Vendors, rows RFQ/Quotes/
+// Evaluation/Procurement/Vendor Performance/Deliveries/Vendor Portal
+// (Setjeka Feature and Functional Requirements Register.xlsx, rows
+// 38-45) - the six remaining PROC submodules beyond the Vendor
+// onboarding foundation (Contractor and its family, above). Everything
+// here is project-nested except VendorScorecard, which stays
+// contractor-family like the existing OrganisationRating. "Vendor
+// Portal" isn't a separate model or UI - it's these same models' findAll
+// filtered to the caller's own contractorId for external CONTRACTOR-role
+// accounts (see rfqs.service.ts and its siblings), the same scoping
+// decision already made for the deferred Client Portal item.
+enum RfqStatus {
+  DRAFT
+  ISSUED
+  CLOSED
+  AWARDED
+  CANCELLED
+}
+
+model Rfq {
+  id               String          @id @default(uuid())
+  projectId        String
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rfqNumber        String          @unique
+  title            String
+  scopeDescription String?
+  documentId       String?
+  document         ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  dueDate          DateTime?
+  status           RfqStatus       @default(DRAFT)
+  createdById      String
+  createdBy        User            @relation(fields: [createdById], references: [id])
+  invitations      RfqInvitation[]
+  quotes           Quote[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([documentId])
+}
+
+model RfqInvitation {
+  id           String     @id @default(uuid())
+  rfqId        String
+  rfq          Rfq        @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  invitedAt    DateTime   @default(now())
+
+  @@unique([rfqId, contractorId])
+  @@index([rfqId])
+  @@index([contractorId])
+}
+
+enum QuoteStatus {
+  SUBMITTED
+  WITHDRAWN
+}
+
+// evaluationScores is deliberately Json, not a separate Evaluation table
+// - the same "flexible structured data" convention ProjectTask.checklist
+// already uses. Shape: [{ criterion: string, weight: number, score:
+// number }]. The weighted total is computed at read time (quotes.service
+// .ts), never stored, the same convention as DocumentRevision's "current"
+// and ProjectRisk's score - so it can never drift from the raw scores.
+model Quote {
+  id                 String           @id @default(uuid())
+  rfqId              String
+  rfq                Rfq              @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  contractorId       String
+  contractor         Contractor       @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  price              Float
+  currency           Currency
+  leadTimeDays       Int?
+  warrantyTerms      String?
+  commercialTerms    String?
+  technicalProposal  String?
+  documentId         String?
+  document           ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  evaluationScores   Json?
+  status             QuoteStatus      @default(SUBMITTED)
+  submittedById      String
+  submittedBy        User             @relation(fields: [submittedById], references: [id])
+  purchaseOrders     PurchaseOrder[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([rfqId])
+  @@index([contractorId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  APPROVED
+  ISSUED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id               String                        @id @default(uuid())
+  projectId        String
+  project          Project                       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  poNumber         String                        @unique
+  contractorId     String
+  contractor       Contractor                    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  quoteId          String?
+  quote            Quote?                        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  appointmentId    String?
+  appointment      OrganisationProjectAppointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  // Free text, not a link to a budget/cost ledger - this app monitors
+  // cost movements for reporting, it isn't the system of record (Meeting
+  // 002 decision 2.4), the same boundary Rfi's cost-impact fields respect.
+  costCode         String?
+  scopeDescription String?
+  value            Float
+  currency         Currency
+  status           PurchaseOrderStatus           @default(DRAFT)
+  issuedAt         DateTime?
+  statusHistory    PurchaseOrderStatusHistory[]
+  deliveries       Delivery[]
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+
+  @@index([projectId])
+  @@index([contractorId])
+  @@index([quoteId])
+  @@index([appointmentId])
+}
+
+// Same shape and reasoning as the existing SubmittalStatusHistory -
+// scoped to just this entity's status changes.
+model PurchaseOrderStatusHistory {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  previousStatus  String
+  newStatus       String
+  changedById     String
+  changedBy       User          @relation(fields: [changedById], references: [id])
+  comment         String?
+  changedAt       DateTime      @default(now())
+
+  @@index([purchaseOrderId])
+}
+
+enum DeliveryStatus {
+  PENDING
+  PARTIAL
+  DELIVERED
+  DELAYED
+  REJECTED
+}
+
+model Delivery {
+  id                String         @id @default(uuid())
+  purchaseOrderId   String
+  purchaseOrder     PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  description       String
+  quantityOrdered   Float
+  quantityDelivered Float          @default(0)
+  expectedDate      DateTime?
+  deliveredDate     DateTime?
+  status            DeliveryStatus @default(PENDING)
+  acceptedById      String?
+  acceptedBy        ProjectMember? @relation(fields: [acceptedById], references: [id], onDelete: SetNull)
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([purchaseOrderId])
+}
+
+// Distinct from the existing OrganisationRating (a quick 1-5 star rating)
+// - the register's own "Vendor Performance" row asks for a multi-
+// dimension scorecard. The overall score is an unweighted average
+// computed at read time (vendor-scorecards.service.ts), never stored;
+// true configurable per-dimension weighting is deferred - see
+// document.md for the reasoning. No vendor-facing user is listed for
+// this row in the register, so it stays gated the same way ratings/
+// payments already are (InternalOnlyGuard), not project RBAC.
+model VendorScorecard {
+  id                 String                         @id @default(uuid())
+  appointmentId      String
+  appointment        OrganisationProjectAppointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  costScore          Int
+  qualityScore       Int
+  deliveryScore      Int
+  safetyScore        Int
+  documentationScore Int
+  comment            String?
+  recordedById       String
+  recordedBy         User                           @relation(fields: [recordedById], references: [id])
+  createdAt          DateTime                       @default(now())
+
+  @@index([appointmentId])
 }

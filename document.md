@@ -900,6 +900,115 @@ both update live — zero console errors either side).
 
 ---
 
+### 2.11 Procurement — RFQ, Quotes, Evaluation, POs, Vendor Performance, Deliveries, Vendor Portal
+
+Finishes the requirements register's PROC / Procurement & Vendors
+section (`Setjeka Feature and Functional Requirements Register.xlsx`,
+rows 38–45, read directly from the source file). Only **Vendor
+onboarding** was built before this (§2.3's Contractors module); this
+closes the remaining six submodules the register lists under one
+category, all of which plug directly into infrastructure this session
+already shipped: the Administration module's RBAC engine (a new
+`PROCUREMENT` `PermissionModule`), the `Contractor` directory (RFQs
+invite from it), `ProjectDocument` (BOQ/quote attachments link to it,
+not a second upload path), and external `CONTRACTOR`-role accounts
+(Administration's invite flow already gives vendors real, scoped
+logins).
+
+**RFQ**: `Rfq` (auto-numbered `RFQ-2026-0001`, scope description,
+optional `ProjectDocument` link, due date, status
+`DRAFT`/`ISSUED`/`CLOSED`/`AWARDED`/`CANCELLED`) + `RfqInvitation`
+(which `Contractor`s were invited). Issuing is the `APPROVE` action on
+`PROCUREMENT`.
+
+**Quotes**: `Quote` nested under an RFQ (price, currency, lead time,
+warranty/commercial terms, technical proposal, optional attachment). An
+external `CONTRACTOR`-role caller submitting a quote has `contractorId`
+forced to their own membership's `contractorId` server-side — verified
+directly: a vendor's attempt to submit "as" another invited vendor's
+`contractorId` was silently overridden back to their own. An internal
+user must supply it explicitly (recording a paper/email quote on a
+vendor's behalf). `create()` also rejects a quote from a contractor that
+was never actually invited.
+
+**Evaluation**: no separate model — `Quote.evaluationScores` is `Json`
+(`[{criterion, weight, score}]`, the same convention
+`ProjectTask.checklist` already uses), with the weighted total computed
+at read time in `quotes.service.ts`, never stored — verified by hand
+(0.4×8 + 0.3×9 + 0.3×6 = 7.7, matched exactly). The "side-by-side"
+comparison is just the RFQ's quote list, already naturally comparable.
+
+**Purchase Orders**: `PurchaseOrder` (auto-numbered `PO-2026-0001`,
+optional links to the awarded `Quote` and/or an existing
+`OrganisationProjectAppointment`, `costCode` as free text — this app
+monitors cost, it isn't a budget system of record, per Meeting 002
+decision 2.4 — status `DRAFT`/`APPROVED`/`ISSUED`/`CANCELLED`) +
+`PurchaseOrderStatusHistory`, mirroring `SubmittalStatusHistory` exactly
+(same `$transaction` shape as `SubmittalsService.changeStatus`).
+Approving/issuing is the `APPROVE` action.
+
+**Deliveries**: `Delivery` tied to a `PurchaseOrder` (quantity
+ordered/delivered, expected/delivered dates, status
+`PENDING`/`PARTIAL`/`DELIVERED`/`DELAYED`/`REJECTED` — "exceptions are
+visible" is the `DELAYED`/`REJECTED` states, accepted-by
+`ProjectMember`).
+
+**Vendor Performance**: `VendorScorecard`, contractor-family like the
+existing `OrganisationRating` (`contractors/:contractorId/scorecards`,
+gated by `InternalOnlyGuard` like `ratings`/`payment-records` —
+verified: an external vendor's own `GET` on this route is a 403). Five
+1–5 dimension scores (cost/quality/delivery/safety/documentation); the
+overall score is an unweighted average computed at read time — the
+register says "configurable" but specifies no weighting UI, so true
+per-dimension weighting is deferred (see table).
+
+**Vendor Portal**: not a second UI. `RfqsService`/`QuotesService`/
+`PurchaseOrdersService`/`DeliveriesService`'s `findAll` each resolve the
+caller's own `contractorId` (via their `ProjectMember` row) when they're
+an external `CONTRACTOR`-role account, and filter to it — internal
+users are unaffected. Verified directly: two vendors invited to the same
+RFQ each see only their own quote via `GET`, never the other's, and a
+vendor with no purchase order on a project sees an empty list while the
+PO's actual owner sees theirs. This is the same scoping decision already
+made for the deferred Client Portal item — the RBAC-scoped existing
+views satisfy "vendor sees only authorized records" without a
+differently-skinned page.
+
+**Frontend**: a new **Procurement** tab on the project workspace
+stacking `RfqsPanel` (list/create/invite/issue, with a quote detail
+slide-over showing quotes side by side and inline evaluation inputs) and
+`PurchaseOrdersPanel` (list/create/status/history, with a nested
+Deliveries section per PO) — the same stacked-panel precedent as the
+Documents tab. `VendorScorecardPanel` sits inside the existing
+Contractor workspace's Ratings tab. Two more Overview dashboard stat
+cards (open RFQs, pending POs). A "RFQs & POs" shortcut was added to the
+sidebar's existing Procurement group, alongside Contractors.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Configurable per-dimension scorecard weighting | Register says "configurable" but names no weighting UI; an unweighted average is honest V1 |
+| A visually distinct "Vendor Portal" page/skin | Same reasoning as the deferred Client Portal UI — the RBAC-scoped existing views already satisfy the acceptance criterion |
+| RFQ→Quote deadline enforcement/auto-close | Not asked for; `dueDate` is informational like every other due date in this app |
+| Automatic PO generation from an accepted quote | The register says "create... POs from awarded quotations" — read as linking, not auto-generating; a PM still creates the PO explicitly |
+| Multi-currency conversion/rollup reporting | Out of scope everywhere else cost appears in this app (Meeting 002 decision 2.4) |
+| Delivery photo/proof-of-delivery attachments | Not asked for; `notes` covers it for now |
+
+Verified end-to-end via curl (full lifecycle: RFQ created → both vendors
+invited → issued → each vendor submits a quote and sees only their own →
+both evaluated with the weighted total matching by hand → PO created
+from the winning quote → walked `DRAFT`→`APPROVED`→`ISSUED` with two
+history rows → a delivery logged and walked `PENDING`→`PARTIAL`→
+`DELIVERED` → a vendor scorecard recorded with the average matching by
+hand → the `InternalOnlyGuard` and vendor-scoping denials all confirmed)
+and Playwright (the full Procurement tab — RFQ create, detail slide-over
+with invite picker and issue action — rendered and interactive with zero
+console errors). This closes out the PROC module referenced as "still
+fully ahead" in `MEMORY.md`'s Open/pending work section.
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

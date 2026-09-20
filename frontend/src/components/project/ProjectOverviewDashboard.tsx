@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare, HelpCircle, FileCheck2 } from 'lucide-react';
+import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare, HelpCircle, FileCheck2, Handshake, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 
@@ -18,6 +18,8 @@ interface Dashboard {
   risks: { byStatus: Record<string, number>; highSeverityCount: number };
   rfis: { byStatus: Record<string, number>; overdueCount: number };
   submittals: { byStatus: Record<string, number> };
+  rfqs: { byStatus: Record<string, number> };
+  purchaseOrders: { byStatus: Record<string, number> };
   compliance: { VALID: number; EXPIRING_SOON: number; EXPIRED: number; PENDING_VERIFICATION: number };
   contractorsCount: number;
   ratings: { average: number | null; count: number };
@@ -60,6 +62,8 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
   const openRfisCount = (data.rfis.byStatus.OPEN ?? 0) + (data.rfis.byStatus.ANSWERED ?? 0);
   const pendingSubmittalsCount =
     (data.submittals.byStatus.SUBMITTED ?? 0) + (data.submittals.byStatus.UNDER_REVIEW ?? 0) + (data.submittals.byStatus.REVISE_AND_RESUBMIT ?? 0);
+  const openRfqsCount = (data.rfqs.byStatus.DRAFT ?? 0) + (data.rfqs.byStatus.ISSUED ?? 0);
+  const pendingPosCount = (data.purchaseOrders.byStatus.DRAFT ?? 0) + (data.purchaseOrders.byStatus.APPROVED ?? 0);
 
   return (
     <div className="space-y-4">
@@ -99,6 +103,8 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
           tone={data.rfis.overdueCount > 0 ? 'text-red-600 dark:text-red-400' : undefined}
         />
         <StatCard icon={FileCheck2} label="Pending submittals" value={String(pendingSubmittalsCount)} />
+        <StatCard icon={Handshake} label="Open RFQs" value={String(openRfqsCount)} />
+        <StatCard icon={Truck} label="Pending POs" value={String(pendingPosCount)} />
       </div>
 
       {data.schedule.criticalPathCount > 0 && (

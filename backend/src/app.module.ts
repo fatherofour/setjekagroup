@@ -31,6 +31,11 @@ import { PermissionsModule } from './permissions/permissions.module.js';
 import { AuditLogModule } from './audit-log/audit-log.module.js';
 import { AuditLogInterceptor } from './audit-log/interceptors/audit-log.interceptor.js';
 import { StageTransitionsModule } from './stage-transitions/stage-transitions.module.js';
+import { RfqsModule } from './rfqs/rfqs.module.js';
+import { QuotesModule } from './quotes/quotes.module.js';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
+import { DeliveriesModule } from './deliveries/deliveries.module.js';
+import { VendorScorecardsModule } from './vendor-scorecards/vendor-scorecards.module.js';
 
 @Module({
   imports: [
@@ -62,6 +67,11 @@ import { StageTransitionsModule } from './stage-transitions/stage-transitions.mo
     PermissionsModule,
     AuditLogModule,
     StageTransitionsModule,
+    RfqsModule,
+    QuotesModule,
+    PurchaseOrdersModule,
+    DeliveriesModule,
+    VendorScorecardsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor }],

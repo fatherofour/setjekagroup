@@ -30,6 +30,8 @@ import { DocumentsPanel } from '@/components/project/DocumentsPanel';
 import { TransmittalsPanel } from '@/components/project/TransmittalsPanel';
 import { RfisPanel } from '@/components/project/RfisPanel';
 import { SubmittalsPanel } from '@/components/project/SubmittalsPanel';
+import { RfqsPanel } from '@/components/project/RfqsPanel';
+import { PurchaseOrdersPanel } from '@/components/project/PurchaseOrdersPanel';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
@@ -40,6 +42,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
   { value: 'technical', label: 'RFIs & Submittals' },
+  { value: 'procurement', label: 'Procurement' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
 ];
@@ -82,7 +85,8 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { authedFetch } = useAuth();
+  const { authedFetch, user } = useAuth();
+  const isExternal = user?.accountType === 'EXTERNAL';
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -411,6 +415,12 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <RfisPanel projectId={project.id} />
           <SubmittalsPanel projectId={project.id} />
+        </div>
+      )}
+      {tab === 'procurement' && (
+        <div className="space-y-4">
+          <RfqsPanel projectId={project.id} isExternal={isExternal} />
+          <PurchaseOrdersPanel projectId={project.id} isExternal={isExternal} />
         </div>
       )}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}

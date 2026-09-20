@@ -14,13 +14,15 @@ export class ProjectDashboardService {
   async getDashboard(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
 
-    const [activities, tasks, issues, risks, rfis, submittals, appointments, comments] = await Promise.all([
+    const [activities, tasks, issues, risks, rfis, submittals, rfqs, purchaseOrders, appointments, comments] = await Promise.all([
       this.prisma.scheduleActivity.findMany({ where: { projectId } }),
       this.prisma.projectTask.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.projectIssue.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.projectRisk.findMany({ where: { projectId }, select: { status: true, probability: true, impact: true } }),
       this.prisma.rfi.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.submittal.groupBy({ by: ['status'], where: { projectId }, _count: true }),
+      this.prisma.rfq.groupBy({ by: ['status'], where: { projectId }, _count: true }),
+      this.prisma.purchaseOrder.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.organisationProjectAppointment.findMany({
         where: { projectId },
         include: {
@@ -83,6 +85,8 @@ export class ProjectDashboardService {
       risks: { byStatus: riskCountsByStatus, highSeverityCount: highSeverityRiskCount },
       rfis: { byStatus: Object.fromEntries(rfis.map((r) => [r.status, r._count])), overdueCount: overdueRfiCount },
       submittals: { byStatus: Object.fromEntries(submittals.map((s) => [s.status, s._count])) },
+      rfqs: { byStatus: Object.fromEntries(rfqs.map((r) => [r.status, r._count])) },
+      purchaseOrders: { byStatus: Object.fromEntries(purchaseOrders.map((p) => [p.status, p._count])) },
       compliance: complianceCounts,
       contractorsCount: seenContractorIds.size,
       ratings: { average: averageRating, count: allRatings.length },

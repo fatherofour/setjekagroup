@@ -541,6 +541,38 @@ that step gets skipped.
   requests, client approves in a separate session, the header and Stage
   gate card both update live — zero console errors).
 
+- **Procurement (PROC) — RFQ, Quotes, Evaluation, POs, Vendor
+  Performance, Deliveries, Vendor Portal** (user request, "finish the
+  procurements" — full detail in `document.md` §2.11): closes the
+  requirements register's PROC section (confirmed directly from
+  `Setjeka Feature and Functional Requirements Register.xlsx`, rows
+  38-45, parsed straight from the source .xlsx since it wasn't in this
+  repo) beyond the Vendor onboarding foundation already built in §2.3.
+  Everything is project-nested except `VendorScorecard`, which stays
+  contractor-family like the existing `OrganisationRating`. The
+  "Evaluation" row got no separate model — `Quote.evaluationScores` is
+  `Json` (the same convention `ProjectTask.checklist` already uses),
+  weighted total computed at read time. "Vendor Portal" got no second
+  UI — the four project-nested services' `findAll` filter to the
+  caller's own `contractorId` when they're an external `CONTRACTOR`-role
+  account, the same scoping decision already made for the deferred
+  Client Portal item. A new `PROCUREMENT` permission module plugs
+  straight into the Administration RBAC engine; `CONTRACTOR` got it
+  added to `CONTRACTOR_EDIT_MODULES` so a vendor can submit/revise their
+  own quote, safe because the service layer scopes which records they
+  can even load. Verified end-to-end via curl (the full lifecycle:
+  RFQ→invite two vendors→issue→each submits a quote and sees only their
+  own, a spoofed `contractorId` on submission is silently overridden
+  back to their own→both evaluated with the weighted total matching by
+  hand (7.7 and 6.9)→PO created from the winning quote and walked
+  DRAFT→APPROVED→ISSUED with history rows→a delivery logged and walked
+  PENDING→PARTIAL→DELIVERED→a vendor scorecard recorded with the average
+  matching by hand (4.2)→`InternalOnlyGuard` denies an external vendor
+  on the scorecards route) and Playwright (the Procurement tab, RFQ
+  create, and its detail slide-over all render and work with zero
+  console errors). This is the last PROC item referenced in the
+  Open/pending work section below — it no longer applies.
+
 ## Local dev environment
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in
@@ -668,9 +700,12 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   — blocked on the user providing Azure AD app credentials** (tenant ID,
   client ID/secret, target SharePoint site+drive). Project Experience,
   Equipment records, and the deep Contractor/Consultant/Supplier-specific
-  sub-profiles are deferred pending a real consuming workflow. The rest of
-  the PROC module (RFQ, Quotes, Evaluation, Purchase Orders, Vendor
-  Performance scorecard, Vendor Portal) is still fully ahead.
+  sub-profiles are deferred pending a real consuming workflow. The rest
+  of the PROC module (RFQ, Quotes, Evaluation, Purchase Orders, Vendor
+  Performance scorecard, Deliveries, Vendor Portal) is now built — see
+  `document.md` §2.11. PROC's own deferred items (configurable
+  per-dimension scorecard weighting, a visually distinct Vendor Portal
+  skin, automatic PO generation) are listed there, not here.
 - The client-portal hard-rule-on-approvals is specified in the meeting
   notes but not yet built — CLI in the requirements register is the one
   remaining module adjacent to Project Management. It's no longer
@@ -702,11 +737,11 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   updated note above; it now has a real auth surface to build on, just
   not yet a dedicated portal UI.
 - No production deployment yet for the Schedule, Project collaboration,
-  Document Control, Risk Register, RFI/Submittals, Administration, or
-  Stage-gate modules — the tar-over-SSH + `docker compose up -d --build`
-  deploy is blocked in this session's current permission mode (see
-  below), still pending. The GitHub push itself is unblocked and up to
-  date as of the stage-gate commit.
+  Document Control, Risk Register, RFI/Submittals, Administration,
+  Stage-gate, or Procurement modules — the tar-over-SSH + `docker compose
+  up -d --build` deploy is blocked in this session's current permission
+  mode (see below), still pending. The GitHub push itself is unblocked
+  and up to date as of the Procurement commit.
 - **A free temporary domain was identified but not fully wired up**:
   `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
   the IP in the hostname — no signup, works instantly), and `certbot` is
