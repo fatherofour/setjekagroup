@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Pencil, X, Check, GanttChart } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -24,6 +24,8 @@ import { ProjectMembersPanel } from '@/components/project/ProjectMembersPanel';
 import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
 import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
 import { ProjectOverviewDashboard } from '@/components/project/ProjectOverviewDashboard';
+import { DocumentsPanel } from '@/components/project/DocumentsPanel';
+import { TransmittalsPanel } from '@/components/project/TransmittalsPanel';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
@@ -31,6 +33,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'issues', label: 'Issues' },
+  { value: 'documents', label: 'Documents' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
 ];
@@ -72,6 +75,7 @@ function Field({ label, value }: { label: string; value: string }) {
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authedFetch } = useAuth();
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
@@ -79,7 +83,21 @@ export default function ProjectDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Project>>({});
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => {
+    const requested = searchParams.get('tab');
+    return WORKSPACE_TABS.some((t) => t.value === requested) ? requested! : 'overview';
+  });
+
+  useEffect(() => {
+    // A query-string-only navigation (e.g. the sidebar's Documents link,
+    // ?tab=documents) doesn't remount this component — Next.js reuses the
+    // existing instance for the same dynamic segment — so the initial
+    // useState above won't re-run on its own; this keeps `tab` in sync
+    // whenever the URL's ?tab changes after mount.
+    const requested = searchParams.get('tab');
+    if (requested && WORKSPACE_TABS.some((t) => t.value === requested)) setTab(requested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     authedFetch<Project>(`/projects/${id}`)
@@ -372,6 +390,12 @@ export default function ProjectDetailPage() {
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
       {tab === 'tasks' && <ProjectTasksPanel projectId={project.id} />}
       {tab === 'issues' && <ProjectIssuesPanel projectId={project.id} />}
+      {tab === 'documents' && (
+        <div className="space-y-4">
+          <DocumentsPanel projectId={project.id} />
+          <TransmittalsPanel projectId={project.id} />
+        </div>
+      )}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
       {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}
     </div>

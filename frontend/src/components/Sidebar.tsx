@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { GREEN } from '@/lib/auth-theme';
 import { useCurrentProject } from '@/lib/current-project-context';
@@ -21,6 +21,8 @@ function defaultOpenState(): Record<string, boolean> {
 
 export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get('tab');
   const { currentProject } = useCurrentProject();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpenState);
   const [collapsed, setCollapsed] = useState(false);
@@ -121,8 +123,18 @@ export function Sidebar({ open }: { open: boolean }) {
                 {isOpen && (
                   <div className={`mt-0.5 space-y-0.5 pl-4 ${collapsed ? 'lg:hidden' : ''}`}>
                     {entry.children.map((child) => {
-                      const href = child.requiresProject && currentProject ? `/projects/${currentProject.id}/schedule` : child.href;
-                      const active = child.requiresProject ? pathname === href && href !== child.href : pathname === child.href;
+                      const href =
+                        child.requiresProject && currentProject
+                          ? `/projects/${currentProject.id}${child.projectPathSuffix ?? ''}`
+                          : child.href;
+                      const [hrefPath, hrefQuery] = href.split('?');
+                      const hrefTab = hrefQuery ? new URLSearchParams(hrefQuery).get('tab') : null;
+                      // Query-based entries (e.g. Documents, ?tab=documents) only
+                      // highlight when that exact tab is active; path-based
+                      // entries (e.g. Schedule, its own route) just match the path.
+                      const active = child.requiresProject
+                        ? pathname === hrefPath && hrefPath !== child.href && (hrefTab ? currentTab === hrefTab : !currentTab)
+                        : pathname === child.href;
                       const ChildIcon = child.icon;
                       return (
                         <Link

@@ -203,6 +203,11 @@ model User {
   scheduleBaselinesCreated ScheduleBaseline[]
   commentsAuthored   Comment[]
   notifications      Notification[]
+  documentsCreated   ProjectDocument[]
+  documentRevisionsUploaded DocumentRevision[] @relation("DocumentRevisionUploadedBy")
+  documentRevisionsReviewed DocumentRevision[] @relation("DocumentRevisionReviewedBy")
+  documentAccessLogs DocumentAccessLog[]
+  transmittalsCreated Transmittal[]
 
   @@index([resetTokenHash])
 }
@@ -445,6 +450,9 @@ model Project {
   issues                 ProjectIssue[]
   comments               Comment[]
   notifications          Notification[]
+  documentFolders        DocumentFolder[]
+  documents              ProjectDocument[]
+  transmittals           Transmittal[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -461,6 +469,7 @@ model ProjectNode {
   sortOrder Int             @default(0)
   scheduleActivities ScheduleActivity[]
   tasks     ProjectTask[]
+  documents ProjectDocument[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -489,6 +498,8 @@ model ProjectMember {
   scheduleActivitiesAssigned ScheduleActivity[]
   tasksAssigned   ProjectTask[]
   issuesOwned     ProjectIssue[]
+  transmittalsFrom Transmittal[]
+  transmittalRecipientOf TransmittalRecipient[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -580,6 +591,7 @@ model ScheduleActivity {
   asSuccessorOf   ScheduleDependency[] @relation("DependencySuccessor")
   baselineSnapshots ScheduleBaselineSnapshot[]
   tasks       ProjectTask[]
+  documents   ProjectDocument[]
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
@@ -717,6 +729,7 @@ enum CommentEntityType {
   TASK
   ISSUE
   SCHEDULE_ACTIVITY
+  DOCUMENT_REVISION
 }
 
 model Comment {
@@ -762,4 +775,155 @@ model Notification {
   createdAt  DateTime          @default(now())
 
   @@index([userId, isRead])
+}
+
+// Requirements Register DOC / Document Control. No meeting decision
+// narrows this module's scope (unlike Schedule's 4D removal or Commercial
+// Management's cost-system-of-record boundary), so V1 follows the
+// register closely, trimmed only where this app's already-documented
+// infrastructure gaps apply (no RBAC, no generic audit log, no
+// rendering/diffing library for true visual comparison).
+model DocumentFolder {
+  id        String           @id @default(uuid())
+  projectId String
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    DocumentFolder?  @relation("DocumentFolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  DocumentFolder[] @relation("DocumentFolderChildren")
+  name      String
+  sortOrder Int              @default(0)
+  documents ProjectDocument[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model ProjectDocument {
+  id          String            @id @default(uuid())
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      DocumentFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  name        String
+  description String?
+  // Free text, not a fixed enum — same reasoning as Contractor.disciplines:
+  // the register lists example values (drawing/spec/report/contract/
+  // correspondence) but doesn't confirm a closed taxonomy.
+  documentType String?
+  discipline   String?
+  projectNodeId String?
+  projectNode   ProjectNode?    @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  createdById String
+  createdBy   User              @relation(fields: [createdById], references: [id])
+  revisions   DocumentRevision[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([projectId])
+  @@index([folderId])
+  @@index([projectNodeId])
+  @@index([scheduleActivityId])
+}
+
+enum DocumentRevisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+model DocumentRevision {
+  id               String                 @id @default(uuid())
+  documentId       String
+  document         ProjectDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  // Free text ("A", "1", "P01") — numbering conventions differ by
+  // discipline/client; "current" is never stored, it's computed at read
+  // time as the most-recently-uploaded revision for a document, the same
+  // convention Schedule's SUMMARY-row logic already uses, so it can never
+  // go stale relative to what's actually been uploaded.
+  revisionNumber   String
+  storedFilename   String
+  originalFilename String
+  mimeType         String
+  fileSize         Int
+  uploadedById     String
+  uploadedBy       User                   @relation("DocumentRevisionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedAt       DateTime               @default(now())
+  reviewStatus     DocumentRevisionStatus @default(PENDING)
+  reviewedById     String?
+  reviewedBy       User?                  @relation("DocumentRevisionReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt       DateTime?
+  accessLogs       DocumentAccessLog[]
+  transmittalItems TransmittalItem[]
+
+  @@index([documentId])
+}
+
+enum DocumentAccessAction {
+  VIEWED
+  DOWNLOADED
+}
+
+// Scoped to just this entity, the same trade-off OrganisationStatusHistory
+// already makes — not an app-wide audit log, which doesn't exist anywhere
+// in this app.
+model DocumentAccessLog {
+  id                 String                @id @default(uuid())
+  documentRevisionId String
+  documentRevision   DocumentRevision      @relation(fields: [documentRevisionId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                  @relation(fields: [userId], references: [id])
+  action             DocumentAccessAction
+  createdAt          DateTime              @default(now())
+
+  @@index([documentRevisionId])
+}
+
+enum TransmittalStatus {
+  DRAFT
+  ISSUED
+}
+
+model Transmittal {
+  id                String                  @id @default(uuid())
+  projectId         String
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  transmittalNumber String                  @unique
+  purpose           String?
+  fromMemberId      String?
+  fromMember        ProjectMember?          @relation(fields: [fromMemberId], references: [id], onDelete: SetNull)
+  status            TransmittalStatus       @default(DRAFT)
+  issuedAt          DateTime?
+  createdById       String
+  createdBy         User                    @relation(fields: [createdById], references: [id])
+  recipients        TransmittalRecipient[]
+  items             TransmittalItem[]
+  createdAt         DateTime                @default(now())
+
+  @@index([projectId])
+}
+
+model TransmittalRecipient {
+  id            String      @id @default(uuid())
+  transmittalId String
+  transmittal   Transmittal @relation(fields: [transmittalId], references: [id], onDelete: Cascade)
+  memberId      String
+  member        ProjectMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([transmittalId])
+}
+
+model TransmittalItem {
+  id                 String           @id @default(uuid())
+  transmittalId      String
+  transmittal        Transmittal      @relation(fields: [transmittalId], references: [id], onDelete: Cascade)
+  documentRevisionId String
+  documentRevision   DocumentRevision @relation(fields: [documentRevisionId], references: [id], onDelete: Cascade)
+
+  @@index([transmittalId])
+  @@index([documentRevisionId])
 }

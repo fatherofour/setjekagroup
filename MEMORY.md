@@ -414,6 +414,22 @@ that step gets skipped.
   module's `ActivityDetailPanel`, so schedule activities now carry the
   same discussion surface as tasks/issues.
 
+- **Document Control module** (user request, second of the "what other
+  submodules belong under Projects" picks — full detail in `document.md`
+  §2.6): repository/folders, immutable revision control ("current" always
+  computed at read time, never stored), a review workflow reusing the
+  existing polymorphic `Comment` (`CommentEntityType` gained
+  `DOCUMENT_REVISION`), transmittals, and a per-revision access-log audit.
+  File storage reuses `compliance-records/upload.util.ts`'s exact multer
+  pattern in a new `project-documents/upload.util.ts`. Comparison is
+  side-by-side (two preview panes), not true overlay diffing — no
+  rendering/diffing library exists in this app. Verified end-to-end via
+  curl: two revisions confirmed immutable and correctly ordered, a review
+  + comment round-tripped, view/download each produced exactly one
+  `DocumentAccessLog` row, a transmittal was created and issued. Same
+  pre-existing gap as Compliance documents: cascading a project delete
+  removes the DB rows but not the files on disk — cleaned up manually.
+
 - **Schedule module** (user request — full detail in `document.md` §2.4):
   Gantt/Calendar/Card/Grid views over one shared activity+dependency
   dataset, a from-scratch CPM engine (working-day calendar, inclusive

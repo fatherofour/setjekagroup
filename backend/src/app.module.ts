@@ -20,6 +20,9 @@ import { ProjectIssuesModule } from './project-issues/project-issues.module.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { ProjectDashboardModule } from './project-dashboard/project-dashboard.module.js';
+import { DocumentFoldersModule } from './document-folders/document-folders.module.js';
+import { ProjectDocumentsModule } from './project-documents/project-documents.module.js';
+import { TransmittalsModule } from './transmittals/transmittals.module.js';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { ProjectDashboardModule } from './project-dashboard/project-dashboard.mo
     CommentsModule,
     NotificationsModule,
     ProjectDashboardModule,
+    DocumentFoldersModule,
+    ProjectDocumentsModule,
+    TransmittalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -501,6 +501,99 @@ discussion surface as everything else.
 
 ---
 
+### 2.6 Document Control — repository, revisions, review, transmittals
+
+Closes the requirements register's DOC section (9 rows: Repository,
+Register, Revision, Transmittals, Workflow, Collaboration/markup,
+Comparison, Search, Audit). Picked as the next per-project submodule
+after a user-requested review of what else the register/PROCSA/
+OpenConstructionERP imply belongs under "Projects" — chosen first because
+it's the module RFI, Submittals and QHSE defects will all eventually
+reference a drawing or document through. No meeting decision narrows this
+one's scope (unlike Schedule's 4D removal or Commercial Management's
+cost-system-of-record boundary), so V1 follows the register closely,
+trimmed only where this app's already-documented infrastructure gaps
+apply.
+
+**Models:** `DocumentFolder` (self-referencing tree, identical shape to
+`ProjectNode`) → `ProjectDocument` (name, `documentType`/`discipline` as
+free text — same reasoning as `Contractor.disciplines` — optional links to
+a `ProjectNode`/`ScheduleActivity` for context) → `DocumentRevision`
+(immutable; a new upload always adds a row, never overwrites or deletes a
+prior one; **"current" is never stored** — it's computed at read time as
+the most-recently-uploaded revision, the same convention Schedule's
+SUMMARY-row logic already uses, so it can't drift from what's actually on
+disk). `DocumentAccessLog` (view/download audit, scoped to just this
+entity — the same trade-off `OrganisationStatusHistory` already makes,
+not an app-wide log, which doesn't exist). `Transmittal` +
+`TransmittalRecipient` + `TransmittalItem` (a simple issue-and-list
+record, not a tracked receipt/acknowledgement workflow — the register
+asks for "issue, receive and track," and a status field covers that).
+
+**Review workflow reuses the existing polymorphic `Comment`** model
+(built for Tasks/Issues/Schedule) rather than a separate reviewer-comment
+field — `CommentEntityType` gained a fourth value, `DOCUMENT_REVISION`.
+This is the same "connective tissue" pattern extended once more: a
+reviewer's Approve/Reject/Request-revision decision is a status field on
+the revision, but their *reasoning* is a normal comment, discoverable the
+same way as everywhere else in the app.
+
+**File storage reuses `compliance-records/upload.util.ts`'s exact
+pattern** (multer `diskStorage` + `fileFilter` + `generateStoredName`) in
+a new `project-documents/upload.util.ts`, its own `DOCUMENT_UPLOAD_DIR`
+directory, with the allowed-extension list extended to include
+`.dwg`/`.dxf` (drawings) alongside the existing office-document set —
+neither is previewable in-browser (no CAD rendering library here), so
+they fall back to `DocumentPreviewModal`'s existing "Download to view"
+path, same as Word/Excel already do for Compliance documents. The
+existing `POST .../document` → `GET .../document` (stream) →
+`DELETE .../document` shape from Compliance carries over almost exactly,
+with one addition: every `GET .../revisions/:id/file` call writes a
+`DocumentAccessLog` row (`VIEWED` for an inline request, `DOWNLOADED`
+when `?download=1` is passed).
+
+**Comparison is side-by-side, not overlay**: `RevisionCompareModal.tsx`
+opens two small preview panes (reusing the same image/PDF/fallback logic
+`DocumentPreviewModal` already has, just duplicated per-pane rather than
+literally rendering two full-screen `DocumentPreviewModal`s, which would
+visually collide) plus each revision's metadata. True pixel/vector
+overlay diffing needs a rendering + diffing library this app doesn't
+have — side-by-side is the honest V1.
+
+**Frontend:** `DocumentsPanel.tsx` (list + type filter chips + a
+client-side CSV export — the register's other "export" asks have all
+been handled the same way), `DocumentDetailPanel.tsx` (metadata edit,
+revision history with per-revision view/download/review actions, upload
+new revision, embedded `CommentThread`), `TransmittalsPanel.tsx`. Both
+live under a new **Documents** tab in `/projects/[id]`'s workspace
+(`Overview/Tasks/Issues/Documents/Team/Structure`).
+
+**Verified end-to-end via curl**: created a document with an initial
+revision, uploaded a second revision and confirmed the first's
+`storedFilename` was untouched while `revisions[0]` (current) correctly
+became the second; approved the current revision and posted a comment
+against `entityType: 'DOCUMENT_REVISION'`; viewed then downloaded the
+revision and confirmed exactly one `VIEWED` and one `DOWNLOADED`
+`DocumentAccessLog` row landed; created and issued a transmittal
+referencing the approved revision. All test data (including the two
+uploaded files on disk, which a cascading project delete does **not**
+clean up — a pre-existing limitation shared with Compliance documents)
+was removed manually afterward.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Freehand markup/redlining (canvas drawing over a drawing/PDF) | A full annotation engine is its own multi-day feature; discussion happens via the existing Comment thread on a revision instead |
+| True visual diff/overlay comparison | Needs a PDF/image rendering + diffing library this app doesn't have; side-by-side metadata + preview covers the ask honestly |
+| Cross-entity global search expansion (documents/RFIs/submittals/tasks in one search box) | The existing `SearchPalette` is project-name-scoped only (a pre-existing limit) — a Documents-tab-local filter is built instead |
+| Folder/document RBAC permissions | No RBAC exists anywhere in this app — standing gap; every document is visible to any authenticated user like everything else |
+| SharePoint/external storage | Local disk only, consistent with Compliance document storage — still blocked on Azure AD credentials the user hasn't provided |
+| Transmittal receipt/acknowledgement tracking | Register asks for "issue, receive and track"; V1 tracks issue + a status field, not a full read-receipt workflow |
+| Automatic on-disk file cleanup when a document/project is deleted | Database rows cascade correctly; the underlying files on disk don't — same pre-existing gap as Compliance document attachments |
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
