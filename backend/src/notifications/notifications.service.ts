@@ -57,7 +57,7 @@ export class NotificationsService {
 
     const synthetic: (typeof persisted)[number][] = [];
     if (memberIds.length > 0) {
-      const [dueTasks, dueIssues, dueRisks] = await Promise.all([
+      const [dueTasks, dueIssues, dueRisks, dueRfis, dueSubmittals] = await Promise.all([
         this.prisma.projectTask.findMany({
           where: { assignedToId: { in: memberIds }, dueDate: { lte: dueWindow, not: null }, status: { not: 'DONE' } },
         }),
@@ -66,6 +66,17 @@ export class NotificationsService {
         }),
         this.prisma.projectRisk.findMany({
           where: { ownerId: { in: memberIds }, reviewDate: { lte: dueWindow, not: null }, status: { not: 'CLOSED' } },
+        }),
+        // Whoever currently holds the ball is the one who needs the reminder.
+        this.prisma.rfi.findMany({
+          where: { ballInCourtId: { in: memberIds }, dueDate: { lte: dueWindow, not: null }, status: { not: 'CLOSED' } },
+        }),
+        this.prisma.submittal.findMany({
+          where: {
+            reviewerId: { in: memberIds },
+            dueDate: { lte: dueWindow, not: null },
+            status: { notIn: ['APPROVED', 'APPROVED_WITH_COMMENTS', 'REJECTED'] },
+          },
         }),
       ]);
       for (const task of dueTasks) {
@@ -108,6 +119,34 @@ export class NotificationsService {
           message: `Risk "${risk.title}" is due for review`,
           isRead: false,
           createdAt: risk.reviewDate!,
+        });
+      }
+      for (const rfi of dueRfis) {
+        if (alreadyNotifiedToday.has(`RFI:${rfi.id}`)) continue;
+        synthetic.push({
+          id: `synthetic-rfi-${rfi.id}`,
+          userId,
+          projectId: projectIdByMemberId.get(rfi.ballInCourtId!) ?? '',
+          type: 'DUE_SOON',
+          entityType: 'RFI',
+          entityId: rfi.id,
+          message: `RFI "${rfi.title}" is due soon`,
+          isRead: false,
+          createdAt: rfi.dueDate!,
+        });
+      }
+      for (const submittal of dueSubmittals) {
+        if (alreadyNotifiedToday.has(`SUBMITTAL:${submittal.id}`)) continue;
+        synthetic.push({
+          id: `synthetic-submittal-${submittal.id}`,
+          userId,
+          projectId: projectIdByMemberId.get(submittal.reviewerId!) ?? '',
+          type: 'DUE_SOON',
+          entityType: 'SUBMITTAL',
+          entityId: submittal.id,
+          message: `Submittal "${submittal.title}" is due soon`,
+          isRead: false,
+          createdAt: submittal.dueDate!,
         });
       }
     }

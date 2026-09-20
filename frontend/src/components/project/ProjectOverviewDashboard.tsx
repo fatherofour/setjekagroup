@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare } from 'lucide-react';
+import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare, HelpCircle, FileCheck2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 
@@ -16,6 +16,8 @@ interface Dashboard {
   tasks: Record<string, number>;
   issues: Record<string, number>;
   risks: { byStatus: Record<string, number>; highSeverityCount: number };
+  rfis: { byStatus: Record<string, number>; overdueCount: number };
+  submittals: { byStatus: Record<string, number> };
   compliance: { VALID: number; EXPIRING_SOON: number; EXPIRED: number; PENDING_VERIFICATION: number };
   contractorsCount: number;
   ratings: { average: number | null; count: number };
@@ -55,10 +57,13 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
   const scheduleProgress = data.schedule.totalActivities > 0 ? Math.round((data.schedule.completedActivities / data.schedule.totalActivities) * 100) : null;
   const openIssuesCount = (data.issues.OPEN ?? 0) + (data.issues.IN_PROGRESS ?? 0) + (data.issues.ESCALATED ?? 0);
   const complianceIssues = data.compliance.EXPIRED + data.compliance.EXPIRING_SOON + data.compliance.PENDING_VERIFICATION;
+  const openRfisCount = (data.rfis.byStatus.OPEN ?? 0) + (data.rfis.byStatus.ANSWERED ?? 0);
+  const pendingSubmittalsCount =
+    (data.submittals.byStatus.SUBMITTED ?? 0) + (data.submittals.byStatus.UNDER_REVIEW ?? 0) + (data.submittals.byStatus.REVISE_AND_RESUBMIT ?? 0);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <Link href={`/projects/${projectId}/schedule`}>
           <StatCard
             icon={GanttChart}
@@ -87,6 +92,13 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
           tone={complianceIssues > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
         />
         <StatCard icon={Star} label="Avg. rating" value={data.ratings.average != null ? data.ratings.average.toFixed(1) : '—'} />
+        <StatCard
+          icon={HelpCircle}
+          label="Open RFIs"
+          value={String(openRfisCount)}
+          tone={data.rfis.overdueCount > 0 ? 'text-red-600 dark:text-red-400' : undefined}
+        />
+        <StatCard icon={FileCheck2} label="Pending submittals" value={String(pendingSubmittalsCount)} />
       </div>
 
       {data.schedule.criticalPathCount > 0 && (

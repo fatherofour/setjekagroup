@@ -24,6 +24,8 @@ import { DocumentFoldersModule } from './document-folders/document-folders.modul
 import { ProjectDocumentsModule } from './project-documents/project-documents.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
+import { RfisModule } from './rfis/rfis.module.js';
+import { SubmittalsModule } from './submittals/submittals.module.js';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { ProjectRisksModule } from './project-risks/project-risks.module.js';
     ProjectDocumentsModule,
     TransmittalsModule,
     ProjectRisksModule,
+    RfisModule,
+    SubmittalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

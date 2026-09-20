@@ -27,6 +27,8 @@ import { ProjectRisksPanel } from '@/components/project/ProjectRisksPanel';
 import { ProjectOverviewDashboard } from '@/components/project/ProjectOverviewDashboard';
 import { DocumentsPanel } from '@/components/project/DocumentsPanel';
 import { TransmittalsPanel } from '@/components/project/TransmittalsPanel';
+import { RfisPanel } from '@/components/project/RfisPanel';
+import { SubmittalsPanel } from '@/components/project/SubmittalsPanel';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
@@ -36,6 +38,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'issues', label: 'Issues' },
   { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
+  { value: 'technical', label: 'RFIs & Submittals' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
 ];
@@ -396,6 +399,12 @@ export default function ProjectDetailPage() {
         <div className="space-y-4">
           <DocumentsPanel projectId={project.id} />
           <TransmittalsPanel projectId={project.id} />
+        </div>
+      )}
+      {tab === 'technical' && (
+        <div className="space-y-4">
+          <RfisPanel projectId={project.id} />
+          <SubmittalsPanel projectId={project.id} />
         </div>
       )}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}

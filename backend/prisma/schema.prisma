@@ -208,6 +208,7 @@ model User {
   documentRevisionsReviewed DocumentRevision[] @relation("DocumentRevisionReviewedBy")
   documentAccessLogs DocumentAccessLog[]
   transmittalsCreated Transmittal[]
+  submittalStatusChanges SubmittalStatusHistory[]
 
   @@index([resetTokenHash])
 }
@@ -454,6 +455,8 @@ model Project {
   documents              ProjectDocument[]
   transmittals           Transmittal[]
   risks                  ProjectRisk[]
+  rfis                   Rfi[]
+  submittals             Submittal[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -502,6 +505,11 @@ model ProjectMember {
   transmittalsFrom Transmittal[]
   transmittalRecipientOf TransmittalRecipient[]
   risksOwned      ProjectRisk[]
+  rfisRaised      Rfi[]             @relation("RfiRaisedBy")
+  rfisAssigned    Rfi[]             @relation("RfiAssignedTo")
+  rfisBallInCourt Rfi[]             @relation("RfiBallInCourt")
+  submittalsSubmitted Submittal[]   @relation("SubmittalSubmittedBy")
+  submittalsReviewing Submittal[]   @relation("SubmittalReviewer")
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -733,6 +741,8 @@ enum CommentEntityType {
   SCHEDULE_ACTIVITY
   DOCUMENT_REVISION
   RISK
+  RFI
+  SUBMITTAL
 }
 
 model Comment {
@@ -763,6 +773,8 @@ enum NotificationType {
   MENTIONED
   DUE_SOON
   RISK_ESCALATED
+  RFI_BALL_IN_COURT
+  SUBMITTAL_STATUS_CHANGED
 }
 
 model Notification {
@@ -824,6 +836,8 @@ model ProjectDocument {
   createdById String
   createdBy   User              @relation(fields: [createdById], references: [id])
   revisions   DocumentRevision[]
+  rfis        Rfi[]
+  submittals  Submittal[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -969,4 +983,112 @@ model ProjectRisk {
 
   @@index([projectId])
   @@index([ownerId])
+}
+
+// Requirements Register RFI / SUB — Technical Administration. Grouped
+// together in the register under one category, and structurally a
+// matched pair here too: both are document-review workflows routed
+// between contractor/consultant/client, both reuse ProjectDocument for
+// "supporting documents" rather than a second upload path. ballInCourtId
+// on Rfi isn't a register ask — it's a small addition found genuinely
+// useful in OpenConstructionERP's own RFI model (whose turn it is to
+// act), cheap enough to include alongside the register's own fields.
+enum RfiStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+model Rfi {
+  id                            String         @id @default(uuid())
+  projectId                     String
+  project                       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rfiNumber                     String         @unique
+  title                         String
+  question                      String?
+  officialResponse              String?
+  respondedAt                   DateTime?
+  raisedById                    String?
+  raisedBy                      ProjectMember? @relation("RfiRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
+  assignedToId                  String?
+  assignedTo                    ProjectMember? @relation("RfiAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  ballInCourtId                 String?
+  ballInCourt                   ProjectMember? @relation("RfiBallInCourt", fields: [ballInCourtId], references: [id], onDelete: SetNull)
+  priority                      SchedulePriority @default(MEDIUM)
+  status                        RfiStatus      @default(OPEN)
+  dueDate                       DateTime?
+  // Plain figures, no currency handling — Meeting 002 decision 2.4
+  // established this app monitors cost movements for reporting only,
+  // it's not the system of record, so a bare number in the project's
+  // assumed currency matches that boundary without duplicating the
+  // Currency-handling machinery PaymentRecord/appointments already own.
+  costImpactPotential           Float?
+  costImpactConfirmed           Float?
+  scheduleImpactPotentialDays   Float?
+  scheduleImpactConfirmedDays   Float?
+  documentId                    String?
+  document                      ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt                     DateTime       @default(now())
+  updatedAt                     DateTime       @updatedAt
+
+  @@index([projectId])
+  @@index([raisedById])
+  @@index([assignedToId])
+  @@index([ballInCourtId])
+  @@index([documentId])
+}
+
+// The register enumerates these exact six states as an acceptance
+// criterion — unlike category/type fields elsewhere in this app, this
+// one is a closed, confirmed taxonomy, not an example list.
+enum SubmittalStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  APPROVED_WITH_COMMENTS
+  REVISE_AND_RESUBMIT
+  REJECTED
+}
+
+model Submittal {
+  id              String            @id @default(uuid())
+  projectId       String
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittalNumber String            @unique
+  title           String
+  specSection     String?
+  submittalType   String?
+  submittedById   String?
+  submittedBy     ProjectMember?    @relation("SubmittalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewerId      String?
+  reviewer        ProjectMember?    @relation("SubmittalReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  status          SubmittalStatus   @default(SUBMITTED)
+  dueDate         DateTime?
+  documentId      String?
+  document        ProjectDocument?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  statusHistory   SubmittalStatusHistory[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([projectId])
+  @@index([submittedById])
+  @@index([reviewerId])
+  @@index([documentId])
+}
+
+// Same shape and reasoning as the existing OrganisationStatusHistory —
+// scoped to just this entity's status changes, not an app-wide audit log,
+// which doesn't exist anywhere in this app.
+model SubmittalStatusHistory {
+  id             String    @id @default(uuid())
+  submittalId    String
+  submittal      Submittal @relation(fields: [submittalId], references: [id], onDelete: Cascade)
+  previousStatus String
+  newStatus      String
+  changedById    String
+  changedBy      User      @relation(fields: [changedById], references: [id])
+  comment        String?
+  changedAt      DateTime  @default(now())
+
+  @@index([submittalId])
 }

@@ -14,11 +14,13 @@ export class ProjectDashboardService {
   async getDashboard(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
 
-    const [activities, tasks, issues, risks, appointments, comments] = await Promise.all([
+    const [activities, tasks, issues, risks, rfis, submittals, appointments, comments] = await Promise.all([
       this.prisma.scheduleActivity.findMany({ where: { projectId } }),
       this.prisma.projectTask.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.projectIssue.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.projectRisk.findMany({ where: { projectId }, select: { status: true, probability: true, impact: true } }),
+      this.prisma.rfi.groupBy({ by: ['status'], where: { projectId }, _count: true }),
+      this.prisma.submittal.groupBy({ by: ['status'], where: { projectId }, _count: true }),
       this.prisma.organisationProjectAppointment.findMany({
         where: { projectId },
         include: {
@@ -57,6 +59,10 @@ export class ProjectDashboardService {
       }
     }
 
+    const overdueRfiCount = await this.prisma.rfi.count({
+      where: { projectId, dueDate: { lt: new Date() }, status: { not: 'CLOSED' } },
+    });
+
     const allRatings = appointments.flatMap((a) => a.ratings);
     const averageRating = allRatings.length > 0 ? allRatings.reduce((sum, r) => sum + r.stars, 0) / allRatings.length : null;
 
@@ -75,6 +81,8 @@ export class ProjectDashboardService {
       tasks: Object.fromEntries(tasks.map((t) => [t.status, t._count])),
       issues: Object.fromEntries(issues.map((i) => [i.status, i._count])),
       risks: { byStatus: riskCountsByStatus, highSeverityCount: highSeverityRiskCount },
+      rfis: { byStatus: Object.fromEntries(rfis.map((r) => [r.status, r._count])), overdueCount: overdueRfiCount },
+      submittals: { byStatus: Object.fromEntries(submittals.map((s) => [s.status, s._count])) },
       compliance: complianceCounts,
       contractorsCount: seenContractorIds.size,
       ratings: { average: averageRating, count: allRatings.length },

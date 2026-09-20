@@ -653,6 +653,81 @@ on `ProjectOverviewDashboard`.
 
 ---
 
+### 2.8 RFI + Submittals
+
+Closes the requirements register's RFI (2 rows) and SUB (3 rows) sections
+— the fourth and last per-project submodule from the user-directed
+review. Grouped and built together because the register itself files
+both under one category, **Technical Administration**, and structurally
+they're a matched pair: document-review workflows routed between
+contractor/consultant/client, both reusing patterns already built this
+session (`DocumentRevisionStatus`'s review shape, `OrganisationStatusHistory`'s
+per-entity audit log, the `Comment`/`Notification` pipelines).
+
+**`Rfi`**: raised/assigned/**ball-in-court** (`ProjectMember`,
+nullable), priority, status (`OPEN`/`ANSWERED`/`CLOSED`), due date, four
+impact fields (`costImpactPotential`/`costImpactConfirmed`/
+`scheduleImpactPotentialDays`/`scheduleImpactConfirmedDays` — plain
+numbers, no currency handling, consistent with Meeting 002 decision 2.4's
+"monitoring only, not the system of record for cost" boundary), and an
+optional link to an existing `ProjectDocument` for "supporting documents"
+rather than a second upload path. **`ballInCourtId` is not a register
+ask** — it's a small, cheap addition (whose turn it is to act) found
+genuinely useful in OpenConstructionERP's own RFI model during the
+earlier research pass, brought in per the user's standing invitation to
+surface what that research found worth reusing. It defaults to the
+assignee on create, flips to the raiser on `PATCH .../respond`, and
+follows a reassignment — each transition fires a real `RFI_BALL_IN_COURT`
+notification.
+
+**`Submittal`**: `status` is the one place in this whole session where a
+category-like field is a **closed enum, not free text** — the register
+explicitly names all six states (`SUBMITTED`/`UNDER_REVIEW`/`APPROVED`/
+`APPROVED_WITH_COMMENTS`/`REVISE_AND_RESUBMIT`/`REJECTED`), unlike
+`documentType`/`category` elsewhere where only example values were given.
+**`SubmittalStatusHistory`** mirrors `OrganisationStatusHistory` exactly
+(entity-scoped audit trail, written in the same `$transaction` alongside
+the status update, the same pattern `ContractorsService.updateStatus`
+already uses) — the register's Submittal row is the only one this session
+that explicitly demands "status history is retained," so it's the only
+one of Tasks/Issues/Risks/RFIs/Submittals that has one. Every status
+change also fires `SUBMITTAL_STATUS_CHANGED` to the submitter.
+
+**Overdue RFIs/Submittals** join the existing opportunistic
+synthetic-notification check in `NotificationsService.findAllForUser` as
+a fourth and fifth source — notified to whoever currently holds the ball
+(RFI) or is the reviewer (Submittal), not a fixed assignee, since that's
+whose turn it actually is.
+
+**Dashboard**: two more stat cards ("Open RFIs," "Pending submittals");
+the stat-card grid changed from a single 6-column row to a `2/3/4`
+responsive layout (8 cards, two rows at desktop width) rather than
+stretching wider.
+
+One combined **RFIs & Submittals** tab in `/projects/[id]`, stacking
+`RfisPanel` + `SubmittalsPanel` — the same layout precedent as the
+Documents tab (`DocumentsPanel` + `TransmittalsPanel`), rather than two
+more top-level tabs for what the register itself files under one
+category.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Direct file upload on RFIs/Submittals | "Supporting documents" links an existing `ProjectDocument` instead of a second upload/storage path — avoids duplicating Document Control |
+| RFI/Submittal PDF export or formatted print view | Not asked for by either register row's acceptance criteria |
+| Configurable/multi-step review workflows | The register asks for routing "through" parties and a status field, not a workflow engine; `reviewerId` + status covers the ask without inventing approval-chain infrastructure this app has nowhere else |
+| RBAC-gated visibility (e.g. only the assigned party can respond) | No RBAC exists anywhere in this app — standing gap, same as every other module |
+| Status history for RFIs | Only the register's Submittal row explicitly demands it — RFIs get the same honest scope as Tasks/Issues/Risks |
+
+This closes the four-module sequence the user asked for after reviewing
+what else belonged under "Projects" (Document Control → Risk Register →
+RFI + Submittals). RFI/SUB/RISK/DOC are no longer open items in
+`MEMORY.md`'s pending-work list — only the Client Portal (CLI) remains
+as a deferred, cross-cutting item blocked on a real second auth surface.
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

@@ -448,6 +448,30 @@ that step gets skipped.
   by hand) and Playwright (create/comment/score-badge/dashboard-count, all
   clean, zero console errors).
 
+- **RFI + Submittals module** (user request, fourth and last of the "what
+  other submodules belong under Projects" picks — full detail in
+  `document.md` §2.8): grouped and built together since the register
+  files both under one category, Technical Administration. `Rfi` gained
+  a `ballInCourtId` that isn't a register ask — a small addition (whose
+  turn it is to act) found genuinely useful in OpenConstructionERP's own
+  RFI model, brought in per the user's standing invitation to reuse what
+  that research found worth it — defaulting to the assignee, flipping to
+  the raiser on response, notifying on every change. `Submittal.status`
+  is the one place this session where a category-like field is a closed
+  enum rather than free text, because the register explicitly names all
+  six states; `SubmittalStatusHistory` mirrors the existing
+  `OrganisationStatusHistory` pattern exactly (same `$transaction`
+  shape as `ContractorsService.updateStatus`). `CommentEntityType` now
+  has seven values, `NotificationType` seven. Verified end-to-end via
+  curl (ball-in-court defaulted and flipped correctly, two
+  `SubmittalStatusHistory` rows landed in order, both notification types
+  fired, dashboard counts matched by hand) and Playwright (RFI
+  create→respond, submittal create→two status changes→history list, both
+  comment threads, Overview's two new stat cards — all clean, zero
+  console errors). This closes the four-module sequence
+  (Document Control → Risk Register → RFI + Submittals) the user asked
+  for after reviewing what else belonged under "Projects."
+
 - **Schedule module** (user request — full detail in `document.md` §2.4):
   Gantt/Calendar/Card/Grid views over one shared activity+dependency
   dataset, a from-scratch CPM engine (working-day calendar, inclusive
@@ -569,9 +593,6 @@ since there was no GitHub remote pushed yet at deploy time (see below).
 - Search is functional but scoped to projects-by-name only, since that's
   the only searchable entity that exists — will need to expand as more
   modules land.
-- Project Management: R16 tasks, R18 control-tower dashboard, R19 issue
-  register — see the decisions section above for why these were sequenced
-  after the foundations.
 - Team directory has no internal-user picker yet (no "list users" endpoint) —
   external-contact entry only, even for Setjeka staff.
 - Organisation/Party registration: no RBAC exists anywhere in this app, so
@@ -585,11 +606,12 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   sub-profiles are deferred pending a real consuming workflow. The rest of
   the PROC module (RFQ, Quotes, Evaluation, Purchase Orders, Vendor
   Performance scorecard, Vendor Portal) is still fully ahead.
-- RFI routing, submittal workflow, and the client-portal
-  hard-rule-on-approvals are specified in the meeting notes but not yet
-  built — they sit in modules adjacent to Project Management (RFI/SUB/
-  CLI in the requirements register) rather than inside it. Risk register
-  (RISK) is now built — see `document.md` §2.7.
+- The client-portal hard-rule-on-approvals is specified in the meeting
+  notes but not yet built — CLI in the requirements register is the one
+  remaining module adjacent to Project Management, blocked on a real
+  second auth surface (client accounts) that doesn't exist anywhere in
+  this app. RFI, Submittals, Risk Register, and Document Control
+  (RFI/SUB/RISK/DOC) are all now built — see `document.md` §§2.6-2.8.
 - Schedule module (see `document.md` §2.4 for the full deferred table):
   Primavera P6 import, 4D/BIM schedule simulation (explicitly out of
   scope per Meeting 002), cost/budget fields on activities, drag-to-
@@ -602,16 +624,17 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   60s instead) are not built. The frontend still has no picker for
   linking a `ProjectMember` to a real platform login (`userId`) — the
   backend already accepts it, this is a UI gap only. Document Control
-  (§2.6) and Risk Register (§2.7) are now built; RFI, Submittals, and
-  Client Portal remain the next per-project submodules from the
-  requirements register, each its own future module — a dedicated
-  research pass found each fairly mature in OpenConstructionERP, worth
-  returning to.
+  (§2.6), Risk Register (§2.7), and RFI + Submittals (§2.8) are all now
+  built — the full four-module "what else belongs under Projects"
+  sequence is complete. Client Portal (CLI) is the one remaining
+  register module adjacent to Project Management, blocked on a real
+  second auth surface this app doesn't have.
 - No production deployment yet for the Schedule, Project collaboration,
-  Document Control, or Risk Register modules — the tar-over-SSH +
-  `docker compose up -d --build` deploy is blocked in this session's
-  current permission mode (see below), still pending. The GitHub push
-  itself is unblocked and up to date as of the Risk Register commit.
+  Document Control, Risk Register, or RFI/Submittals modules — the
+  tar-over-SSH + `docker compose up -d --build` deploy is blocked in
+  this session's current permission mode (see below), still pending.
+  The GitHub push itself is unblocked and up to date as of the RFI +
+  Submittals commit.
 - **A free temporary domain was identified but not fully wired up**:
   `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
   the IP in the hostname — no signup, works instantly), and `certbot` is
