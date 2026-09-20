@@ -453,6 +453,7 @@ model Project {
   documentFolders        DocumentFolder[]
   documents              ProjectDocument[]
   transmittals           Transmittal[]
+  risks                  ProjectRisk[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -500,6 +501,7 @@ model ProjectMember {
   issuesOwned     ProjectIssue[]
   transmittalsFrom Transmittal[]
   transmittalRecipientOf TransmittalRecipient[]
+  risksOwned      ProjectRisk[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -730,6 +732,7 @@ enum CommentEntityType {
   ISSUE
   SCHEDULE_ACTIVITY
   DOCUMENT_REVISION
+  RISK
 }
 
 model Comment {
@@ -759,6 +762,7 @@ enum NotificationType {
   ISSUE_ASSIGNED
   MENTIONED
   DUE_SOON
+  RISK_ESCALATED
 }
 
 model Notification {
@@ -926,4 +930,43 @@ model TransmittalItem {
 
   @@index([transmittalId])
   @@index([documentRevisionId])
+}
+
+// Requirements Register RISK / Risk Management. Structurally close to
+// ProjectIssue — an owner, free-text category, a status lifecycle — plus
+// a probability/impact score. Score is never stored (computed at read
+// time as probability * impact), the same convention used for Schedule's
+// SUMMARY rows and Document Control's "current revision", so it can't
+// drift if probability/impact are edited later. The register's "portfolio
+// risks" and "configurable" notification rules are out of scope for V1 —
+// see document.md for the full reasoning.
+enum ProjectRiskStatus {
+  OPEN
+  MITIGATING
+  ESCALATED
+  CLOSED
+}
+
+model ProjectRisk {
+  id          String            @id @default(uuid())
+  projectId   String
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  // Free text, not a fixed enum — same reasoning as ProjectDocument's
+  // documentType/discipline: the register's categories are an example
+  // ask, not a confirmed closed taxonomy.
+  category    String?
+  probability Int
+  impact      Int
+  ownerId     String?
+  owner       ProjectMember?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  mitigation  String?
+  status      ProjectRiskStatus @default(OPEN)
+  reviewDate  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([projectId])
+  @@index([ownerId])
 }

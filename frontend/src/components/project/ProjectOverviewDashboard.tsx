@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, Star, MessageSquare } from 'lucide-react';
+import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 
@@ -15,6 +15,7 @@ interface Dashboard {
   };
   tasks: Record<string, number>;
   issues: Record<string, number>;
+  risks: { byStatus: Record<string, number>; highSeverityCount: number };
   compliance: { VALID: number; EXPIRING_SOON: number; EXPIRED: number; PENDING_VERIFICATION: number };
   contractorsCount: number;
   ratings: { average: number | null; count: number };
@@ -57,7 +58,7 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Link href={`/projects/${projectId}/schedule`}>
           <StatCard
             icon={GanttChart}
@@ -72,6 +73,12 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
           label="Open issues"
           value={String(openIssuesCount)}
           tone={openIssuesCount > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+        />
+        <StatCard
+          icon={ShieldAlert}
+          label="High risks"
+          value={String(data.risks.highSeverityCount)}
+          tone={data.risks.highSeverityCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
         />
         <StatCard
           icon={ShieldCheck}

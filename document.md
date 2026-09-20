@@ -594,6 +594,65 @@ was removed manually afterward.
 
 ---
 
+### 2.7 Risk Register
+
+Closes the requirements register's RISK section (3 rows: register,
+escalation, dashboard) — the third per-project submodule from the
+user-directed review, picked because it's structurally almost identical
+to `ProjectIssue`: an owner, a free-text category, a status lifecycle,
+reusing the `Comment`/`Notification` pipelines already built rather than
+inventing anything new.
+
+**`ProjectRisk`**: `probability`/`impact` (1-5 each, the standard 5×5
+matrix convention). **Score is never stored** — computed at read time as
+`probability × impact`, the same convention as Schedule's SUMMARY rows
+and Document Control's "current revision," so it can't drift if either
+input is edited later. `category` is free text (same reasoning as
+`ProjectDocument.documentType`/`discipline`).
+
+**Escalation** uses a fixed, documented severity threshold
+(`HIGH_SEVERITY_THRESHOLD = 15` of a possible 25, in
+`project-risks.service.ts`) rather than the register's "configurable"
+ask — no configuration surface exists anywhere in this app for any
+business rule yet, so a constant is the honest V1. A risk crossing that
+threshold on create/update fires a real `RISK_ESCALATED` notification to
+its owner (same synchronous call as `TASK_ASSIGNED`/`ISSUE_ASSIGNED`).
+"Overdue" (past `reviewDate`, not `CLOSED`) is computed **opportunistically**
+in `NotificationsService.findAllForUser` — a third synthetic-entry query
+alongside the existing due-task/due-issue ones, not a new mechanism.
+`CommentEntityType` gained a fifth value, `RISK`.
+
+**A real bug found and fixed while building this** (and immediately
+checked against — and found in — the two modules it was copied from):
+`ProjectTask`/`ProjectIssue`/`ProjectRisk`'s create/update handlers were
+passing a raw date string (e.g. `"2026-09-17"`) straight through to
+Prisma for a `DateTime` field instead of `new Date(...)`-parsing it
+first. Prisma 7 rejects this with a `PrismaClientValidationError` (a
+500), rather than silently coercing it. This had shipped unnoticed in
+`ProjectTask.dueDate` and `ProjectIssue.dueDate` since the Project
+Collaboration build, because no verification pass in that module
+actually exercised a due date — the failure only surfaced once Risk
+Register's own `reviewDate` field hit the identical code shape. Fixed in
+all three services.
+
+**Dashboard**: `ProjectDashboardService`'s aggregate gains a `risks`
+field (counts by status, `highSeverityCount`) computed in JS from the
+fetched rows rather than a `groupBy` — Prisma's `groupBy` can't express
+"count where probability×impact ≥ threshold" without raw SQL, and this
+app's scale doesn't need it. Surfaced as a sixth "High risks" stat card
+on `ProjectOverviewDashboard`.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| Portfolio-wide risk dashboard (cross-project) | The register's own wording reaches beyond a single project; out of scope for "the project module," same reasoning as every other cross-project ask deferred this session |
+| User-configurable escalation thresholds | No configuration surface exists anywhere in this app for any business rule yet — a fixed, documented constant is the honest V1 |
+| A fixed risk category taxonomy | Register doesn't specify one; free text avoids inventing an unconfirmed classification |
+| Risk heat-map / matrix visualization | Not asked for by the register's acceptance criteria (filtering + drill-down); a straightforward filterable list with a score badge covers the ask |
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

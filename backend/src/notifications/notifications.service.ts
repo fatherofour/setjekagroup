@@ -57,12 +57,15 @@ export class NotificationsService {
 
     const synthetic: (typeof persisted)[number][] = [];
     if (memberIds.length > 0) {
-      const [dueTasks, dueIssues] = await Promise.all([
+      const [dueTasks, dueIssues, dueRisks] = await Promise.all([
         this.prisma.projectTask.findMany({
           where: { assignedToId: { in: memberIds }, dueDate: { lte: dueWindow, not: null }, status: { not: 'DONE' } },
         }),
         this.prisma.projectIssue.findMany({
           where: { ownerId: { in: memberIds }, dueDate: { lte: dueWindow, not: null }, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+        }),
+        this.prisma.projectRisk.findMany({
+          where: { ownerId: { in: memberIds }, reviewDate: { lte: dueWindow, not: null }, status: { not: 'CLOSED' } },
         }),
       ]);
       for (const task of dueTasks) {
@@ -91,6 +94,20 @@ export class NotificationsService {
           message: `Issue "${issue.title}" is due soon`,
           isRead: false,
           createdAt: issue.dueDate!,
+        });
+      }
+      for (const risk of dueRisks) {
+        if (alreadyNotifiedToday.has(`RISK:${risk.id}`)) continue;
+        synthetic.push({
+          id: `synthetic-risk-${risk.id}`,
+          userId,
+          projectId: projectIdByMemberId.get(risk.ownerId!) ?? '',
+          type: 'DUE_SOON',
+          entityType: 'RISK',
+          entityId: risk.id,
+          message: `Risk "${risk.title}" is due for review`,
+          isRead: false,
+          createdAt: risk.reviewDate!,
         });
       }
     }

@@ -5,7 +5,7 @@ import { Trash2, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 
-type CommentEntityType = 'TASK' | 'ISSUE' | 'SCHEDULE_ACTIVITY' | 'DOCUMENT_REVISION';
+type CommentEntityType = 'TASK' | 'ISSUE' | 'SCHEDULE_ACTIVITY' | 'DOCUMENT_REVISION' | 'RISK';
 
 interface Comment {
   id: string;

@@ -23,6 +23,7 @@ import { ProjectNodeTree } from '@/components/project/ProjectNodeTree';
 import { ProjectMembersPanel } from '@/components/project/ProjectMembersPanel';
 import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
 import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
+import { ProjectRisksPanel } from '@/components/project/ProjectRisksPanel';
 import { ProjectOverviewDashboard } from '@/components/project/ProjectOverviewDashboard';
 import { DocumentsPanel } from '@/components/project/DocumentsPanel';
 import { TransmittalsPanel } from '@/components/project/TransmittalsPanel';
@@ -33,6 +34,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'issues', label: 'Issues' },
+  { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
@@ -96,7 +98,6 @@ export default function ProjectDetailPage() {
     // whenever the URL's ?tab changes after mount.
     const requested = searchParams.get('tab');
     if (requested && WORKSPACE_TABS.some((t) => t.value === requested)) setTab(requested);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
@@ -390,6 +391,7 @@ export default function ProjectDetailPage() {
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
       {tab === 'tasks' && <ProjectTasksPanel projectId={project.id} />}
       {tab === 'issues' && <ProjectIssuesPanel projectId={project.id} />}
+      {tab === 'risks' && <ProjectRisksPanel projectId={project.id} />}
       {tab === 'documents' && (
         <div className="space-y-4">
           <DocumentsPanel projectId={project.id} />

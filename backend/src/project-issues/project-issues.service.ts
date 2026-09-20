@@ -40,7 +40,7 @@ export class ProjectIssuesService {
         impact: dto.impact,
         status: dto.status,
         resolutionNotes: dto.resolutionNotes,
-        dueDate: dto.dueDate,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         ownerId: dto.ownerId,
       },
     });
@@ -80,7 +80,7 @@ export class ProjectIssuesService {
         impact: dto.impact,
         status: dto.status,
         resolutionNotes: dto.resolutionNotes,
-        dueDate: dto.dueDate === undefined ? undefined : dto.dueDate,
+        dueDate: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
         ownerId: dto.ownerId === undefined ? undefined : dto.ownerId,
       },
     });

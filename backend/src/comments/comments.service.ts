@@ -21,6 +21,7 @@ export class CommentsService {
       ISSUE: () => this.prisma.projectIssue.findFirst({ where: { id: entityId, projectId } }),
       SCHEDULE_ACTIVITY: () => this.prisma.scheduleActivity.findFirst({ where: { id: entityId, projectId } }),
       DOCUMENT_REVISION: () => this.prisma.documentRevision.findFirst({ where: { id: entityId, document: { projectId } } }),
+      RISK: () => this.prisma.projectRisk.findFirst({ where: { id: entityId, projectId } }),
     })[entityType]();
     if (!found) throw new BadRequestException(`${entityType} not found in this project`);
   }

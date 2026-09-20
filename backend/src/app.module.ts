@@ -23,6 +23,7 @@ import { ProjectDashboardModule } from './project-dashboard/project-dashboard.mo
 import { DocumentFoldersModule } from './document-folders/document-folders.module.js';
 import { ProjectDocumentsModule } from './project-documents/project-documents.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
+import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { TransmittalsModule } from './transmittals/transmittals.module.js';
     DocumentFoldersModule,
     ProjectDocumentsModule,
     TransmittalsModule,
+    ProjectRisksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

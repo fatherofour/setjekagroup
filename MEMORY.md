@@ -430,6 +430,24 @@ that step gets skipped.
   pre-existing gap as Compliance documents: cascading a project delete
   removes the DB rows but not the files on disk — cleaned up manually.
 
+- **Risk Register module** (user request, third of the "what other
+  submodules belong under Projects" picks — full detail in `document.md`
+  §2.7): probability×impact score always computed at read time (never
+  stored), a fixed `HIGH_SEVERITY_THRESHOLD = 15` (of 25) for escalation
+  since no configuration surface exists anywhere in this app for any
+  business rule, and `CommentEntityType` gained a fifth value, `RISK`.
+  **Caught a real, previously-shipped bug while building it**: `ProjectTask`/
+  `ProjectIssue`'s date fields (`dueDate`) were passing raw date strings
+  straight to Prisma 7 instead of `new Date(...)`-parsing them first,
+  which Prisma rejects with a 500 rather than coercing — this had been
+  live since the Project Collaboration build but no verification pass in
+  that module had ever actually set a due date. Fixed in all three
+  services (tasks, issues, risks) once found. Verified end-to-end via
+  curl (escalation notification fired at score 25, a synthetic overdue
+  notification appeared for a past `reviewDate`, dashboard counts matched
+  by hand) and Playwright (create/comment/score-badge/dashboard-count, all
+  clean, zero console errors).
+
 - **Schedule module** (user request — full detail in `document.md` §2.4):
   Gantt/Calendar/Card/Grid views over one shared activity+dependency
   dataset, a from-scratch CPM engine (working-day calendar, inclusive
@@ -567,10 +585,11 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   sub-profiles are deferred pending a real consuming workflow. The rest of
   the PROC module (RFQ, Quotes, Evaluation, Purchase Orders, Vendor
   Performance scorecard, Vendor Portal) is still fully ahead.
-- RFI routing, submittal workflow, risk register, and the client-portal
-  hard-rule-on-approvals are all specified in the meeting notes but not yet
-  built — they sit in modules adjacent to Project Management (RFI/SUB/RISK/
-  CLI in the requirements register) rather than inside it.
+- RFI routing, submittal workflow, and the client-portal
+  hard-rule-on-approvals are specified in the meeting notes but not yet
+  built — they sit in modules adjacent to Project Management (RFI/SUB/
+  CLI in the requirements register) rather than inside it. Risk register
+  (RISK) is now built — see `document.md` §2.7.
 - Schedule module (see `document.md` §2.4 for the full deferred table):
   Primavera P6 import, 4D/BIM schedule simulation (explicitly out of
   scope per Meeting 002), cost/budget fields on activities, drag-to-
@@ -578,19 +597,21 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   variance overlay/report (save/list/delete baseline works; the
   comparison view doesn't exist yet) are all not built.
 - Project collaboration module (see `document.md` §2.5 for the full
-  deferred table): RFI, Submittals, Risk Register, Document Control and
-  Client Portal are each their own future module in the requirements
-  register, not built as part of this — a dedicated research pass found
-  each fairly mature in OpenConstructionERP, worth returning to. Comment
-  threading/replies, real email/SMS/push notifications, and websocket
-  real-time updates (the bell polls every 60s instead) are also not
-  built. The frontend still has no picker for linking a `ProjectMember`
-  to a real platform login (`userId`) — the backend already accepts it,
-  this is a UI gap only.
-- No production deployment yet for either the Schedule or Project
-  collaboration module — the tar-over-SSH + `docker compose up -d
-  --build` deploy, and the GitHub push, are both blocked in this
-  session's current permission mode (see below), still pending.
+  deferred table): comment threading/replies, real email/SMS/push
+  notifications, and websocket real-time updates (the bell polls every
+  60s instead) are not built. The frontend still has no picker for
+  linking a `ProjectMember` to a real platform login (`userId`) — the
+  backend already accepts it, this is a UI gap only. Document Control
+  (§2.6) and Risk Register (§2.7) are now built; RFI, Submittals, and
+  Client Portal remain the next per-project submodules from the
+  requirements register, each its own future module — a dedicated
+  research pass found each fairly mature in OpenConstructionERP, worth
+  returning to.
+- No production deployment yet for the Schedule, Project collaboration,
+  Document Control, or Risk Register modules — the tar-over-SSH +
+  `docker compose up -d --build` deploy is blocked in this session's
+  current permission mode (see below), still pending. The GitHub push
+  itself is unblocked and up to date as of the Risk Register commit.
 - **A free temporary domain was identified but not fully wired up**:
   `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
   the IP in the hostname — no signup, works instantly), and `certbot` is
