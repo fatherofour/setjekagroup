@@ -1,4 +1,17 @@
-import { LayoutDashboard, Sun, FolderKanban, Handshake, HardHat, GanttChart, FileText, type LucideIcon } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Sun,
+  FolderKanban,
+  Handshake,
+  HardHat,
+  GanttChart,
+  FileText,
+  ListChecks,
+  AlertTriangle,
+  ShieldAlert,
+  HelpCircle,
+  type LucideIcon,
+} from 'lucide-react';
 
 export interface NavLeaf {
   label: string;
@@ -41,7 +54,11 @@ export const NAV: NavEntry[] = [
     children: [
       { label: 'Overview', href: '/projects', icon: FolderKanban },
       { label: 'Schedule', href: '/projects', icon: GanttChart, requiresProject: true, projectPathSuffix: '/schedule' },
+      { label: 'Tasks', href: '/projects', icon: ListChecks, requiresProject: true, projectPathSuffix: '?tab=tasks' },
+      { label: 'Issues', href: '/projects', icon: AlertTriangle, requiresProject: true, projectPathSuffix: '?tab=issues' },
+      { label: 'Risks', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=risks' },
       { label: 'Documents', href: '/projects', icon: FileText, requiresProject: true, projectPathSuffix: '?tab=documents' },
+      { label: 'RFIs & Submittals', href: '/projects', icon: HelpCircle, requiresProject: true, projectPathSuffix: '?tab=technical' },
     ],
   },
   {
