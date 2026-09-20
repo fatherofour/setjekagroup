@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Pencil, X, Check, GanttChart } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -71,8 +71,9 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { authedFetch } = useAuth();
-  const { setCurrentProject } = useCurrentProject();
+  const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -86,7 +87,18 @@ export default function ProjectDetailPage() {
         setProject(p);
         setCurrentProject({ id: p.id, name: p.name, status: p.status, stage: p.stage });
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load project.'));
+      .catch((err) => {
+        // A stale currentProject (e.g. pointing at a since-deleted project,
+        // left over in localStorage from a prior session) would otherwise
+        // strand this page in a permanent error state with no way out
+        // except manually clearing storage.
+        if (err instanceof ApiError && err.status === 404) {
+          if (currentProject?.id === id) setCurrentProject(null);
+          router.replace('/projects');
+          return;
+        }
+        setError(err instanceof ApiError ? err.message : 'Failed to load project.');
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Save, ChevronDown, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { ApiError } from '@/lib/api-client';
 import { useCurrentProject } from '@/lib/current-project-context';
 import type { ProjectStage } from '@/lib/projectStages';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
@@ -119,8 +120,9 @@ function BaselinesMenu({ projectId }: { projectId: string }) {
 
 export default function ProjectSchedulePage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { authedFetch } = useAuth();
-  const { setCurrentProject } = useCurrentProject();
+  const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [view, setView] = useState('grid');
   const [panelMode, setPanelMode] = useState<ActivityPanelMode | null>(null);
@@ -132,7 +134,16 @@ export default function ProjectSchedulePage() {
         setProject(p);
         setCurrentProject({ id: p.id, name: p.name, status: p.status, stage: p.stage });
       })
-      .catch(() => {});
+      .catch((err) => {
+        // A stale currentProject (e.g. pointing at a since-deleted project,
+        // left over in localStorage from a prior session) would otherwise
+        // strand this page in a permanent "Loading…" + error state with no
+        // way out except manually clearing storage.
+        if (err instanceof ApiError && err.status === 404) {
+          if (currentProject?.id === id) setCurrentProject(null);
+          router.replace('/projects');
+        }
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
