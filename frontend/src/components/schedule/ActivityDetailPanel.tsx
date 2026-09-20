@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Trash2, Plus } from 'lucide-react';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
+import { CommentThread } from '@/components/project/CommentThread';
 import type { useScheduleData } from './useScheduleData';
 import {
   PRIORITY_LABEL,
@@ -386,6 +387,12 @@ export function ActivityDetailPanel({
               Float: {activity.totalFloatDays ?? 0} working day{activity.totalFloatDays === 1 ? '' : 's'}
               {activity.isCriticalPath && <span className="ml-2 font-semibold text-red-600 dark:text-red-400">Critical path</span>}
             </p>
+          </div>
+        )}
+
+        {activity && (
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <CommentThread projectId={activity.projectId} entityType="SCHEDULE_ACTIVITY" entityId={activity.id} />
           </div>
         )}
 

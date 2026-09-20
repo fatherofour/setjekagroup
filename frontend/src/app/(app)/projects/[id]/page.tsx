@@ -21,7 +21,19 @@ import {
 } from '@/lib/projectMeta';
 import { ProjectNodeTree } from '@/components/project/ProjectNodeTree';
 import { ProjectMembersPanel } from '@/components/project/ProjectMembersPanel';
+import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
+import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
+import { ProjectOverviewDashboard } from '@/components/project/ProjectOverviewDashboard';
 import { Select } from '@/components/ui/Select';
+import { Tabs, type TabItem } from '@/components/ui/Tabs';
+
+const WORKSPACE_TABS: TabItem[] = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'tasks', label: 'Tasks' },
+  { value: 'issues', label: 'Issues' },
+  { value: 'team', label: 'Team' },
+  { value: 'structure', label: 'Structure' },
+];
 
 interface Project {
   id: string;
@@ -66,6 +78,7 @@ export default function ProjectDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<Project>>({});
+  const [tab, setTab] = useState('overview');
 
   useEffect(() => {
     authedFetch<Project>(`/projects/${id}`)
@@ -172,6 +185,9 @@ export default function ProjectDetailPage() {
         </p>
       )}
 
+      <Tabs tabs={WORKSPACE_TABS} value={tab} onChange={setTab} />
+
+      {tab === 'overview' && (
       <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Project details</h2>
@@ -339,11 +355,13 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ProjectNodeTree projectId={project.id} />
-        <ProjectMembersPanel projectId={project.id} />
-      </div>
+      {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
+      {tab === 'tasks' && <ProjectTasksPanel projectId={project.id} />}
+      {tab === 'issues' && <ProjectIssuesPanel projectId={project.id} />}
+      {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
+      {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}
     </div>
   );
 }

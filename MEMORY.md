@@ -399,6 +399,21 @@ that step gets skipped.
   those without a third-party service — not viable for private,
   auth-gated documents.
 
+- **Project collaboration module** (user request — full detail in
+  `document.md` §2.5): Tasks, Issues, a polymorphic Comment (entityType/
+  entityId, inspired by a pattern found in OpenConstructionERP's own
+  codebase), Notifications (finally wiring up the `Bell` icon that was a
+  dead placeholder all session), and a per-project Control Tower dashboard
+  that restructured `/projects/[id]` into a tabbed workspace (Overview/
+  Tasks/Issues/Team/Structure). Closes requirements register rows R16/
+  R18/R19. Verified end-to-end via curl by creating a second real `User`
+  row and linking it as a `ProjectMember` (the UI has no picker for this
+  yet — `ProjectMember.userId` — but the backend DTO already accepts it),
+  confirming all three notification types (assignment ×2, @mention) fire
+  correctly. `CommentThread` was also retrofitted into the Schedule
+  module's `ActivityDetailPanel`, so schedule activities now carry the
+  same discussion surface as tasks/issues.
+
 - **Schedule module** (user request — full detail in `document.md` §2.4):
   Gantt/Calendar/Card/Grid views over one shared activity+dependency
   dataset, a from-scratch CPM engine (working-day calendar, inclusive
@@ -545,10 +560,32 @@ since there was no GitHub remote pushed yet at deploy time (see below).
   scope per Meeting 002), cost/budget fields on activities, drag-to-
   resize/reschedule directly on Gantt bars, and the baseline-vs-current
   variance overlay/report (save/list/delete baseline works; the
-  comparison view doesn't exist yet) are all not built. No production
-  deployment yet for this module — same tar-over-SSH + `docker compose
-  up -d --build` cycle as every other feature this session, still
-  pending.
+  comparison view doesn't exist yet) are all not built.
+- Project collaboration module (see `document.md` §2.5 for the full
+  deferred table): RFI, Submittals, Risk Register, Document Control and
+  Client Portal are each their own future module in the requirements
+  register, not built as part of this — a dedicated research pass found
+  each fairly mature in OpenConstructionERP, worth returning to. Comment
+  threading/replies, real email/SMS/push notifications, and websocket
+  real-time updates (the bell polls every 60s instead) are also not
+  built. The frontend still has no picker for linking a `ProjectMember`
+  to a real platform login (`userId`) — the backend already accepts it,
+  this is a UI gap only.
+- No production deployment yet for either the Schedule or Project
+  collaboration module — the tar-over-SSH + `docker compose up -d
+  --build` deploy, and the GitHub push, are both blocked in this
+  session's current permission mode (see below), still pending.
+- **A free temporary domain was identified but not fully wired up**:
+  `173-212-202-149.sslip.io` resolves to the VPS today (sslip.io embeds
+  the IP in the hostname — no signup, works instantly), and `certbot` is
+  already installed on the VPS. Issuing the actual Let's Encrypt
+  certificate (which needs nginx briefly stopped) was blocked by this
+  session's auto-mode permission classifier under a "DNS / Domain / Cert
+  Changes" gate. The VPS code deployment (git-clone-based redeploy of
+  `/opt/setjeka-erp`, replacing the old tar-over-SSH copy) was similarly
+  blocked under a "Production Deploy" gate. Both need the user to either
+  exit auto mode for those two steps or add a Bash permission rule
+  (Settings → Permissions) before they can be completed.
 - Converter service deployment (Dockerfile exists, not deployed anywhere).
 - OpenStreetMap tile usage: fine for dev, but its usage policy disallows
   heavy production traffic against the free tile server — needs a

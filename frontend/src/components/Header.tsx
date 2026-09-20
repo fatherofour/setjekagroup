@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, HelpCircle, Menu } from 'lucide-react';
+import { HelpCircle, Menu } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ThemeToggle } from './ThemeToggle';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { StageBadge } from './StageBadge';
 import { SearchPalette } from './SearchPalette';
+import { NotificationBell } from './NotificationBell';
 import { getPageTitle } from './pageTitles';
 
 function UserMenu() {
@@ -85,13 +86,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
       {/* right: notifications, help, theme, avatar */}
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          className="hidden h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:flex"
-          aria-label="Notifications"
-          type="button"
-        >
-          <Bell size={16} strokeWidth={1.75} />
-        </button>
+        <NotificationBell />
         <button
           className="hidden h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:flex"
           aria-label="Help"

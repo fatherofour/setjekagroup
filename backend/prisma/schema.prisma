@@ -201,6 +201,8 @@ model User {
   paymentRecordsRecorded   PaymentRecord[]
   organisationRatingsRecorded OrganisationRating[]
   scheduleBaselinesCreated ScheduleBaseline[]
+  commentsAuthored   Comment[]
+  notifications      Notification[]
 
   @@index([resetTokenHash])
 }
@@ -439,6 +441,10 @@ model Project {
   scheduleActivities     ScheduleActivity[]
   scheduleDependencies   ScheduleDependency[]
   scheduleBaselines      ScheduleBaseline[]
+  tasks                  ProjectTask[]
+  issues                 ProjectIssue[]
+  comments               Comment[]
+  notifications          Notification[]
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -454,6 +460,7 @@ model ProjectNode {
   name      String
   sortOrder Int             @default(0)
   scheduleActivities ScheduleActivity[]
+  tasks     ProjectTask[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
@@ -480,6 +487,8 @@ model ProjectMember {
   externalPhone   String?
   role            ProjectMemberRole
   scheduleActivitiesAssigned ScheduleActivity[]
+  tasksAssigned   ProjectTask[]
+  issuesOwned     ProjectIssue[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -570,6 +579,7 @@ model ScheduleActivity {
   asPredecessorOf ScheduleDependency[] @relation("DependencyPredecessor")
   asSuccessorOf   ScheduleDependency[] @relation("DependencySuccessor")
   baselineSnapshots ScheduleBaselineSnapshot[]
+  tasks       ProjectTask[]
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
@@ -623,4 +633,133 @@ model ScheduleBaselineSnapshot {
 
   @@index([baselineId])
   @@index([activityId])
+}
+
+// Requirements Register PRJ / Project Management, rows R16 (task
+// management), R18 (control tower dashboard — no dedicated model, it's a
+// read-aggregation endpoint over the models below plus Schedule/
+// Compliance/Ratings) and R19 (issue register). Grounded in the PROCSA
+// Responsibility Matrix via ProjectMember (already covers every PROCSA
+// role) and inspired by a concept from the original OpenConstructionERP
+// codebase this app replaces: a polymorphic Comment keyed by
+// entityType/entityId, so any of the models below — plus ScheduleActivity
+// — can carry a discussion thread without a separate comments table per
+// entity type.
+enum ProjectTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+model ProjectTask {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedToId       String?
+  assignedTo         ProjectMember?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  // Optional context links — a task is often "do X for this schedule
+  // activity" or "for this floor/zone" without being a full CPM-scheduled
+  // activity in its own right (that's what Schedule is for).
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  projectNodeId      String?
+  projectNode        ProjectNode?      @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  title              String
+  description        String?
+  priority           SchedulePriority  @default(MEDIUM)
+  status             ProjectTaskStatus @default(TODO)
+  dueDate            DateTime?
+  // Simple {text, done}[] — a dedicated child table would be overkill for
+  // what the register asks for (a lightweight sub-list on a task).
+  checklist          Json              @default("[]")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([scheduleActivityId])
+  @@index([projectNodeId])
+}
+
+enum ProjectIssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+model ProjectIssue {
+  id              String             @id @default(uuid())
+  projectId       String
+  project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ownerId         String?
+  owner           ProjectMember?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?
+  priority        SchedulePriority   @default(MEDIUM)
+  // Free text, not a fixed taxonomy — the register asks for an "impact"
+  // field but doesn't specify a closed set of values, and inventing one
+  // would repeat the PROCSA-stage mistake from earlier in this project.
+  impact          String?
+  status          ProjectIssueStatus @default(OPEN)
+  resolutionNotes String?
+  dueDate         DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([projectId])
+  @@index([ownerId])
+}
+
+enum CommentEntityType {
+  TASK
+  ISSUE
+  SCHEDULE_ACTIVITY
+}
+
+model Comment {
+  id         String            @id @default(uuid())
+  projectId  String
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // No FK on entityId — it can point at ProjectTask, ProjectIssue or
+  // ScheduleActivity depending on entityType, so a single foreign key
+  // isn't possible; the service layer validates the referenced entity
+  // belongs to this project before allowing a comment (same trade-off
+  // ScheduleActivity.projectNodeId already accepts for cross-entity
+  // optional links).
+  entityType CommentEntityType
+  entityId   String
+  authorId   String
+  author     User              @relation(fields: [authorId], references: [id])
+  body       String
+  createdAt  DateTime          @default(now())
+  editedAt   DateTime?
+
+  @@index([projectId])
+  @@index([entityType, entityId])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  ISSUE_ASSIGNED
+  MENTIONED
+  DUE_SOON
+}
+
+model Notification {
+  id         String            @id @default(uuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId  String
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  entityType CommentEntityType
+  entityId   String
+  message    String
+  isRead     Boolean           @default(false)
+  createdAt  DateTime          @default(now())
+
+  @@index([userId, isRead])
 }

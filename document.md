@@ -420,6 +420,87 @@ sidebar group, and a direct button on `/projects/[id]`, both resolve to
 
 ---
 
+### 2.5 Project collaboration — Tasks, Issues, Comments, Notifications, Control Tower Dashboard
+
+Closes the requirements register's PRJ / Project Management gaps: R16 (task
+management), R18 (project control tower) and R19 (issue register) — R13-R15
+(project creation, team directory, hierarchy) were already covered by
+`Project`/`ProjectMember`/`ProjectNode`. Grounded in PROCSA via the existing
+`ProjectMemberRole` enum (no new role modelling needed) and in a pattern
+found in the original OpenConstructionERP codebase this app replaces: a
+polymorphic `Comment` keyed by `entityType`/`entityId`, used there across
+Tasks/RFIs/Documents/Punch-items so any record can carry a discussion
+thread. Adopted here as the connective tissue for cross-team collaboration
+— replacing side-channel email/WhatsApp with in-context discussion — and
+paired with a notification pipeline that finally gives the `Bell` icon in
+`Header.tsx` (a dead placeholder all session) real behaviour.
+
+**Models:** `ProjectTask` (title, description, priority — reuses
+`SchedulePriority`, status, dueDate, `assignedToId` → `ProjectMember`,
+optional `scheduleActivityId`/`projectNodeId` for context, `checklist` as
+plain JSON rather than a child table). `ProjectIssue` (same shape, plus
+`impact` as free text — no fixed taxonomy was specified anywhere in the
+register, so none was invented — and `resolutionNotes`). `Comment` (flat,
+no threading in V1; `entityType` ∈ `TASK`/`ISSUE`/`SCHEDULE_ACTIVITY` +
+`entityId` with no FK, since one column can't reference three different
+tables — validated in the service layer instead, one branch per
+`entityType`, the same trade-off `ScheduleActivity.projectNodeId` already
+accepts). `Notification` (`type` ∈ `TASK_ASSIGNED`/`ISSUE_ASSIGNED`/
+`MENTIONED`/`DUE_SOON`).
+
+**Notifications are created synchronously**, not via a queue — no
+scheduler or job runner exists anywhere in this app. Assignment
+notifications fire from `ProjectTasksService`/`ProjectIssuesService` on
+create/reassign; `@mentions` are a plain substring match of `@Full Name`
+against the project's `ProjectMember`s (joined to `User`) when a comment
+is posted — simpler and more predictable than a name-fragment regex.
+`DUE_SOON` is the one exception: computed **opportunistically** when
+`GET /notifications` is called (cross-checking the user's assigned tasks/
+issues due within 2 days), not by a background job, since none exists —
+an honest approximation rather than a fabricated scheduler.
+
+**Verified end-to-end via curl**, since `ProjectMember.userId` (linking a
+member to a real platform login) has no picker in the UI yet — see
+`MEMORY.md` — but the backend already accepts it: created a second real
+`User` row directly, linked it as a `ProjectMember`, assigned a task and
+an issue to that member, and posted a comment mentioning them, confirming
+all three notification types land correctly (`TASK_ASSIGNED`,
+`ISSUE_ASSIGNED`, `MENTIONED`), then verified `GET /projects/:id/dashboard`
+against the same hand-built project matches its known task/issue/
+comment counts exactly.
+
+**Project Control Tower Dashboard (R18):** `/projects/[id]` is now a
+tabbed workspace (`components/ui/Tabs.tsx`, the same pattern proven on
+`/contractors/[id]`) — Overview (the existing editable-details card plus
+`ProjectOverviewDashboard`, a single `GET /projects/:id/dashboard`
+aggregate: schedule progress + critical-path count from the existing
+cached CPM fields, task/issue counts by status, a compliance snapshot
+across the project's contractors reusing `computeComplianceStatus`
+un-duplicated, ratings average, 5 most recent comments), Tasks, Issues,
+Team (unchanged `ProjectMembersPanel`), Structure (unchanged
+`ProjectNodeTree`). Schedule stays its own full page, linked from
+Overview rather than duplicated.
+
+`CommentThread` (`components/project/CommentThread.tsx`) is one component
+reused verbatim in three places: `ProjectTasksPanel`, `ProjectIssuesPanel`,
+and retrofitted into the Schedule module's `ActivityDetailPanel` — this is
+what actually delivers "syncs and collaborates seamlessly with other
+modules" for Schedule specifically, by giving activities the same
+discussion surface as everything else.
+
+**Deliberately not built, and why:**
+
+| Deferred | Why |
+|---|---|
+| RFI, Submittals, Risk Register, Document Control, Client Portal | Each is its own module in the requirements register (RFI/SUB/RISK/DOC/CLI codes), not part of PRJ — genuinely valuable (a dedicated research pass into OpenConstructionERP found each of these fairly mature there) but a separate undertaking |
+| Comment threading / replies | A flat comment list covers the collaboration ask; threading is a natural, separable follow-up |
+| Real email/SMS/push notifications | No provider is configured anywhere in this app — in-app only |
+| RBAC-gated visibility on tasks/issues/comments | No RBAC exists anywhere in this app — standing gap, same as every other module |
+| Real-time (websocket) updates | No realtime infra exists; the notification bell polls every 60s instead |
+| A fixed "impact" taxonomy on Issues | Register doesn't specify one; free text avoids inventing an unconfirmed classification |
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

@@ -15,6 +15,11 @@ import { OrganisationAppointmentsModule } from './organisation-appointments/orga
 import { PaymentRecordsModule } from './payment-records/payment-records.module.js';
 import { OrganisationRatingsModule } from './organisation-ratings/organisation-ratings.module.js';
 import { ScheduleModule } from './schedule/schedule.module.js';
+import { ProjectTasksModule } from './project-tasks/project-tasks.module.js';
+import { ProjectIssuesModule } from './project-issues/project-issues.module.js';
+import { CommentsModule } from './comments/comments.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { ProjectDashboardModule } from './project-dashboard/project-dashboard.module.js';
 
 @Module({
   imports: [
@@ -32,6 +37,11 @@ import { ScheduleModule } from './schedule/schedule.module.js';
     PaymentRecordsModule,
     OrganisationRatingsModule,
     ScheduleModule,
+    ProjectTasksModule,
+    ProjectIssuesModule,
+    CommentsModule,
+    NotificationsModule,
+    ProjectDashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
