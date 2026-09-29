@@ -1009,6 +1009,80 @@ fully ahead" in `MEMORY.md`'s Open/pending work section.
 
 ---
 
+### 2.12 Opportunities — DEV Pipeline, "Stage 0"
+
+Closes the requirements register's **DEV / Development Management**
+section (confirmed directly from `Setjeka Feature and Functional
+Requirements Register.xlsx`, rows 8–12): capturing a prospective
+development **before** it becomes a real `Project` — a "Stage 0" this
+app's `Project.stage` model never covered, since that starts at
+Initiation. It also closes a standing note from before the setjeka-erp
+rebuild (`opportunity-project-integration-deferred`): once Opportunities
+was "genuinely finalized," wiring a Client dropdown + address
+auto-populate on New Project became a hard requirement — this module's
+**Convert to Project** action is the cleaner equivalent of that in this
+app's actual architecture (pre-filling a new `Project` from the
+opportunity's data directly, rather than a dropdown on the create form).
+
+**`Opportunity`**: name, description, `developmentType` (free text —
+same reasoning as `Contractor.disciplines`: the register's categories
+are examples, not a confirmed closed set), location, `estimatedValue`/
+`currency`, client contact fields (`clientName`/`clientContactName`/
+`clientEmail`/`clientPhone` — satisfies "client records" without
+inventing a separate Client entity the register never asks for), `stage`
+(own enum: `IDENTIFIED`→`UNDER_EVALUATION`→`APPROVED`→`CONVERTED`, plus
+terminal `ON_HOLD`/`REJECTED`), `ownerId`, `convertedProjectId`.
+Deliberately **not** project-nested — there's no `Project` yet — and
+gated by `InternalOnlyGuard` like the `Contractor` directory, not the
+per-project RBAC engine, since the register lists no external/vendor/
+client user for any DEV row.
+
+**`OpportunityStageHistory`**: same shape as `SubmittalStatusHistory`/
+`OrganisationStatusHistory` — a direct stage change with a logged
+history row, satisfying "stage transitions retain dates, owners and
+history." Deliberately **not** the heavier request/approve
+`StageTransition` workflow built for Projects — that exists for a
+requester/external-approver split that doesn't apply here; an
+Opportunity is single-actor internal pipeline work.
+
+**`OpportunityApproval`** (Authority approvals, Required: Yes):
+`approvalType` (free text), `status`
+(`PENDING`/`SUBMITTED`/`APPROVED`/`REJECTED`), owner, due date,
+`evidenceNotes` (free text — no project-agnostic document store exists
+pre-Project, so a text reference is the honest V1 rather than building
+one just for this).
+
+**Convert to Project**: `POST /opportunities/:id/convert-to-project`
+(only from `APPROVED`) creates a real `Project` via the existing
+`ProjectsService.create` — reusing its `nextProjectCode` scan-and-
+increment logic unchanged — pre-filled with `name`/`client`/`location`/
+`value`/`currency` from the opportunity, then sets the opportunity's
+stage to `CONVERTED` and records `convertedProjectId`, in the same
+`$transaction` pattern used throughout this session.
+
+**Deliberately not building, and why:**
+
+| Deferred | Why |
+|---|---|
+| Feasibility register (site/location/type/est. value/cost/funding/risks/assumptions as a dedicated structured record) | The register explicitly marks this **"Not needed now"** — the client's own words, not an inference |
+| Development milestones | Register marks this **"Default"** — lower priority than this section's two "Yes" rows |
+| File/document evidence on approvals | No project-agnostic document store exists pre-Project; `evidenceNotes` (text) is the V1 stand-in |
+| Fine-grained RBAC on Opportunities | No external party is ever involved pre-Project per the register; a blanket internal-only gate is the right-sized fit |
+| Reusing Project's `StageTransition` request/approve workflow | Different shape of problem — single internal actor, not a requester/external-approver split |
+
+Verified end-to-end via curl (an opportunity walked
+`IDENTIFIED`→`UNDER_EVALUATION`→`APPROVED` with two ordered history
+rows; two authority approvals added and one moved to `SUBMITTED`;
+converted to a project with `name`/`client`/`location`/`value`/
+`currency` all correctly pre-filled; a second conversion attempt
+rejected; an external `CONTRACTOR`-role account gets 403 on every
+opportunities route) and Playwright (create → open detail → change
+stage → history updates live, zero console errors). This closes the
+`opportunity-project-integration-deferred` note in the global memory
+store — see `MEMORY.md`.
+
+---
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
@@ -1248,7 +1322,9 @@ setup and redeploy steps: `deploy/README.md`. Summary:
   own container; (2) `prisma/seed.ts` runs via `tsx` against the Prisma
   client's **source** path, so the backend image needs `src/generated`
   copied in alongside `dist/`, not just the compiled output.
-- **Not yet done**: pushing this repo to GitHub (blocked on credentials —
-  see `MEMORY.md`), a real domain + Let's Encrypt cert (self-signed for
+- **Not yet done**: a real domain + Let's Encrypt cert (self-signed for
   now), and SharePoint sync for compliance documents (blocked on Azure AD
-  app credentials).
+  app credentials). GitHub push is unblocked and the remote is kept up to
+  date after every commit (see `MEMORY.md`) — production redeploy is now
+  just `git pull && docker compose -f docker-compose.prod.yml up -d
+  --build` on the VPS, no tar-over-SSH workaround needed.

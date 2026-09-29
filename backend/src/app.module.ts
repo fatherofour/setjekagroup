@@ -36,6 +36,7 @@ import { QuotesModule } from './quotes/quotes.module.js';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
 import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { VendorScorecardsModule } from './vendor-scorecards/vendor-scorecards.module.js';
+import { OpportunitiesModule } from './opportunities/opportunities.module.js';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { VendorScorecardsModule } from './vendor-scorecards/vendor-scorecards.mo
     PurchaseOrdersModule,
     DeliveriesModule,
     VendorScorecardsModule,
+    OpportunitiesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor }],

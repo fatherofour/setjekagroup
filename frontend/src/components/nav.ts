@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Users,
   ScrollText,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -53,6 +54,11 @@ export const NAV: NavEntry[] = [
       { label: 'My Day', href: '/my-day', icon: Sun },
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     ],
+  },
+  {
+    label: 'Opportunities',
+    icon: Lightbulb,
+    children: [{ label: 'All Opportunities', href: '/opportunities', icon: Lightbulb }],
   },
   {
     label: 'Projects',

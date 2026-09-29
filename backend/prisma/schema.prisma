@@ -264,6 +264,10 @@ model User {
   quotesSubmitted    Quote[]
   purchaseOrderStatusChanges PurchaseOrderStatusHistory[]
   vendorScorecardsRecorded   VendorScorecard[]
+  opportunitiesOwned        Opportunity[] @relation("OpportunityOwner")
+  opportunitiesCreated      Opportunity[] @relation("OpportunityCreatedBy")
+  opportunityStageChanges   OpportunityStageHistory[]
+  opportunityApprovalsOwned OpportunityApproval[]
 
   @@index([resetTokenHash])
 }
@@ -522,6 +526,7 @@ model Project {
   stageTransitions       StageTransition[]
   rfqs                   Rfq[]
   purchaseOrders         PurchaseOrder[]
+  originatingOpportunity Opportunity?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 }
@@ -1455,4 +1460,103 @@ model VendorScorecard {
   createdAt          DateTime                       @default(now())
 
   @@index([appointmentId])
+}
+
+// Requirements Register DEV / Development Management "Pipeline" +
+// "Approvals" (Setjeka Feature and Functional Requirements Register.xlsx,
+// rows 8-12): captures a prospective development before it becomes a
+// real Project - the "Stage 0" the rest of this app's Project.stage
+// model doesn't cover, since that starts at Initiation. Deliberately not
+// project-nested (there is no Project yet) and gated by InternalOnlyGuard
+// like the Contractors directory, not the per-project RBAC engine - the
+// register lists no external/vendor/client user for any DEV row. The
+// Feasibility register row is explicitly marked "Not needed now" in the
+// register and is not modelled here; Development milestones (marked
+// "Default", lower priority than this section's two "Yes" rows) is also
+// deferred - see document.md for the full reasoning.
+enum OpportunityStage {
+  IDENTIFIED
+  UNDER_EVALUATION
+  APPROVED
+  ON_HOLD
+  REJECTED
+  CONVERTED
+}
+
+model Opportunity {
+  id                 String            @id @default(uuid())
+  name               String
+  description        String?
+  // Free text, not a fixed enum - same reasoning as Contractor.disciplines:
+  // the register's categories are examples, not a confirmed closed set.
+  developmentType    String?
+  location           String?
+  estimatedValue     Float?
+  currency           Currency?
+  clientName         String?
+  clientContactName  String?
+  clientEmail        String?
+  clientPhone        String?
+  stage              OpportunityStage  @default(IDENTIFIED)
+  ownerId            String?
+  owner              User?             @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  createdById        String
+  createdBy          User              @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  // Set by convertToProject() once this opportunity becomes a real
+  // Project - closes the opportunity-project-integration-deferred note
+  // from before the setjeka-erp rebuild (Client dropdown + address
+  // auto-populate on New Project), by pre-filling the new Project from
+  // this record instead.
+  convertedProjectId String?           @unique
+  convertedProject   Project?          @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
+  stageHistory       OpportunityStageHistory[]
+  approvals          OpportunityApproval[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+// Same shape and reasoning as the existing SubmittalStatusHistory /
+// OrganisationStatusHistory - a direct stage change with a logged
+// history row, not the heavier request/approve StageTransition workflow
+// built for Projects (that exists for a requester/external-approver
+// split that doesn't apply to this single-actor internal pipeline record).
+model OpportunityStageHistory {
+  id             String      @id @default(uuid())
+  opportunityId  String
+  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  previousStage  String
+  newStage       String
+  changedById    String
+  changedBy      User        @relation(fields: [changedById], references: [id])
+  comment        String?
+  changedAt      DateTime    @default(now())
+
+  @@index([opportunityId])
+}
+
+enum OpportunityApprovalStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model OpportunityApproval {
+  id             String                    @id @default(uuid())
+  opportunityId  String
+  opportunity    Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  // Free text (planning/statutory/environmental/other are the register's
+  // examples, not a closed set) - same convention as elsewhere in this app.
+  approvalType   String
+  status         OpportunityApprovalStatus @default(PENDING)
+  ownerId        String?
+  owner          User?                     @relation(fields: [ownerId], references: [id])
+  dueDate        DateTime?
+  // No project-agnostic document store exists pre-Project; a text
+  // reference is the honest V1 rather than building one just for this.
+  evidenceNotes  String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@index([opportunityId])
 }
