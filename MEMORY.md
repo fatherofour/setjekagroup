@@ -604,6 +604,183 @@ that step gets skipped.
   `CONTRACTOR` account denied on every route) and Playwright (create →
   detail → stage change, all live-updating with zero console errors).
 
+- **Opportunities rebuilt around PROCSA Stage 0 (2026-10-01)** (user
+  feedback: the first version "did not meet the objective" — it had no
+  space for new client details, no client portal, no site register or
+  site selection, no link to the register, and no way to choose the
+  team. Full detail in `document.md` §2.12). What the user asked for,
+  in their words: at Initiation, pick e.g. "Architect" → a dropdown of
+  all registered architects → share an RFQ with all of them → the
+  system picks automatically from their RFQ price and their ratings.
+  Decisions:
+  - Opportunity = PROCSA Stage 0 = Setjeka's *Initiation*; converting
+    creates the project at **INCEPTION** (the user: "this is the stage
+    before the project goes to inception").
+  - New shared `Client` directory replaced the free-text client columns
+    (the migration carried existing data across). A portal login needs
+    an organisation to belong to before any project exists.
+  - Portals = `EXTERNAL` users with `User.clientId` / `User.contractorId`;
+    client portal is read-only and never shows fees or scores; vendor
+    portal shows only the firm's own quote.
+  - "Automatically pick" is implemented as automatic **ranking +
+    recommendation + one-click appoint**, not a silent auto-award.
+    Appointing a consultant commits Setjeka contractually, so a person
+    confirms it. Overriding the #1 needs a written justification, stored
+    with the rank and score at award. The user hasn't been asked about
+    this specifically — if they want a true auto-award (e.g. on RFQ
+    close), it's a small change in `opportunity-rfqs.service.ts`.
+  - Ranking: price score (cheapest = 100) + track record (past star
+    ratings and scorecards as % of 5★; no history = neutral 3★),
+    weighted 60/40 by default and adjustable per RFQ.
+  - Conversion is blocked only by a missing client or selected site; the
+    other checklist items are advisory.
+  - Fixed along the way: RFQ numbers restarted per project but must be
+    unique globally — the sequence is now global. Also fixed the app
+    layout overflowing sideways on phones (the main column lacked
+    `min-w-0`; this affected the existing Contractors page too).
+
+- **PROCSA Stage 1 — Inception, all roles (2026-10-01)** (user: "finalize
+  stage 1 on the PROCSA document and the feature register for all the
+  roles … whatever modules is left out … build that out". Full detail in
+  `document.md` §2.13; line-item catalogue in
+  `backend/src/inception/procsa.ts`). Decisions:
+  - PROCSA's Stage 1 column for DM, PM, Architect, QS and the Structural /
+    Civil / Electrical / Mechanical Engineers drove the scope. The
+    register's grouped "Architect/Civil/Structural" role was split into
+    five distinct project roles; `ARCHITECT_ENGINEER` kept for existing
+    members.
+  - Seven Stage 1 documents need client approval (PM 1.9) before the
+    project can be requested into Concept, re-checked when the gate is
+    decided. Editing an approved document reopens it as a new version.
+  - APPROVE on Stage 1 documents defaults to CLIENT + DEVELOPMENT_MANAGER
+    only. Consultants with otherwise-full access can't approve what they
+    prepared. Admin-editable.
+  - Every PROCSA line item is tracked per role, auto-evidenced where
+    possible and manual sign-off otherwise. "Advise on …" items are
+    recorded as `ConsultantAdvice` by topic.
+  - Desktop viability is a simple residual appraisal, not the register's
+    "Feasibility register" (marked "Not needed now"); the bankable
+    business plan is PROCSA Stage 2.4.
+  - Consultant RFQs now work at project level too (same ranking engine;
+    project awards create the appointment and Team members immediately);
+    the procurement policy sets their default evaluation weights.
+  - New: Meetings (with action items as tasks), and an Approvals page
+    (register COL "Approval center").
+  - Prisma's `migrate dev --create-only` failed on this machine (its shadow
+    DB step hit a Postgres "permission denied to terminate process"), so
+    the migration SQL was generated with
+    `prisma migrate diff --from-config-datasource --to-schema
+    prisma/schema.prisma --script` against the up-to-date local DB, then
+    applied with `migrate deploy`.
+
+- **PROCSA Stage 0 finalised for all roles (2026-10-01)** (user: "work out
+  and finalize stage 0 of the PROCSA document and from the feature register
+  for all roles". Detail in `document.md` §2.12a; catalogue in
+  `backend/src/opportunities/stage0.ts`). Decisions:
+  - Stage 0 roles = Development Manager (PROCSA 0.1–0.8), **Executive**
+    (named on the register's DEV rows but not in its User Roles sheet —
+    treated as an internal MANAGER/ADMIN platform user), and the Client
+    (0.3 is only formalised when the client confirms the vision).
+  - An opportunity can reach APPROVED **only** through an Executive's
+    investment decision, made by someone other than the requester.
+  - Stage 0 payments need Executive approval (not by whoever recorded them).
+  - First business case reuses the Stage 1 viability calculator and is
+    copied into the project. Milestones (register DEV R12, previously
+    deferred) are now built and carry into the project.
+  - Watch-out found while testing: a type alias named `Body` in a Nest
+    controller collides with the `@Body` decorator. Emitted decorator
+    metadata then makes ValidationPipe reject every JSON body as "Expected
+    a JSON object". Don't name type aliases after Nest decorators.
+
+- **Stage 1 for the consultant roles (2026-10-01)** (user: "Implement stage
+  one for the other roles like Architect, QS, Mechanical Engineer, Civil
+  Engineer, Structural engineer, electrical engineer"). Detail in
+  `document.md` §2.13a. Decisions:
+  - Each consultant gets a "My Stage 1" workspace: their PROCSA items, each
+    with an inline action. They propose their own firm's scope (locked once
+    signed) and sign their agreement once Setjeka issues it.
+  - Every appointed firm sees a "Your appointment" signing card, because
+    PROCSA's Architect list has no agreement item.
+  - New `DesignCriterion` register. A criterion ticks only the raiser's own
+    item (QS 1.8 / engineer 1.9).
+  - Security: the five consultant roles lost full access. They get
+    VIEW+COMMENT, CREATE/EDIT on working modules, and APPROVE on
+    RFIs/submittals only.
+  - QS and the legacy ARCHITECT_ENGINEER keep full access, because the QS
+    is often in-house.
+  - Consultant RFQs are internal-only. Other firms' fees are redacted for
+    external callers, and the approval snapshot is no longer returned.
+  - Submit-to-client, saving the policy and generating the programme are
+    internal-only.
+  - Consultants keep brief EDIT, because PROCSA says they "assist" with it.
+  - Testing note: Playwright scripts on this machine don't exit after
+    `browser.close()`. End them with `process.exit`. The login page has a
+    hidden mobile form first, so target `:visible` inputs.
+
+- **Commercial: cost database, estimates, budget, variations, invoices
+  (2026-10-03).** User asked: build the commercials, plus a cost database
+  of materials, workmanship and other variables priced by region,
+  automated-QS costing including from BIM/CAD, and RFQ costs updating the
+  sheet. Detail in `document.md` §2.14. Decisions:
+  - The cost database ships **empty** ("it would be blank for now"):
+    - Setjeka creates titled regions and enters her own prices;
+    - only 18 standard cost codes are seeded, as budget headings;
+    - no sample prices or norms.
+  - **Rates.** Work items are build-ups of resources (qty + waste %). The
+    rate is computed live from the region's prices, and a final estimate
+    freezes its rates.
+  - **BIM/CAD costing** uses the existing converter service (now wired
+    in, env `CONVERTER_URL`). Model groups are mapped to work items by
+    keywords plus a basis and factor.
+  - **RFQ → price sheet happens only on award** (user's explicit
+    instruction). Award is a new step for works RFQs; quotes are per-item
+    unit rates; re-applying works on the awarded quote only.
+  - **Variation approval is client-only.** It's enforced in the service
+    (EXTERNAL + CLIENT member), not just the matrix, so Admin / DM can't
+    approve.
+  - **Invoices** can't exceed the PO value and are approved by someone
+    other than the recorder.
+  - **FX** is recorded by hand. Amounts with no rate are listed, never
+    silently added.
+  - **Not built:** the local AI rough estimate (noted for later), payment
+    certificates and retention (decision 4 still open), PDF/Excel
+    estimate reports.
+  - **Testing notes:**
+    - Postgres here isn't a Windows service. Start it with
+      `pg_ctl -D "C:/Program Files/PostgreSQL/18/data" start` after a
+      reboot.
+    - Run the converter with
+      `python -m uvicorn app.main:app --port 8100` in
+      `converter-service/` (the IFC and RVT exporters are installed).
+
+- **Client-only approvals, Stage 0 fixes, notes & actions, client portal
+  (2026-10-03).** Detail in `document.md` §2.15. Decisions:
+  - **Stage 1 documents:** only the client approves. The Development
+    Manager lost APPROVE, and the service enforces EXTERNAL + CLIENT
+    member. Stage gates were not changed; the user only asked about
+    Stage 1 documents.
+  - **Stage 0 owner:** the role is labelled Development Manager / Project
+    Manager.
+  - **Stage 0 consultant picks are indicative.** On conversion they become
+    PROPOSED appointments: not on the team, fee not committed. Setjeka
+    confirms or releases each one at Inception.
+  - **Notes & actions** extend the existing `Comment` threads rather than
+    adding a parallel system. A note can be addressed to a person and
+    optionally made an action (due date, priority, done).
+    - My Day lists my actions, notes and tasks.
+    - A project Actions tab is the action register.
+    - Meetings carry open actions forward.
+    - Opportunity notes are internal.
+  - **Standing instruction:** include notes wherever a record needs them in
+    every new module.
+  - **Client portal** (`/portal`, mobile first):
+    - decisions waiting, programme, budget drawn, shared documents,
+      meetings, notes, decision history and team;
+    - Setjeka shares documents per document (`clientVisible`), enforced in
+      the documents API;
+    - client logins land on the portal.
+  - **Document numbering:** user said to ignore it for now.
+
 ## Local dev environment
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in

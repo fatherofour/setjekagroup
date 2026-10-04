@@ -1,4 +1,4 @@
-import { Sun, LayoutDashboard, FolderKanban, HardHat, type LucideIcon } from 'lucide-react';
+import { Sun, LayoutDashboard, FolderKanban, HardHat, Database, Calculator, type LucideIcon } from 'lucide-react';
 
 interface PageTitle {
   label: string;
@@ -10,6 +10,9 @@ const PAGE_TITLES: Record<string, PageTitle> = {
   '/dashboard': { label: 'Dashboard', icon: LayoutDashboard },
   '/projects': { label: 'Projects', icon: FolderKanban },
   '/contractors': { label: 'Contractors', icon: HardHat },
+  '/cost-database': { label: 'Cost database', icon: Database },
+  '/estimates': { label: 'Estimates', icon: Calculator },
+  '/portal': { label: 'My projects', icon: FolderKanban },
 };
 
 export function getPageTitle(pathname: string): PageTitle {
@@ -17,5 +20,6 @@ export function getPageTitle(pathname: string): PageTitle {
   if (/^\/projects\/[^/]+$/.test(pathname)) return { label: 'Project', icon: FolderKanban };
   if (pathname === '/contractors/new') return { label: 'New Contractor', icon: HardHat };
   if (/^\/contractors\/[^/]+$/.test(pathname)) return { label: 'Contractor', icon: HardHat };
+  if (/^\/estimates\/[^/]+$/.test(pathname)) return { label: 'Estimate', icon: Calculator };
   return { label: 'Setjeka ERP', icon: LayoutDashboard };
 }

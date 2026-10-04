@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 import { Currency } from '../../generated/prisma/enums.js';
 
 export class CreateOpportunityDto {
@@ -9,6 +9,14 @@ export class CreateOpportunityDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  needAndDesirability?: string;
+
+  @IsOptional()
+  @IsString()
+  clientVision?: string;
 
   @IsOptional()
   @IsString()
@@ -28,20 +36,8 @@ export class CreateOpportunityDto {
   currency?: Currency;
 
   @IsOptional()
-  @IsString()
-  clientName?: string;
-
-  @IsOptional()
-  @IsString()
-  clientContactName?: string;
-
-  @IsOptional()
-  @IsEmail()
-  clientEmail?: string;
-
-  @IsOptional()
-  @IsString()
-  clientPhone?: string;
+  @IsUUID()
+  clientId?: string;
 
   @IsOptional()
   @IsUUID()

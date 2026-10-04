@@ -4,36 +4,43 @@ import { ProjectsService } from '../projects/projects.service.js';
 import type { CreateRfqDto } from './dto/create-rfq.dto.js';
 import type { UpdateRfqDto } from './dto/update-rfq.dto.js';
 import type { InviteVendorDto } from './dto/invite-vendor.dto.js';
+import type { CreateRfqItemDto, UpdateRfqItemDto } from './dto/rfq-item.dto.js';
+import { CostDatabaseService } from '../cost-database/cost-database.service.js';
 
 const RFQ_INCLUDE = {
   document: { select: { id: true, name: true } },
   createdBy: { select: { id: true, fullName: true } },
   invitations: { include: { contractor: { select: { id: true, name: true, tradeType: true } } } },
-  quotes: { select: { id: true, contractorId: true, price: true, currency: true, status: true } },
+  quotes: { select: { id: true, contractorId: true, price: true, currency: true, status: true, items: { select: { rfqItemId: true, unitRate: true } } } },
+  costRegion: { select: { id: true, name: true, currency: true } },
+  items: { include: { resource: { select: { id: true, code: true, name: true, unit: true } } }, orderBy: { sortOrder: 'asc' } },
 } as const;
+
+/** rfqNumber is unique across the whole table, so the sequence must be
+ * global too - shared by project RFQs and opportunity (Stage 0) RFQs. */
+export async function nextRfqNumber(prisma: PrismaService): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `RFQ-${year}-`;
+  const latest = await prisma.rfq.findFirst({
+    where: { rfqNumber: { startsWith: prefix } },
+    orderBy: { rfqNumber: 'desc' },
+    select: { rfqNumber: true },
+  });
+  let nextSeq = 1;
+  if (latest?.rfqNumber) {
+    const seq = Number.parseInt(latest.rfqNumber.slice(prefix.length), 10);
+    if (Number.isFinite(seq)) nextSeq = seq + 1;
+  }
+  return `${prefix}${String(nextSeq).padStart(4, '0')}`;
+}
 
 @Injectable()
 export class RfqsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectsService: ProjectsService,
+    private readonly costs: CostDatabaseService,
   ) {}
-
-  private async nextRfqNumber(projectId: string): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `RFQ-${year}-`;
-    const latest = await this.prisma.rfq.findFirst({
-      where: { projectId, rfqNumber: { startsWith: prefix } },
-      orderBy: { rfqNumber: 'desc' },
-      select: { rfqNumber: true },
-    });
-    let nextSeq = 1;
-    if (latest?.rfqNumber) {
-      const seq = Number.parseInt(latest.rfqNumber.slice(prefix.length), 10);
-      if (Number.isFinite(seq)) nextSeq = seq + 1;
-    }
-    return `${prefix}${String(nextSeq).padStart(4, '0')}`;
-  }
 
   /** Vendor Portal: an external CONTRACTOR-role member only sees RFQs
    * they were actually invited to, never the whole project's list -
@@ -49,8 +56,10 @@ export class RfqsService {
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const scopeContractorId = await this.scopeToOwnContractor(projectId, ownerId);
+    // Consultant RFQs (those with a discipline) live in Inception →
+    // Professional team, with their own ranking; this list is works/supply.
     return this.prisma.rfq.findMany({
-      where: { projectId, ...(scopeContractorId ? { invitations: { some: { contractorId: scopeContractorId } } } : {}) },
+      where: { projectId, discipline: null, ...(scopeContractorId ? { invitations: { some: { contractorId: scopeContractorId } } } : {}) },
       include: RFQ_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
@@ -58,9 +67,10 @@ export class RfqsService {
 
   async create(projectId: string, ownerId: string, dto: CreateRfqDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
+    if (dto.costRegionId) await this.costs.getRegion(dto.costRegionId);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
 
-    const rfqNumber = await this.nextRfqNumber(projectId);
+    const rfqNumber = await nextRfqNumber(this.prisma);
     const rfq = await this.prisma.rfq.create({
       data: {
         projectId,
@@ -68,6 +78,7 @@ export class RfqsService {
         title: dto.title,
         scopeDescription: dto.scopeDescription,
         documentId: dto.documentId,
+        costRegionId: dto.costRegionId,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         createdById: ownerId,
       },
@@ -91,6 +102,7 @@ export class RfqsService {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     await this.getOne(projectId, id);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
+    if (dto.costRegionId) await this.costs.getRegion(dto.costRegionId);
 
     await this.prisma.rfq.update({
       where: { id },
@@ -98,6 +110,7 @@ export class RfqsService {
         title: dto.title,
         scopeDescription: dto.scopeDescription,
         documentId: dto.documentId === undefined ? undefined : dto.documentId,
+        costRegionId: dto.costRegionId === undefined ? undefined : dto.costRegionId,
         dueDate: dto.dueDate === undefined ? undefined : dto.dueDate ? new Date(dto.dueDate) : null,
       },
     });
@@ -131,5 +144,63 @@ export class RfqsService {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     await this.getOne(projectId, id);
     await this.prisma.rfq.delete({ where: { id } });
+  }
+
+  // ---- Priced items -----------------------------------------------------
+
+  private async draftRfq(projectId: string, id: string) {
+    const rfq = await this.getOne(projectId, id);
+    if (rfq.status !== 'DRAFT') throw new BadRequestException('Items are fixed once the RFQ is issued - vendors have priced them');
+    return rfq;
+  }
+
+  async addItem(projectId: string, id: string, dto: CreateRfqItemDto) {
+    const rfq = await this.draftRfq(projectId, id);
+    let { description, unit } = dto;
+    if (dto.resourceId) {
+      const r = await this.prisma.costResource.findUnique({ where: { id: dto.resourceId } });
+      if (!r) throw new BadRequestException('Resource not found');
+      description ||= r.name;
+      unit = r.unit;
+    }
+    if (!description || !unit) throw new BadRequestException('Describe the item and its unit, or pick it from the cost database');
+    await this.prisma.rfqItem.create({ data: { rfqId: rfq.id, resourceId: dto.resourceId, description, unit, quantity: dto.quantity, sortOrder: rfq.items.length * 10 } });
+    return this.getOne(projectId, id);
+  }
+
+  async updateItem(projectId: string, id: string, itemId: string, dto: UpdateRfqItemDto) {
+    const rfq = await this.draftRfq(projectId, id);
+    if (!rfq.items.some((i) => i.id === itemId)) throw new NotFoundException('Item not found');
+    await this.prisma.rfqItem.update({ where: { id: itemId }, data: dto });
+    return this.getOne(projectId, id);
+  }
+
+  async removeItem(projectId: string, id: string, itemId: string) {
+    const rfq = await this.draftRfq(projectId, id);
+    if (!rfq.items.some((i) => i.id === itemId)) throw new NotFoundException('Item not found');
+    await this.prisma.rfqItem.delete({ where: { id: itemId } });
+    return this.getOne(projectId, id);
+  }
+
+  /** Award a works/supply RFQ to one quote. With a cost region set, the
+   * winning item rates go straight into that region's price sheet. */
+  async award(projectId: string, id: string, userId: string, quoteId: string) {
+    const rfq = await this.getOne(projectId, id);
+    if (rfq.status !== 'ISSUED' && rfq.status !== 'CLOSED') throw new BadRequestException('Only an issued or closed RFQ can be awarded');
+    const quote = rfq.quotes.find((q) => q.id === quoteId);
+    if (!quote || quote.status !== 'SUBMITTED') throw new BadRequestException('Choose a live quote on this RFQ');
+    await this.prisma.rfq.update({ where: { id }, data: { status: 'AWARDED', awardedQuoteId: quoteId, awardedAt: new Date() } });
+    const priceUpdate = rfq.costRegionId && quote.items.length ? await this.costs.applyQuoteRates(id, quoteId, userId) : null;
+    return { rfq: await this.getOne(projectId, id), priceUpdate };
+  }
+
+  /** Re-apply the awarded quote's rates (e.g. after an exchange rate was
+   * added for items that were skipped). Price sheets only ever take rates
+   * from an awarded quote - never from quotes that did not win. */
+  async reapplyAwardedPrices(projectId: string, id: string, userId: string) {
+    const rfq = await this.getOne(projectId, id);
+    if (rfq.status !== 'AWARDED' || !rfq.awardedQuoteId) throw new BadRequestException('Award the RFQ first; the price sheet is updated from the awarded quote');
+    const priceUpdate = await this.costs.applyQuoteRates(id, rfq.awardedQuoteId, userId);
+    return { rfq: await this.getOne(projectId, id), priceUpdate };
   }
 }

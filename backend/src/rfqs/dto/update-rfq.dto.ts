@@ -17,4 +17,9 @@ export class UpdateRfqDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string;
+
+  // The cost region whose price sheet this RFQ's awarded rates update.
+  @IsOptional()
+  @IsUUID()
+  costRegionId?: string | null;
 }

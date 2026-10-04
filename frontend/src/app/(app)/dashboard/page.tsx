@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { isClientUser } from '@/lib/portal';
 import Link from 'next/link';
 import {
   FolderKanban,
@@ -99,6 +101,11 @@ const COMING_SOON_WIDGETS = [
 
 export default function DashboardPage() {
   const { user, authedFetch } = useAuth();
+  const router = useRouter();
+  // Clients work in their own portal (mobile first), not the staff dashboard.
+  useEffect(() => {
+    if (isClientUser(user)) router.replace('/portal');
+  }, [user, router]);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 

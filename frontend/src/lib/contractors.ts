@@ -1,3 +1,4 @@
+import type { Currency } from './projectMeta';
 import type { OrganisationClassification, OrganisationRegistrationStatus, OrganisationPrequalificationStatus } from './organisationMeta';
 
 export interface Contractor {
@@ -78,7 +79,7 @@ export interface OrganisationAppointment {
   appointmentReference: string | null;
   contractReference: string | null;
   contractValue: number | null;
-  currency: 'USD' | 'ZAR' | null;
+  currency: Currency | null;
   scopeOfWork: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -101,7 +102,7 @@ export interface PaymentRecord {
   contractorId: string;
   appointmentId: string | null;
   amount: number;
-  currency: 'USD' | 'ZAR';
+  currency: Currency;
   paymentDate: string;
   reference: string | null;
   method: string | null;

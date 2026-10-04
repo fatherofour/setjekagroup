@@ -38,7 +38,17 @@ export class AuthService {
     password: string,
     rememberMe = false,
   ): Promise<
-    TokenPair & { user: { id: string; email: string; fullName: string; role: string; accountType: string } }
+    TokenPair & {
+      user: {
+        id: string;
+        email: string;
+        fullName: string;
+        role: string;
+        accountType: string;
+        clientId: string | null;
+        contractorId: string | null;
+      };
+    }
   > {
     const user = await this.validateUser(email, password);
     if (!user) throw new UnauthorizedException('Invalid email or password');
@@ -47,9 +57,19 @@ export class AuthService {
       { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },
       rememberMe,
     );
+    // clientId/contractorId only drive which portal menu the frontend shows;
+    // every portal endpoint re-reads them from the database itself.
     return {
       ...tokens,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, accountType: user.accountType },
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        accountType: user.accountType,
+        clientId: user.clientId,
+        contractorId: user.contractorId,
+      },
     };
   }
 

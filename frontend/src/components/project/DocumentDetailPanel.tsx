@@ -38,7 +38,8 @@ export function DocumentDetailPanel({
   onClose: () => void;
   onChanged: () => void;
 }) {
-  const { authedFetch, accessToken } = useAuth();
+  const { authedFetch, accessToken, user } = useAuth();
+  const internal = user?.accountType === 'INTERNAL' || user?.role === 'ADMIN';
   const [form, setForm] = useState({
     name: document.name,
     description: document.description ?? '',
@@ -190,6 +191,23 @@ export function DocumentDetailPanel({
           <button onClick={save} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
             {saving ? 'Saving…' : 'Save'}
           </button>
+          {internal && (
+            <label className="flex items-start gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-emerald-600"
+                checked={Boolean(document.clientVisible)}
+                onChange={(e) =>
+                  authedFetch(`/projects/${projectId}/documents/${document.id}`, { method: 'PATCH', body: { clientVisible: e.target.checked } })
+                    .then(() => onChanged())
+                    .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to update.'))
+                }
+              />
+              <span>
+                <strong className="font-medium text-slate-800 dark:text-slate-100">Visible to the client</strong> — shows this document (its current revision) in the client&apos;s portal. Off by default.
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">

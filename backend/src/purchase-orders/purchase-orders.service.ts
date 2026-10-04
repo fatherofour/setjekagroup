@@ -9,6 +9,7 @@ const PO_INCLUDE = {
   contractor: { select: { id: true, name: true, tradeType: true } },
   quote: { select: { id: true, price: true, currency: true } },
   appointment: { select: { id: true, appointmentReference: true } },
+  budgetCode: { select: { id: true, code: true, name: true } },
 } as const;
 
 @Injectable()
@@ -75,6 +76,7 @@ export class PurchaseOrdersService {
         quoteId: dto.quoteId,
         appointmentId: dto.appointmentId,
         costCode: dto.costCode,
+        budgetCodeId: dto.budgetCodeId,
         scopeDescription: dto.scopeDescription,
         value: dto.value,
         currency: dto.currency,
@@ -95,7 +97,7 @@ export class PurchaseOrdersService {
     await this.getOne(projectId, id);
     await this.prisma.purchaseOrder.update({
       where: { id },
-      data: { costCode: dto.costCode, scopeDescription: dto.scopeDescription, value: dto.value, currency: dto.currency },
+      data: { costCode: dto.costCode, budgetCodeId: dto.budgetCodeId, scopeDescription: dto.scopeDescription, value: dto.value, currency: dto.currency },
     });
     return this.getOne(projectId, id);
   }

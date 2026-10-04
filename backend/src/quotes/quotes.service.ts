@@ -5,11 +5,13 @@ import { ProjectsService } from '../projects/projects.service.js';
 import type { CreateQuoteDto } from './dto/create-quote.dto.js';
 import type { UpdateQuoteDto } from './dto/update-quote.dto.js';
 import type { EvaluateQuoteDto } from './dto/evaluate-quote.dto.js';
+import { resolveQuoteItems } from '../rfqs/quote-items.js';
 
 const QUOTE_INCLUDE = {
   contractor: { select: { id: true, name: true, tradeType: true } },
   document: { select: { id: true, name: true } },
   submittedBy: { select: { id: true, fullName: true } },
+  items: { select: { rfqItemId: true, unitRate: true } },
 } as const;
 
 function weightedTotal(scores: { weight: number; score: number }[] | null | undefined): number | null {
@@ -76,11 +78,13 @@ export class QuotesService {
       if (!doc) throw new BadRequestException('Document not found in this project');
     }
 
+    const priced = await resolveQuoteItems(this.prisma, rfq.id, dto.items, dto.price);
     const quote = await this.prisma.quote.create({
       data: {
         rfqId: rfq.id,
         contractorId,
-        price: dto.price,
+        price: priced.price,
+        items: priced.rows ? { create: priced.rows } : undefined,
         currency: dto.currency,
         leadTimeDays: dto.leadTimeDays,
         warrantyTerms: dto.warrantyTerms,
@@ -109,10 +113,17 @@ export class QuotesService {
       if (!doc) throw new BadRequestException('Document not found in this project');
     }
 
+    let price = dto.price;
+    if (dto.items) {
+      const priced = await resolveQuoteItems(this.prisma, rfqId, dto.items, dto.price);
+      price = priced.price;
+      await this.prisma.quoteItem.deleteMany({ where: { quoteId: id } });
+      if (priced.rows) await this.prisma.quoteItem.createMany({ data: priced.rows.map((r) => ({ ...r, quoteId: id })) });
+    }
     await this.prisma.quote.update({
       where: { id },
       data: {
-        price: dto.price,
+        price,
         currency: dto.currency,
         leadTimeDays: dto.leadTimeDays,
         warrantyTerms: dto.warrantyTerms,

@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class UpdateDocumentDto {
   @IsOptional()
@@ -29,4 +29,9 @@ export class UpdateDocumentDto {
   @IsOptional()
   @IsUUID()
   scheduleActivityId?: string | null;
+
+  /** Show this document (and its drawings) in the client portal. */
+  @IsOptional()
+  @IsBoolean()
+  clientVisible?: boolean;
 }

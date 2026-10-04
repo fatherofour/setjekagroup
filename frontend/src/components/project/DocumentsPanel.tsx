@@ -23,6 +23,7 @@ interface RevisionLite {
 }
 
 export interface ProjectDocument {
+  clientVisible?: boolean;
   id: string;
   name: string;
   description: string | null;

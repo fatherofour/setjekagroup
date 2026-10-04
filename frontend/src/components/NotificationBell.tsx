@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Check } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { clientLink } from '@/lib/portal';
 
 interface Notification {
   id: string;
-  projectId: string;
+  projectId: string | null;
+  link: string | null;
   type: 'TASK_ASSIGNED' | 'ISSUE_ASSIGNED' | 'MENTIONED' | 'DUE_SOON';
   message: string;
   isRead: boolean;
@@ -30,7 +32,7 @@ function timeAgo(iso: string): string {
 const POLL_INTERVAL_MS = 60_000;
 
 export function NotificationBell() {
-  const { authedFetch } = useAuth();
+  const { authedFetch, user } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[] | null>(null);
@@ -65,7 +67,7 @@ export function NotificationBell() {
       setNotifications((prev) => prev?.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)) ?? null);
       authedFetch(`/notifications/${n.id}/read`, { method: 'PATCH' }).catch(() => {});
     }
-    router.push(`/projects/${n.projectId}`);
+    router.push(clientLink(n.link ?? (n.projectId ? `/projects/${n.projectId}` : '/my-day'), user));
   }
 
   async function markAllRead() {
@@ -77,7 +79,7 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative hidden h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:flex"
+        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
         aria-label="Notifications"
         type="button"
       >

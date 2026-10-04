@@ -37,6 +37,14 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.j
 import { DeliveriesModule } from './deliveries/deliveries.module.js';
 import { VendorScorecardsModule } from './vendor-scorecards/vendor-scorecards.module.js';
 import { OpportunitiesModule } from './opportunities/opportunities.module.js';
+import { ClientsModule } from './clients/clients.module.js';
+import { PortalModule } from './portal/portal.module.js';
+import { InceptionModule } from './inception/inception.module.js';
+import { MeetingsModule } from './meetings/meetings.module.js';
+import { ApprovalsModule } from './approvals/approvals.module.js';
+import { CostDatabaseModule } from './cost-database/cost-database.module.js';
+import { EstimatesModule } from './estimates/estimates.module.js';
+import { CommercialModule } from './commercial/commercial.module.js';
 
 @Module({
   imports: [
@@ -74,6 +82,14 @@ import { OpportunitiesModule } from './opportunities/opportunities.module.js';
     DeliveriesModule,
     VendorScorecardsModule,
     OpportunitiesModule,
+    ClientsModule,
+    PortalModule,
+    InceptionModule,
+    MeetingsModule,
+    ApprovalsModule,
+    CostDatabaseModule,
+    EstimatesModule,
+    CommercialModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor }],

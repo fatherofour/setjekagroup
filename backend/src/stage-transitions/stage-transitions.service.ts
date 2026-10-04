@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { PermissionsService } from '../permissions/permissions.service.js';
+import { DeliverablesService } from '../inception/deliverables.service.js';
+import { MILESTONE_FOR_STAGE_EXIT, markMilestone } from '../opportunities/milestones.js';
 import type { ProjectStage } from '../generated/prisma/enums.js';
 import type { RequestTransitionDto } from './dto/request-transition.dto.js';
 import type { DecideTransitionDto } from './dto/decide-transition.dto.js';
@@ -33,6 +35,7 @@ export class StageTransitionsService {
     private readonly projectsService: ProjectsService,
     private readonly notifications: NotificationsService,
     private readonly permissionsService: PermissionsService,
+    private readonly deliverables: DeliverablesService,
   ) {}
 
   async findAll(projectId: string, ownerId: string) {
@@ -42,6 +45,16 @@ export class StageTransitionsService {
       include: TRANSITION_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** PROCSA PM 1.9: leaving Inception needs the client's approval of every
+   * Stage 1 document. Other stages have no document set defined yet. */
+  private async assertStageDocumentsApproved(projectId: string, fromStage: ProjectStage) {
+    if (fromStage !== 'INCEPTION') return;
+    const outstanding = await this.deliverables.outstanding(projectId);
+    if (outstanding.length) {
+      throw new BadRequestException(`The client must approve all Stage 1 documents first. Outstanding: ${outstanding.join('; ')}`);
+    }
   }
 
   private nextStage(current: ProjectStage): ProjectStage | null {
@@ -60,6 +73,7 @@ export class StageTransitionsService {
 
     const pending = await this.prisma.stageTransition.findFirst({ where: { projectId, status: 'PENDING' } });
     if (pending) throw new BadRequestException('A stage transition is already pending for this project');
+    await this.assertStageDocumentsApproved(projectId, project.stage);
 
     const transition = await this.prisma.stageTransition.create({
       data: {
@@ -122,6 +136,10 @@ export class StageTransitionsService {
     if (!transition) throw new NotFoundException('Stage transition not found');
     if (transition.status !== 'PENDING') throw new BadRequestException('This transition has already been decided');
 
+    // Re-checked at decision time: a document may have been edited (and so
+    // reopened) after the request was made.
+    if (dto.approve) await this.assertStageDocumentsApproved(projectId, transition.fromStage);
+
     const status = dto.approve ? 'APPROVED' : 'REJECTED';
     await this.prisma.$transaction([
       this.prisma.stageTransition.update({
@@ -130,6 +148,9 @@ export class StageTransitionsService {
       }),
       ...(dto.approve ? [this.prisma.project.update({ where: { id: projectId }, data: { stage: transition.toStage } })] : []),
     ]);
+    // Leaving a stage completes it on the development milestones (DEV R12).
+    const milestoneKey = MILESTONE_FOR_STAGE_EXIT[transition.fromStage];
+    if (dto.approve && milestoneKey) await markMilestone(this.prisma, { projectId }, milestoneKey);
 
     await this.notifications.notify({
       userId: transition.requestedById,

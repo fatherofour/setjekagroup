@@ -1024,18 +1024,130 @@ auto-populate on New Project became a hard requirement — this module's
 app's actual architecture (pre-filling a new `Project` from the
 opportunity's data directly, rather than a dropdown on the create form).
 
+**How it maps to PROCSA Stage 0.** The PROCSA Responsibility Matrix's
+Stage 0 ("Project Initiation & Briefing", Development Manager only) is
+what Setjeka's own stage list calls *Initiation*. An Opportunity **is**
+that stage; converting it creates the Project directly at **Inception**.
+The opportunity screen is organised around the matrix's line items:
+
+| PROCSA | Line item | Where it lives |
+|---|---|---|
+| 0.1 / 0.3 | Need & desirability; client's vision | `Client` record + the opportunity brief (`description`) |
+| 0.2 | First business case | `description` + `estimatedValue` |
+| 0.4 | Source appropriate land | `OpportunitySite` register, one `SELECTED` |
+| 0.5 | Land rights — zoning, environmental, infrastructural, legal | `OpportunityApproval` |
+| 0.6 / 0.7 | Procure market research; appoint consultants | Opportunity RFQs → automatic ranking → `OpportunityAppointment` |
+| 0.8 | Process payments to creditors | Not built here — payments are recorded against the project appointment after conversion |
+
+A checklist on the Overview tab shows these. **Only "client captured"
+and "site selected" block conversion** — a project can't be set up
+without knowing who it's for and where it is. Approvals and consultants
+are advisory, because Setjeka may legitimately carry an outstanding
+approval or appointment into Inception.
+
 **`Opportunity`**: name, description, `developmentType` (free text —
 same reasoning as `Contractor.disciplines`: the register's categories
-are examples, not a confirmed closed set), location, `estimatedValue`/
-`currency`, client contact fields (`clientName`/`clientContactName`/
-`clientEmail`/`clientPhone` — satisfies "client records" without
-inventing a separate Client entity the register never asks for), `stage`
-(own enum: `IDENTIFIED`→`UNDER_EVALUATION`→`APPROVED`→`CONVERTED`, plus
-terminal `ON_HOLD`/`REJECTED`), `ownerId`, `convertedProjectId`.
-Deliberately **not** project-nested — there's no `Project` yet — and
-gated by `InternalOnlyGuard` like the `Contractor` directory, not the
-per-project RBAC engine, since the register lists no external/vendor/
-client user for any DEV row.
+are examples, not a confirmed closed set), location (target area —
+the exact site comes from the site register), `estimatedValue`/
+`currency`, `clientId` → `Client`, `stage` (own enum:
+`IDENTIFIED`→`UNDER_EVALUATION`→`APPROVED`→`CONVERTED`, plus terminal
+`ON_HOLD`/`REJECTED`), `ownerId` (defaults to the creator — the
+Development Manager), `convertedProjectId`. Deliberately **not**
+project-nested — there's no `Project` yet. Internal staff manage it
+behind `InternalOnlyGuard`; clients and consultants see their slice of
+it through the portals below.
+
+**`Client`** (replaced the earlier free-text `clientName`/
+`clientContactName`/`clientEmail`/`clientPhone` columns): a shared client
+directory — name (unique), registration number, contact person, email,
+phone, address, notes. Added because the client asked for "space to
+enter new client details" at this stage *and* for client portal access,
+and a portal login needs an organisation to belong to before any
+project exists. The migration copied every existing opportunity's client
+text into a `Client` row before dropping the old columns, so nothing was
+lost. A new client can be added inline from the New Opportunity form
+(`ClientPicker`), or from **Opportunities → Clients**.
+
+**`OpportunitySite`** (PROCSA 0.4): every site considered — name,
+address, erf/stand/title-deed number, size (m²), current zoning,
+ownership, asking price, coordinates, notes — with status
+`CANDIDATE`/`SHORTLISTED`/`SELECTED`/`REJECTED`. At most one is
+`SELECTED`; `POST .../sites/:siteId/select` drops any previous choice
+back to `SHORTLISTED` in the same transaction, and `PATCH` refuses to set
+`SELECTED` directly so that rule can't be bypassed.
+
+**Consultant appointment by RFQ** (PROCSA 0.6–0.7). Reuses the
+procurement `Rfq`/`RfqInvitation`/`Quote` models: `Rfq.projectId` became
+optional and `Rfq.opportunityId` was added, with a database `CHECK`
+that exactly one is set. An opportunity RFQ also carries `discipline`,
+`currency` (defaults to the opportunity's) and `priceWeight`/
+`ratingWeight` (default 60/40). The flow:
+
+1. **Choose a discipline** — the dropdown (`GET /consultants/disciplines`)
+   lists every discipline actually registered in the Contractors
+   directory, with a count. Picking e.g. *Architect* lists **every**
+   registered architect (`GET /consultants?discipline=`; matched
+   case-insensitively, excluding rejected/suspended/archived firms), best
+   track record first, **all ticked by default**.
+2. **Send** — one RFQ, one invitation per ticked firm.
+3. **Quotes** — a firm with a vendor-portal login submits its own;
+   otherwise staff record the quote when it arrives. One live quote per
+   firm per RFQ (a resubmission replaces it).
+4. **Automatic ranking** (`consultant-ranking.ts`, computed at read time,
+   never stored):
+   - *Price score* — lowest fee = 100, others = lowest ÷ their fee × 100.
+   - *Track-record score* — the average, as a % of 5★, of every past
+     `OrganisationRating` (1–5★) and every `VendorScorecard` (its five
+     1–5 dimensions averaged) across all the firm's appointments. A firm
+     with no history is scored at a neutral 3★, so it's neither rewarded
+     nor punished and price alone separates it.
+   - *Overall* = weighted by the RFQ's price/track-record split. Ties go
+     to the cheaper fee. Quotes in another currency are listed but not
+     ranked — comparing ZAR with USD needs an exchange rate the app
+     deliberately doesn't hold.
+   - The #1 firm is shown as **Recommended**.
+5. **Appoint** — one click on the recommended firm. Appointing anyone
+   else is allowed (the ranking advises; the Development Manager decides)
+   but **requires a written justification**. The appointment stores the
+   rank and score the evaluation gave at that moment, so an override
+   stays auditable after later ratings shift the live ranking.
+
+Worked example from the test run: A quoted R100k with no history, B
+R120k with a 5★ record, C R90k with a 2★ record. Overall scores were B
+85, A 78, C 76 — the dearest firm is recommended because its record
+outweighs a 25% price premium at 60/40, which is the trade-off the
+client described.
+
+**`OpportunityAppointment`**: the appointed firm, role (derived from the
+discipline — Architect → `ARCHITECT`, Quantity Surveyor →
+`QUANTITY_SURVEYOR`, etc., otherwise `CONSULTANT`), fee, rank/score at
+award, justification, who appointed and when. It's kept separate from
+`OrganisationProjectAppointment` (which needs a `projectId` and drives
+five contractor-profile screens that assume one) and becomes one on
+conversion. An appointment can be revoked before conversion; its RFQ
+then reopens as `CLOSED` so another firm can be appointed from the same
+bids.
+
+**Portals.** Both are ordinary `EXTERNAL` accounts tied to one
+organisation via `User.clientId` or `User.contractorId` (one login can't
+be both). Access is granted from the client's page / the opportunity's
+Client tab, or the contractor's **Portal access** tab. As with the
+Administration invite flow, no email provider is connected, so the
+set-password link is shown for staff to send. Both portals re-read the
+caller's organisation from the database on every request rather than
+trusting the token, so removing access takes effect immediately.
+- **Client portal** (`/client-portal/...`, menu *Portal → My
+  Developments*): read-only view of their own client's opportunities —
+  brief, stage history, sites (rejected ones hidden), approvals,
+  appointed team. **Never** quotes, fees or scores.
+- **Vendor portal** (`/vendor-portal/...`, menu *Portal → My RFQs*): the
+  RFQs the firm was invited to (opportunity and project RFQs alike), its
+  own quote only, submit/update/withdraw while the RFQ is issued and
+  before the end of its due date, and whether it was awarded. Never
+  other firms' names, quotes or scores.
+
+The sidebar now hides internal-only menus (Opportunities, Contractors)
+from external logins, and shows the Portal menu only to them.
 
 **`OpportunityStageHistory`**: same shape as `SubmittalStatusHistory`/
 `OrganisationStatusHistory` — a direct stage change with a logged
@@ -1052,13 +1164,31 @@ Opportunity is single-actor internal pipeline work.
 pre-Project, so a text reference is the honest V1 rather than building
 one just for this).
 
-**Convert to Project**: `POST /opportunities/:id/convert-to-project`
-(only from `APPROVED`) creates a real `Project` via the existing
-`ProjectsService.create` — reusing its `nextProjectCode` scan-and-
-increment logic unchanged — pre-filled with `name`/`client`/`location`/
-`value`/`currency` from the opportunity, then sets the opportunity's
-stage to `CONVERTED` and records `convertedProjectId`, in the same
-`$transaction` pattern used throughout this session.
+**Move to Inception** (`POST /opportunities/:id/convert-to-project`):
+only from `APPROVED`, and only with a client and a selected site. It
+creates the `Project` at stage **`INCEPTION`** via the existing
+`ProjectsService.create` (reusing its project-code numbering), with
+client = the client's name, location and coordinates = the selected
+site, plus name, description, value and currency. Then, in one
+transaction:
+- each `OpportunityAppointment` becomes an `OrganisationProjectAppointment`
+  (status `APPOINTED`, fee, RFQ number as the reference) **and** a Team
+  member — one per active vendor-portal login of that firm so those
+  logins can open the project, or a single directory-only member if it
+  has none;
+- each active client-portal login becomes a `CLIENT` Team member (or one
+  directory-only `CLIENT` member from the client's contact details);
+- the opportunity becomes `CONVERTED` with a history row.
+
+If that transaction fails, the just-created project is deleted, so a
+half-converted opportunity can't be left behind. A converted opportunity
+is read-only and can't be deleted — it's the project's Stage 0 record.
+
+**Fixed along the way:** RFQ numbers restarted at `RFQ-YYYY-0001` per
+project, but `rfqNumber` is unique across the whole table, so a second
+project's first RFQ would have hit a duplicate-number error. The
+sequence is now global (`nextRfqNumber` in `rfqs.service.ts`), shared by
+project and opportunity RFQs.
 
 **Deliberately not building, and why:**
 
@@ -1066,20 +1196,710 @@ stage to `CONVERTED` and records `convertedProjectId`, in the same
 |---|---|
 | Feasibility register (site/location/type/est. value/cost/funding/risks/assumptions as a dedicated structured record) | The register explicitly marks this **"Not needed now"** — the client's own words, not an inference |
 | Development milestones | Register marks this **"Default"** — lower priority than this section's two "Yes" rows |
-| File/document evidence on approvals | No project-agnostic document store exists pre-Project; `evidenceNotes` (text) is the V1 stand-in |
-| Fine-grained RBAC on Opportunities | No external party is ever involved pre-Project per the register; a blanket internal-only gate is the right-sized fit |
-| Reusing Project's `StageTransition` request/approve workflow | Different shape of problem — single internal actor, not a requester/external-approver split |
+| File/document evidence on approvals, sites and RFQs | No project-agnostic document store exists pre-Project; text fields are the V1 stand-in |
+| Fully automatic award (no human click) | The ranking pre-selects and recommends; appointing a consultant commits Setjeka contractually, so a Development Manager confirms it with one click. Overrides are allowed but justified and recorded |
+| Configurable evaluation criteria beyond price + track record (e.g. technical score) | The client asked for price and ratings. The weights are adjustable per RFQ; more criteria can be added to `rankQuotes` later |
+| Currency conversion in the ranking | No exchange-rate source in the app; other-currency quotes are shown but not ranked |
+| Emailing RFQs / portal invites | No email provider connected (same as every other invite in the app); staff send the set-password link, and the RFQ appears in the firm's portal |
+| PROCSA 0.8 payments to creditors at opportunity stage | Payments already exist against project appointments; pre-project payments weren't asked for |
+| Reusing Project's `StageTransition` request/approve workflow for opportunity stages | Different shape of problem — single internal actor, not a requester/external-approver split |
 
-Verified end-to-end via curl (an opportunity walked
-`IDENTIFIED`→`UNDER_EVALUATION`→`APPROVED` with two ordered history
-rows; two authority approvals added and one moved to `SUBMITTED`;
-converted to a project with `name`/`client`/`location`/`value`/
-`currency` all correctly pre-filled; a second conversion attempt
-rejected; an external `CONTRACTOR`-role account gets 403 on every
-opportunities route) and Playwright (create → open detail → change
-stage → history updates live, zero console errors). This closes the
-`opportunity-project-integration-deferred` note in the global memory
-store — see `MEMORY.md`.
+**Verified** with two throwaway scripts (both deleted afterwards, all
+test data removed):
+- **API (48 checks):** discipline list and case-insensitive consultant
+  pool sorted by track record; duplicate client rejected; client and
+  vendor portal grant → set-password → login; one login can't be both;
+  site selection keeps exactly one selected and `PATCH` can't bypass it;
+  RFQ to three architects, vendor submits and re-submits (updates, not
+  duplicates), staff record two more; scores exactly B 85 / A 78 / C 76
+  with B recommended; vendor and client responses never contain
+  competing fees or scores; vendor gets 403 on internal and client-portal
+  routes and client gets 403 on internal routes; override without
+  justification refused; no quoting after award; conversion refused
+  before Approved; on conversion the project is at `INCEPTION`, located
+  at the selected site with its coordinates, the architect is a project
+  appointment and an `ARCHITECT_ENGINEER` member, the client login is a
+  `CLIENT` member and can open the project, a non-appointed vendor can't;
+  the converted opportunity is read-only.
+- **Browser (Playwright, staff + vendor + client logins):** the whole
+  flow through the UI, including the inline new client, sites,
+  approvals, the RFQ discipline picker (all firms ticked, track record
+  shown), the vendor quoting in its portal, the ranking table, the
+  justification gate, Move to Inception landing on the new project, and
+  the client portal. Also dark mode, 390px width (no horizontal scroll),
+  and zero browser console errors.
+
+This closes the `opportunity-project-integration-deferred` note in the
+global memory store — see `MEMORY.md`.
+
+### 2.12a PROCSA Stage 0 — finalised for all roles
+
+Completes §2.12 against the PROCSA matrix's Stage 0 column (0.1–0.8,
+Development Manager only) and the requirements register's DEV rows. Those
+rows name an **Executive** alongside the Development Manager, and the client
+takes part through 0.3. The role catalogue and evidence rules are in
+`backend/src/opportunities/stage0.ts`.
+
+| Item | Built |
+|---|---|
+| **0.1** Establish need and desirability | `Opportunity.needAndDesirability`. Existing `description` text was copied in by the migration; `description` is now a short summary |
+| **0.2** First business case | `ViabilityScenario` now belongs to an opportunity *or* a project (a database CHECK enforces exactly one). Same calculator as Stage 1 desktop viability. One scenario is marked preferred. Completed market research pre-fills a new scenario's rent or sale price. Scenarios are **copied** to the project at conversion |
+| **0.3** Formalise the client's vision | `clientVision` + `visionConfirmedAt/By`. The client confirms it in their portal (`POST /client-portal/opportunities/:id/confirm-vision`). Editing the vision, or changing the client, clears the confirmation. Staff can't tick the client's item for them |
+| **0.4** Source appropriate land | Existing site register + selection |
+| **0.5** Procurement of land rights | The selected site carries a land acquisition status (negotiating → offer → agreement signed → transferred/leased) with agreed price and dates. Land rights are categorised **zoning / environmental / infrastructure & external services / legal**, linked to a site, with authority, reference and evidence files. Done when the site is secured and every right is granted |
+| **0.6** Procure market research | `MarketResearch`: provider, status, recommended product, target market, achievable rent/sale price, vacancy, demand evidence, findings, report files |
+| **0.7** Appoint consultants | Existing ranked consultant RFQs |
+| **0.8** Process payments to creditors | `OpportunityPayment`: the Development Manager records the invoice, an **Executive who didn't record it approves**, then it's marked paid. Rejection needs a reason. Paid consultant invoices become `PaymentRecord`s on the project appointment at conversion |
+| Executive (register DEV R8/R11) | `InvestmentDecision`. The Development Manager requests it once the client, need and a preferred business case are on file; it stores a snapshot of the case. An Executive (internal `MANAGER` or `ADMIN`, not the requester) approves or declines with reasons. **Approval is now the only way an opportunity reaches APPROVED** — setting the stage directly is refused, and the stage is frozen while a decision is pending |
+| Evidence (register DEV R11) | `OpportunityDocument`: files on local disk (`UPLOAD_DIR`), optionally linked to a land right, site, research report, payment or business case |
+| Development milestones (register DEV R12) | `DevelopmentMilestone` with baseline, target and actual dates; status (on track / slipped / overdue / complete / complete late) and variance computed at read time. A PROCSA template covers the Stage 0 events and the end of each stage 1–6. Template milestones **record their own actual date** when the event happens (vision confirmed, research completed, site secured, all land rights granted, investment decision, conversion, each stage gate approved). They move to the project at conversion and continue on the Inception tab |
+
+**Stage 0 tracker** (replaces the earlier 5-item checklist). Development
+Manager 0.1–0.8, Executive E.1 (investment decision) and E.2 (payments
+approved), and Client C.1 (vision confirmed). Items tick themselves from
+evidence; staff can sign off Development Manager and Executive items by
+hand with a note. **Blocks conversion:** client, selected site, and an
+approved investment decision.
+
+**Approval Center** now also shows Executives pending investment decisions
+and Stage 0 payments, and never asks anyone to approve their own request.
+
+**Client portal** adds the need, the vision with a Confirm button, the
+preferred business case headline (cost, value, profit on cost, yield),
+land-right categories, acquisition status and milestones. It still never
+shows payments, fees or quotes.
+
+**Verified:**
+- **API (49 checks)** across Development Manager, Executive, client and
+  architect logins:
+  - **Vision:** the confirm/clear cycle, and staff can't tick the client's
+    item.
+  - **Milestones:** template, baseline and a 45-day slip; five Stage 0
+    milestones recorded their own actual dates.
+  - **Land rights:** stay open until the site is secured and every right
+    granted.
+  - **Evidence files:** upload, download intact, and links to records from
+    elsewhere refused.
+  - **Payments:** the Development Manager can't approve, can't pay before
+    approval, can't edit after approval, and a rejection needs a reason.
+  - **Investment decision:** approval can't be set by stage, conversion is
+    blocked without the decision, one pending at a time, the stage freezes
+    while pending, the requester can't decide, and it shows only in the
+    Executive's queue.
+  - **Client view:** no fees.
+  - **Conversion:** business case copied (the opportunity keeps its own),
+    milestones carried with "enters Inception" recorded, paid invoice →
+    project payment record, land rights → consents with category and
+    authority, brief seeded from need and vision.
+- **Browser (Playwright):** the full flow through the UI as all three
+  roles, including market research pre-filling the business case, site
+  acquisition, evidence upload, Executive approval from the Approvals
+  queue, client confirmation in the portal, Move to Inception and the
+  milestones continuing on the project. No sideways scroll at 390px and
+  zero browser console errors.
+
+### 2.13 PROCSA Stage 1 — Inception (all roles)
+
+Built from the PROCSA Responsibility Matrix's Stage 1 column for every
+role. PROCSA defines the stage as: *"Establish the client requirements and
+preferences, assess user needs and options, appointment of necessary
+consultants, establish the project brief including project objectives,
+priorities, constraints, assumptions, aspirations and strategies."* The
+roles are the Development Manager, Project Manager, Architect, Quantity
+Surveyor, and the Structural, Civil, Electrical and Mechanical Engineers.
+The full line-item catalogue is in `backend/src/inception/procsa.ts`.
+Everything lives on a new **Inception (Stage 1)** tab of the project
+workspace, plus a project **Meetings** tab and an **Approvals** page.
+
+**Roles.** The register's User Roles sheet groups Architect / Civil /
+Structural Engineer as one role. PROCSA gives each its own Stage 1 duties,
+so `ProjectMemberRole` gained `ARCHITECT`, `STRUCTURAL_ENGINEER`,
+`CIVIL_ENGINEER`, `ELECTRICAL_ENGINEER` and `MECHANICAL_ENGINEER`.
+`ARCHITECT_ENGINEER` stays, relabelled "Architect / Engineer (general)",
+for existing members. `OrganisationProjectRole` gained Electrical and
+Mechanical Engineer. Consultants appointed from an RFQ now join the Team
+under their own PROCSA role.
+
+**Line items → modules**
+
+| Deliverable | PROCSA | Module |
+|---|---|---|
+| Project brief | DM 1.1, PM 1.1, all consultants 1.1 | `ProjectBrief`: client requirements, user needs, options, objectives, priorities, constraints, assumptions, aspirations, strategies, budget target, target completion. Consultant input is a comment thread (`CommentEntityType.PROJECT_BRIEF`) |
+| Site assessment | DM 1.2, PM 1.4, consultants 1.4, engineers 1.7 | `SiteConstraint` (characteristics, rights, constraints with impact/status/mitigation) and `SiteInvestigation` (surveys/tests needed before Concept, who recommended, who is responsible, cost, findings) |
+| Desktop viability | DM 1.3 (+ QS 1.7–1.8, engineers 1.9 advice) | `ViabilityScenario` — inputs only; results computed at read time (`inception/viability.ts`). One scenario is marked preferred |
+| Procurement policy | DM 1.5, PM 1.2, consultants 1.3 | `ProcurementPolicy`: delivery strategy, tender method, contract form (writes `Project.contractForm`), minimum quotes, preferential procurement, local content, approval thresholds, and the default price/track-record split for consultant RFQs |
+| Consents & approvals schedule | PM 1.7, consultants 1.4 | `ConsentApproval` register. Stage 0 authority approvals are copied in on conversion (and were back-filled for already-converted projects) |
+| Professional team | DM 1.4, PM 1.3 / 1.5 / 1.6, consultants 1.5–1.6, Architect 1.5, QS 1.4 | `RequiredService` (which disciplines are needed; "covered" is derived from appointments), project-level consultant RFQs (same ranking as Stage 0), and per-appointment roles & responsibilities, fee basis/%, agreement form and agreement status through to Signed |
+| Initiation programme | PM 1.8 | One click adds 8 Stage 1 activities to the project Schedule as a finish-to-start chain; the existing critical-path engine dates them |
+| Information register | Architect 1.7–1.8, engineers 1.8 / 1.10, QS 1.9 | `InformationItem`: what data/drawings/plans exist, who holds them, status, linked document |
+| "Advise on …" items | all consultants 1.3 / 1.4, Architect 1.5, QS 1.4 / 1.7 / 1.8, engineers 1.7 / 1.9 | `ConsultantAdvice` by topic, shown in the relevant section; the author's role is snapshotted |
+| Initiation meetings | all consultants 1.2; register CLI "Client communications" | `Meeting` + `MeetingAttendee` (invite, present/absent, minutes, issue to attendees with notifications). Action items are ordinary `ProjectTask`s with `meetingId` |
+| Client approval of Stage 1 documentation | PM 1.9; register CLI "Client approvals", COL "Approval center" | `StageDeliverable` + `StageDeliverableEvent` and the `/approvals` queue |
+
+**Sign-off (PM 1.9).** Seven documents need the client's approval: brief,
+site assessment, desktop viability, procurement policy, consents
+schedule, consultant appointments, and initiation programme. Each has a
+"ready" rule (e.g. the brief needs requirements, objectives and
+constraints) before it can be submitted. The client then approves it, or
+requests a revision with a reason. Each approval stores a snapshot of
+what was approved. **Editing an approved or submitted document reopens it**
+(approved → new version), so an approval always matches what's on file.
+The project **can't be requested from Inception into Concept until all
+seven are approved**. This is checked again when the stage-gate request
+is decided, in case something was reopened in between.
+
+Only **the client** approves Stage 1 documents (PROCSA: client approval;
+Meeting 3 hard rule, §2.15). The Development Manager originally held this
+too, "acting for" the client; that was removed on 2026-10-03, and
+`DeliverablesService.decide` now also refuses anyone who isn't an EXTERNAL
+CLIENT member, whatever the permission matrix says. Admins can still
+change other defaults in Administration → Permissions, which also lists
+the Stage gate, Procurement, Inception documents and Meetings modules.
+
+**Responsibility tracker.** Every role's Stage 1 line items, ticked
+automatically where the app can see evidence. Examples: the architect
+commented on the brief; was marked present at a held initiation meeting;
+recorded advice on the procurement policy. The QS's agreement is Signed;
+the PM's consents schedule is ready; all seven documents are approved.
+Anything the app can't evidence, or that was done off-platform, is
+signed off by hand with an optional note (`ResponsibilityCheck`).
+
+**Approval Center (`/approvals`).** One queue of everything waiting on
+the signed-in user's decision across their projects: submitted Stage 1
+documents and pending stage-gate requests. It uses the same permission
+check as the decide endpoints.
+
+**Stage 0 → Stage 1 carry-over on conversion:** the brief starts from the
+opportunity's business case and value. Authority approvals become the
+consents schedule. Each appointed discipline becomes a covered required
+service. The award rank, score and any override justification are copied
+onto the project appointment.
+
+**Engineering notes**
+- Six registers share one engine (`inception/registers.ts` +
+  `register-fields.ts`). Each register declares its fields, and the
+  engine whitelists and type-checks the body (unknown keys dropped; enums,
+  dates and numbers validated; member/document ids must belong to the
+  project). Editing a register reopens the Stage 1 document it feeds.
+- Consultant RFQs now have an "owner": an opportunity or a project
+  (`RfqOwner` in `opportunity-rfqs.service.ts`). On a project, the award
+  creates the project appointment and Team member(s) straight away
+  (`inception/team.ts`, shared with conversion). Consultant RFQs (those
+  with a discipline) are kept out of the Procurement tab's works/supply
+  RFQ list.
+- Migrations: `20261001120000_stage1_inception` (schema),
+  `…120100_stage1_inception_data` (permission rows for the new roles and
+  modules, plus back-fill of consents and award records — a separate
+  migration because Postgres can't use a new enum value in the same
+  transaction that added it), and `…120200_stage1_approve_defaults`.
+  `seed.ts` matches.
+
+**Deliberately not building, and why**
+
+| Deferred | Why |
+|---|---|
+| A full feasibility study (funding structure, cash flow, sensitivity) | DM 1.3 asks for a *preliminary desk-top* viability, and the register's DEV "Feasibility register" row is marked "Not needed now". The bankable business plan is PROCSA Stage 2.4 |
+| Generating the brief / policy / viability as branded PDFs | The register's reporting rows are separate work; the approval snapshot keeps the exact approved content |
+| Emailing meeting invites and minutes | No email provider is connected (as with every invite in the app); invitees get in-app notifications |
+| Document sets for Stages 2–6 | The `StageDeliverable` model takes any stage and key; only Inception's set is defined, because that's what was asked for |
+| Auto-assigning PROCSA items to named people | Items attach to a role; the tracker shows who on the team holds it. PROCSA assigns duties to roles, not individuals |
+
+**Verified** with two throwaway scripts (deleted afterwards, all test
+data removed):
+- **API (58 checks):**
+  - **Stage 0 carry-over:** brief, consents, covered service, and the
+    architect's distinct role.
+  - **Brief:** can't be submitted before it's ready. The architect can
+    comment but not approve (403), and their approval queue is empty
+    while the client's shows the brief. A revision needs a reason. The
+    approval snapshot matches the content, and editing afterwards
+    reopens it as v2.
+  - **Registers:** reject bad enums and members from another project, and
+    attribute records to the caller's role.
+  - **Viability maths:** sale case TDC R168.044m, GDV R200m, 19.02% profit
+    on cost (below the 20% target), residual land R8.62m. Rental case NOI
+    R21.318m, yield on cost 12.69%.
+  - **Policy:** sets the contract form, and a project consultant RFQ
+    defaults to its 70/30 split.
+  - **Project RFQ:** the QS quotes through the vendor portal, is awarded,
+    joins the Team as `QUANTITY_SURVEYOR`, and the RFQ stays out of the
+    works/supply list.
+  - **Meetings:** invites notify, empty minutes are refused, action items
+    become tasks, and issuing marks the meeting held.
+  - **Programme:** 8 chained activities dated by CPM; it can't be
+    generated twice.
+  - **Tracker:** auto and manual items as expected; unknown codes rejected.
+  - **Gate:** blocked while documents are outstanding, opens once all
+    seven are approved, blocks the decision again after a reopen, then
+    moves the project into `CONCEPT` once re-approved.
+- **Browser (Playwright, Development Manager + client):**
+  - The Development Manager prepares every document through the UI and
+    submits all seven.
+  - Runs an initiation meeting with attendance and issued minutes.
+  - The client sees seven items in Approvals and approves them all; the
+    gate shows open.
+  - The tracker shows evidence and a manual sign-off with its note.
+  - Dark mode works, there's no sideways scroll at 390px on the Inception
+    and Meetings tabs, and there were zero browser console errors.
+
+### 2.13a Stage 1 for the consultants — Architect, QS and engineers
+
+§2.13 built Stage 1 around Setjeka's Development Manager and Project
+Manager. This section covers how the appointed consultants work through
+their own PROCSA Stage 1 lists: the Architect, Quantity Surveyor, and
+the Structural, Civil, Electrical and Mechanical Engineers. It also
+closes three access gaps the consultants had.
+
+**My Stage 1 (Inception tab → Overview → My Stage 1)**
+- Consultants (EXTERNAL accounts) land on this section. It lists the
+  caller's own PROCSA items, from `GET /projects/:id/inception/my-role`.
+  Each item opens the form that completes it, so nothing has to be found
+  across other sections:
+
+  | Evidence kind | Inline action |
+  |---|---|
+  | `briefInput` (1.1) | Post input on the brief; it's stored as a `PROJECT_BRIEF` comment |
+  | `attendedInitiationMeeting` | Your invited initiation meetings and your attendance |
+  | `advice` | An advice form for the topic. Where PROCSA allows it, also a quick form to log a site constraint, recommend an investigation, recommend a service, or set a design criterion |
+  | `ownScope` | Edit your own firm's scope and roles & responsibilities |
+  | `ownAgreementSigned` | Points to the "Your appointment" card |
+  | `informationOwned` | Add a row to the information register |
+  | `informationShared` | Link to Documents & transmittals |
+
+- **"Your appointment" card.** It shows your firm's terms and its
+  agreement status. Once Setjeka has issued the agreement, you can
+  **Accept and sign** it here. The card shows for every appointed firm,
+  because PROCSA gives the Architect no "conclude the agreement" item but
+  the firm still signs one.
+- Internal staff see their own list (DM / PM). A member with no PROCSA
+  Stage 1 list is pointed to Responsibilities by role.
+
+**Endpoints**
+
+| Route | Permission | Rule |
+|---|---|---|
+| `GET inception/my-role` | PROJECT_DEFINITION VIEW | Returns your PROCSA items with `evidenceRule`, your own firm's appointments, and your invited meetings |
+| `PATCH inception/my-appointments/:id` | PROJECT_DEFINITION COMMENT | Your own firm only (otherwise 404). Refused once the agreement is SIGNED. Reopens the Professional Team deliverable |
+| `POST inception/my-appointments/:id/sign` | PROJECT_DEFINITION COMMENT | Only from ISSUED; sets SIGNED with the date |
+
+**Financial design criteria (QS 1.8 · engineers 1.9)**
+- A new `DesignCriterion` register (Supporting → Financial design
+  criteria) with fields: category, description, value, unit, and
+  raised-by.
+- Each role ticks its own item. A criterion raised by one consultant
+  evidences that consultant's item only, so an engineer's criterion
+  doesn't tick the QS's 1.8. Written advice on the topic still counts as
+  before.
+
+**Access fixes**
+- **Consultant permissions.** The five consultant roles (Architect;
+  Structural, Civil, Electrical and Mechanical Engineer) had full access,
+  including awarding procurement and editing the team and fees. They now
+  have:
+  - VIEW and COMMENT everywhere;
+  - CREATE and EDIT on tasks, issues, risks, documents, transmittals,
+    RFIs, submittals, project definition and meetings;
+  - APPROVE on RFIs and submittals;
+  - nothing else (no DELETE, no TEAM, PROCUREMENT or financial edits).
+
+  The migration `20261001170000_stage1_consultants` sets this, and
+  `seed.ts` matches. `QUANTITY_SURVEYOR` and the legacy
+  `ARCHITECT_ENGINEER` keep full access, because the QS is often
+  in-house.
+- **Consultant RFQ rankings** show every bidder's fee, so
+  `/projects/:id/consultant-rfqs` is now internal-only.
+- **Fee redaction.** For external callers, `professional-team` hides
+  other firms' fee value, fee %, fee basis, rank, score and award
+  justification. Deliverable history no longer returns the approval
+  snapshot, which held every firm's fee.
+- **Setjeka-only actions.** Submitting a document to the client, saving
+  the procurement policy, and generating the initiation programme are
+  internal-only (`InternalOnlyGuard`). The UI hides those buttons from
+  consultants. Clients still see Approve / Request revision.
+- **Accepted trade-off.** Consultants keep PROJECT_DEFINITION EDIT, so
+  they can edit the brief, because PROCSA has them "assist in developing"
+  it.
+
+**Verified** with two throwaway scripts (deleted afterwards, all test
+data removed):
+- **API (40 checks):**
+  - **my-role:** the architect sees only their own firm's appointment.
+  - **Redaction:** other firms' fees, rank and justification are hidden
+    from the architect and the QS. Staff see everything.
+  - **403s for the architect:** consultant RFQs, team terms, submit,
+    policy, programme, and deleting register rows.
+  - **Another firm's appointment:** 404.
+  - **Scope and signing:** scope saves and ticks the item; signing a
+    DRAFTED agreement → 400; once issued, signing works; afterwards both
+    re-signing and scope edits → 400.
+  - **Brief input** ticks 1.1.
+  - **Design criteria:** a criterion without a description → 400. The
+    engineer's criterion ticks engineer 1.9 but not QS 1.8, and the QS's
+    own criterion ticks it.
+- **Browser (Playwright, 14 checks, architect + structural engineer):**
+  - The architect lands on My Stage 1. Posting brief input ticks 1.1.
+  - The scope is saved from the item, and the issued agreement is signed
+    from "Your appointment".
+  - Professional team shows the architect's own fee but not the rival
+    firm's, with no RFQ card and no edit-terms buttons.
+  - Sign-off has no Submit button, and the policy is read-only.
+  - The engineer adds a criterion from 1.9, which ticks it, and the
+    criterion appears in the Financial design criteria register.
+  - There's no sideways scroll at 390px, and there were zero console
+    errors.
+
+### 2.14 Commercial — cost database, estimates (automated QS), budget, variations, invoices
+
+Register COM (Commercial Management) and Meeting 002 decisions 2.4, 2.5,
+2.8 and 2.12, plus Meeting 3 §5 ("budget against actual, variance, and
+change orders" in this release). The user extended the scope as follows:
+
+- **Regional cost database.** A cost database of construction materials,
+  workmanship and other inputs, priced per region. Setjeka enters the
+  prices herself and stores them under the region's title, e.g. Nigeria
+  — Lagos.
+- **Starts empty.** The user said "it would be blank for now". Only the
+  structure ships, plus 18 standard cost codes, which are budget
+  headings, not prices.
+- **Automated QS.** The system works out quantities (blocks, cement and
+  so on) from build-ups, by hand or from BIM/CAD models.
+- **Prices from awarded RFQs.** An awarded RFQ updates the region's
+  price sheet. Only the awarded quote does, never quotes that didn't win.
+- **AI estimating not built.** Setjeka's local AI model running the rough
+  estimate is noted for later and not built here.
+
+Monitoring only: the QS keeps the cost system of record (Meeting 002,
+2.4).
+
+**Cost database** (`/cost-database`, internal only, `cost-database/`)
+
+| Model | What |
+|---|---|
+| `CostRegion` | A titled region with its currency. All prices belong to one |
+| `CostResource` | A material / labour / plant / subcontract / other input with its unit, e.g. "Cement OPC 42.5, 50 kg" per bag |
+| `ResourcePrice` + `ResourcePriceHistory` | Price per resource per region. Every change keeps a history row (previous rate, source, who, and the RFQ if it came from one) |
+| `WorkItem` + `WorkItemComponent` | A unit of measured work and its build-up: resource × quantity per unit + waste %. Optional cost code, model takeoff basis (area / volume / length / count) and keywords for matching model elements |
+| `CostCode` | Standard cost codes. Works 01–13, professional fees 20, owner supply 30, overheads 40–42 |
+| `FxRate` | Recorded exchange rates. The latest on or before the date is used, and the inverse pair also works |
+
+- **Pricing.** A work item's rate in a region is
+  `Σ quantity × (1 + waste%) × regional price` (`cost-database/pricing.ts`).
+  It's computed at read time, so a price change flows into every item.
+- **Missing prices.** Unpriced components count as zero and are listed by
+  name.
+- **Bulk saves.** The price sheet saves many prices in one call
+  (`PUT /cost-regions/:id/prices`) and only writes prices that changed.
+- **Deleting.** Regions, resources and work items that are in use can't
+  be deleted; deactivate them instead.
+
+**Estimates** (`/estimates`, internal only, `estimates/`)
+
+- An `Estimate` can belong to a project, an opportunity, or neither (a
+  standalone rough estimate). It's priced in one region and its currency.
+- **Lines** are a work item × quantity, a single resource × quantity, or a
+  lump sum. Each has a cost code and an optional rate override.
+- **Markups** are applied in QS order:
+  1. works;
+  2. preliminaries % of works;
+  3. overheads & profit % of works + preliminaries;
+  4. contingency % of all the above;
+  5. VAT.
+
+  Cost per m² comes from the gross floor area.
+- **Material & labour schedule.** Every build-up is multiplied out by its
+  line quantity: blocks, bags of cement, m³ of sand, hours per trade.
+  Quantities still multiply out when a rate is overridden.
+- **Finalise** freezes each line's rate and build-up (`frozenBreakdown`),
+  so later price changes don't move a final estimate. **Reopen** returns
+  it to live prices.
+- **Adopt as project budget** works only from a final estimate, in the
+  project's currency, with every line coded, while the budget is
+  unlocked.
+  - Works go in by cost code, with overheads & profit spread pro rata.
+  - Preliminaries go on code 01.
+  - The estimate's contingency becomes the budget contingency.
+  - VAT is left out.
+- **Cost from BIM / CAD** (`ModelTakeoff`). An uploaded IFC, RVT, RFA,
+  DWG, DGN or DXF file goes to the converter microservice (§4), which
+  returns quantities grouped by category and type: count, area, volume,
+  length. The grouped result is stored.
+  - Each model type is suggested work items whose keywords match it.
+  - The user picks the work item, the basis and a factor (e.g. × 2 to
+    plaster both faces).
+  - The chosen rows become `MODEL` lines, quantity × factor, with the
+    model group as their source.
+  - Backend env: `CONVERTER_URL` and `CONVERTER_INTERNAL_TOKEN`.
+  - When the converter isn't running, uploads fail with a clear message.
+
+**RFQ → award → price sheet** (`rfqs/`)
+
+- A works/supply RFQ can be tagged with a cost region (`Rfq.costRegionId`).
+- **Items.** It carries priced items (`RfqItem`), which are linked to
+  cost-database resources or free text. Items are fixed once the RFQ is
+  issued.
+- **Quotes.** Vendors, in the vendor portal or the project tab, or staff
+  recording a paper or email quote, give a unit rate per item
+  (`QuoteItem`). Every item needs a rate, and the quote's price is the
+  extended total.
+- **Award** (new): `POST /projects/:id/rfqs/:rfqId/award` marks the
+  winning quote. When the RFQ has a region, it then writes that quote's
+  item rates into the region's price sheet.
+  - The price source is recorded as "RFQ-2026-0001 · firm", and the
+    history row links the RFQ.
+  - Quotes in another currency are converted with the recorded FX rates.
+  - Unlinked items, or items with no exchange rate, are skipped and named.
+- **Price sheets only ever take rates from the awarded quote.**
+  `POST …/update-prices` re-applies the awarded rates (e.g. after adding
+  a missing exchange rate). It's refused before award.
+- **Who can do it.** Items, award and the price update are internal-only.
+  Vendors hold PROCUREMENT edit only so they can quote.
+
+**Project commercial** (project → **Commercial** tab,
+`/projects/:id/commercial/...`, new `COMMERCIAL` permission module)
+
+- **Budget & contingency.**
+  - `BudgetLine` by cost code.
+  - `ProjectBudget` holds the contingency (guide = the project's
+    contingency %).
+  - Locking makes it the approved baseline; changes then come only
+    through variations.
+- **Variations** (`Variation`, `VariationEvent`), numbered VO-001, VO-002
+  and so on per project.
+  - Raised with a reason, value (negative for an omission), time impact,
+    cost code and optional RFI.
+  - The QS records an assessed value.
+  - Setjeka sends it to the client, and client members are notified.
+  - The client approves or rejects; a rejection needs a reason.
+  - **Client-only approval** (Meeting 3 hard rule): the service requires
+    the caller to be an EXTERNAL account with a CLIENT membership on the
+    project, regardless of the permission matrix or the Admin bypass.
+  - Approved values draw down the contingency, and omissions return to
+    it.
+  - Variations appear in the client's Approval Center and have their own
+    comment thread.
+- **Supplier invoices** (`SupplierInvoice`) are recorded against approved
+  or issued POs, in the PO's currency.
+  - An invoice that would take the PO past its value is refused, as is a
+    duplicate invoice number per PO.
+  - Approval must come from someone other than the recorder.
+  - Then the invoice is marked paid with a reference.
+  - Each order shows invoiced, paid, owed now and left to invoice.
+- **Cost report** (`GET …/commercial/summary`), by cost code, in the
+  project's currency:
+  - budget;
+  - approved variations;
+  - revised budget;
+  - committed: approved/issued POs (new `PurchaseOrder.budgetCodeId`)
+    plus appointment fees, counting an appointment's value only when it
+    has no POs under it, with consultant fees on code 20;
+  - invoiced and paid: supplier invoices plus appointment payments;
+  - forecast final: max(revised, committed);
+  - variance.
+
+  Contingency: original, drawn, remaining, and the pending exposure from
+  submitted variations. Amounts in a currency with no recorded FX rate
+  are listed in `missingFx` rather than added.
+- **Access.**
+  - Setjeka delivery roles: everything except APPROVE.
+  - CLIENT: view, comment, approve.
+  - Consultants, contractors and other: nothing.
+
+  The client's Commercial tab shows Variations and the Cost report.
+
+**Also in this build**
+
+- **Currencies.** NGN, EUR, GBP, BWP, NAD, KES and GHS were added. All
+  currency pickers use one list (`CURRENCY_OPTIONS`).
+- **Opportunities.** The Business case tab links to estimates for the
+  opportunity.
+- **Navigation.** A new **Commercial** menu (internal): Cost database,
+  Estimates, Project commercials.
+
+**Migrations:**
+- `20261003100000_commercial` (schema, currencies, enums).
+- `…100100_commercial_data` (COMMERCIAL permission defaults and the 18
+  cost codes; separate, because a new enum value can't be used in the
+  same transaction).
+- `20261003110000_rfq_items`.
+
+`seed.ts` matches.
+
+**Deliberately not building, and why**
+
+| Deferred | Why |
+|---|---|
+| Seeded prices or build-ups | The user asked for a blank database for Setjeka to fill |
+| AI-generated rough estimates | Noted for Setjeka's local AI model; not part of this build |
+| Payment certificates, retention, claims (register COM rows) | Scope-of-work decision 4 (who issues payment certificates) is still open; invoices against orders cover the meeting's ask |
+| Exchange-rate feeds | Rates are recorded by hand; no provider chosen |
+| PDF / Excel export of estimates | CSV export is built; the formatted report formats are the Reporting item on the roadmap |
+| Drawing the model in 3D | The takeoff reads quantities only; the BIM viewer is a separate register section |
+
+**Verified** with two throwaway scripts (deleted afterwards, all test
+data removed):
+- **API (82 checks):**
+  - **Cost database:**
+    - region and resource uniqueness;
+    - price-sheet saves rewrite only changed prices, with history;
+    - work-item rate 13 643 = 8 400 + 3 150 + 968 + 1 125, with the
+      unpriced labourer flagged.
+  - **Estimate:**
+    - works 2 637 160; prelims, overheads & profit, contingency and VAT
+      to the cent; 33 505.12 per m²;
+    - schedule of 1 260 blocks, 87.8 bags, 5.28 m³ and 108 h;
+    - finalise freezes the rates, reopen follows live prices;
+    - adopting is refused while a line is uncoded, then the budget
+      reconciles.
+  - **DXF:** priced at length × 3 m; a basis with no quantity is refused.
+  - **IFC** (real DDC export of the sample model): every wall type
+    suggests the wall work item.
+  - **Variations:**
+    - VO-001 assessed and sent;
+    - the client is notified and it's in their Approvals;
+    - the Development Manager and an Admin both get 403;
+    - a rejection needs a reason;
+    - the client approves;
+    - an omission returns to contingency (drawn 130 000), with pending
+      exposure shown.
+  - **Invoices:**
+    - refused on a draft PO, when over-invoicing, and for a duplicate
+      number;
+    - the recorder can't approve, and it can't be paid before approval.
+  - **FX:** a USD PO is first listed as a missing rate, then converted
+    at 1 500.
+  - **RFQ:**
+    - a missing item rate is refused;
+    - the vendor portal shows the itemised quote;
+    - staff can record one;
+    - the sheet doesn't change before award, and re-applying before
+      award is refused;
+    - the vendor can't award;
+    - the award writes 9 000, skips and names the free-text diesel, and
+      the history traces the RFQ;
+    - the vendor sees the award;
+    - a second award is refused.
+  - **Access:** the vendor gets 403 on the cost database, estimates and
+    the cost report; the client can read the cost report.
+- **Browser (Playwright, 13 checks):**
+  - Region, three prices saved together, and a work item built with a
+    live rate preview (12 675).
+  - Estimate line 1 521 000; schedule of 1 260 blocks; DXF uploaded;
+    finalised and adopted.
+  - Budget locked; variation raised and sent; the client approves it on
+    a 390 px phone with no sideways scroll.
+  - RFQ with a region and a database-linked item: quote recorded,
+    awarded, and the Lagos sheet updated to 9 200.
+  - Zero console errors.
+  - The run found and fixed one bug: a quote recorded before the RFQ's
+    region was chosen defaulted to ZAR instead of the region's currency.
+    Quotes (staff and vendor portal) now default to the region's
+    currency.
+
+### 2.15 Client decisions, notes & actions, and the client portal
+
+Built on 2026-10-03 from the user's direction after the roadmap review:
+- the client alone approves Stage 1 documents;
+- Stage 0 is run by both the Development Manager and the Project Manager;
+- Stage 0 consultant picks are indicative, as the client described;
+- notes → actions, to be used wherever notes are needed from now on;
+- the client portal.
+
+Document numbering was deliberately left for later.
+
+**Fixes to match the client's decisions (Meeting 3)**
+
+| Decision | What changed |
+|---|---|
+| Only the client approves; Setjeka never approves on the client's behalf | Stage 1 documents: APPROVE removed from every role but CLIENT (migration `…120000_client_only_stage1_approval`, `seed.ts`). The service also requires an EXTERNAL CLIENT member, the same rule as variations (§2.14). Only clients see Approve / Request revision, and the item is only in a client's Approval Center |
+| Stage 0 is operated by the Project Manager as well as the Development Manager | The Stage 0 tracker role is "Development Manager / Project Manager" |
+| Stage 0 vendor selection is indicative only and not binding | See below |
+
+**Indicative Stage 0 picks.**
+- **At Stage 0.** The opportunity's Consultants tab reads "Indicative professional team", with **Select** rather than **Appoint**.
+- **On conversion.** Each pick becomes an `OrganisationProjectAppointment` with status **PROPOSED**. The firm is not added to the team, its fee is not counted as committed, and the required service shows as "Indicative (Stage 0)" rather than covered.
+- **Stage 1 readiness** counts only firm appointments.
+- **At Inception**, Setjeka uses Professional team:
+  - **Confirm appointment** → APPOINTED, and the firm and its logins join the team;
+  - **Release** → TERMINATED, and the discipline can be appointed by a consultant RFQ instead.
+- **Endpoints:** `POST inception/appointments/:id/confirm` and `POST inception/appointments/:id/release` (internal only).
+
+**Notes & actions** (Meeting 3 §2.4, replacing "messaging", which is
+explicitly not chat)
+- **Model.** The existing `Comment` threads are now notes. A note can be addressed to a named person (`recipientId`). Ticking **Make it an action** gives it a due date, a priority and an OPEN / DONE status.
+- **Alerts.** The person is alerted with `ACTION_ASSIGNED` or `NOTE_FOR_YOU`, and the author gets `ACTION_COMPLETED`. Open actions due within two days raise a due-soon reminder.
+- **Where notes appear.** On tasks, issues, risks, RFIs, submittals, document revisions, schedule activities, meetings, variations and the brief (everywhere a thread already was). Also new: **Project notes** on the project's Actions tab, and **Notes & actions** on an opportunity's Overview.
+  - Before a project exists, notes belong to the opportunity: `Comment.projectId` is now optional, plus `opportunityId`, with a CHECK that a note has exactly one owner.
+  - Opportunity notes are internal-only.
+- **Who a note can go to.** Project members with a login, plus internal staff. A note to someone outside the project is refused.
+- **My Day** (`/my-day`, `GET /me/actions`) shows:
+  - actions for me, open first, plus those done in the last fortnight;
+  - plain notes for me until I acknowledge them ("Got it");
+  - project tasks assigned to me, including meeting actions.
+- **Action register** — a new project **Actions** tab (`GET /projects/:id/actions`): note actions on any record plus meeting action items, with owner, due date, priority, source link, and open / overdue / done counts.
+- **Meetings.** Each meeting shows **open actions brought forward** from earlier meetings.
+- **Notifications** carry a deep `link` (`notifications/links.ts`), so the bell opens the record itself. `Notification.projectId` is optional for opportunity notes. The bell now also shows on phones.
+- **From now on** (the user's instruction), new modules should include notes wherever a record benefits from them.
+
+**Client portal** (register CLI; scope §4.9; mobile first)
+- **Landing.** Client logins land on **/portal** (*Portal → My Projects*). It lists their projects with stage, completion, programme % and decisions waiting, plus their Stage 0 developments.
+- **Project page** (`/portal/projects/:id`, `GET /client-portal/projects/:id`), from top to bottom:
+  - a stage stepper, then completion date, programme % and budget drawn;
+  - **Waiting for your decision**: stage-gate move, variations (value, time impact) and Stage 1 documents. Each has Approve, or reject / request changes with a reason, using the same client-only endpoints;
+  - notes and actions from Setjeka;
+  - programme (progress, coming up);
+  - milestones;
+  - budget (approved, variations, current, paid, forecast, contingency left);
+  - **documents & drawings** shared with the client;
+  - meetings they're invited to, with issued minutes;
+  - **Your decisions**, each recorded with name and time;
+  - the project team (no fees);
+  - a note thread to leave Setjeka a note.
+- **Setjeka controls what the client sees.** Documents have a **Visible to the client** switch (`ProjectDocument.clientVisible`, off by default). For a CLIENT member, the documents API lists only visible documents and refuses to download others (404).
+- **Scoping.** Everything is scoped to projects where the caller is a CLIENT member, re-read on every request. Another client gets 404; staff and consultants get 403.
+- **Links.** Approval and notification links for clients open their portal page (`lib/portal.ts`).
+
+**Not built yet:** site photographs (no photo module yet), a project-scoped sign-in address and access codes expiring at final account (scope §4.9), milestone and payment-certificate approvals, and email alerts (still waiting for the client's sending domain).
+
+**Migrations:**
+- `20261003120000_client_only_stage1_approval`
+- `20261003130000_notes_actions`
+- `20261003140000_client_visible_documents`
+
+**Verified** with two throwaway scripts (deleted afterwards, all test
+data removed):
+- **API (53 checks):**
+  - **Indicative picks:**
+    - the tracker label reads Development Manager / Project Manager;
+    - converting a real opportunity gives PROPOSED appointments, not on the team, shown as indicative, fees not committed;
+    - a consultant can't confirm their own pick (403);
+    - confirming adds the firm and its login; release works, and a released pick can't be confirmed;
+    - the confirmed fee is then committed.
+  - **Client-only Stage 1 approval:** not in the Development Manager's queue, in the client's; the Development Manager and an Admin get 403; the portal shows the submission note; the client approves.
+  - **Notes and actions:**
+    - an action with a deep-link alert;
+    - an action without a person, or a note to an outsider, is refused;
+    - it appears in My Day with its context, with a due-soon reminder;
+    - nobody else can tick it off; the assignee completes it and the author is told;
+    - a consultant's plain note reaches the client's dashboard and portal and clears on acknowledge;
+    - the register merges note and meeting actions (1 open, 1 done);
+    - opportunity actions reach the Executive's My Day and stay internal.
+  - **Portal:**
+    - shared vs unshared documents, including a 404 on download;
+    - projects list with one decision waiting and programme 50%;
+    - budget committed, variation with time impact, team without fees, decision history with name;
+    - variation approved from the portal;
+    - another client 404, staff and consultants 403.
+- **Browser (Playwright, 12 checks):** desktop for Setjeka, a 390 px phone for the client.
+  - **Setjeka:** the tracker label; confirming the indicative architect; giving an action from the Actions tab; the register; sharing a site plan; sending a variation and a note to the client.
+  - **Project Manager:** completes the action from My Day.
+  - **Client:**
+    - lands on the portal;
+    - approves the variation;
+    - acknowledges the note;
+    - opens the shared site plan;
+    - sees the decision recorded with their name.
+  - No sideways scroll and zero console errors.
+  - The run caught two copy issues, both fixed: the services card claimed "covered" while a pick was only indicative, and My Day repeated the project name.
 
 ---
 

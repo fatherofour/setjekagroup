@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   // For file uploads. When set, `body` is ignored and no Content-Type is
   // sent — the browser fills in the multipart boundary itself.

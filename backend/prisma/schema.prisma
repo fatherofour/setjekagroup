@@ -53,6 +53,13 @@ enum PermissionModule {
   COMMENTS
   STAGE_GATE
   PROCUREMENT
+  // PROCSA Stage 1 definition documents: brief, site assessment, desktop
+  // viability, procurement policy, consents schedule, information register,
+  // consultant advice, deliverable sign-off and the responsibility tracker.
+  PROJECT_DEFINITION
+  MEETINGS
+  // Budget, contingency, variations, supplier invoices and the cost report.
+  COMMERCIAL
 }
 
 enum PermissionAction {
@@ -111,6 +118,13 @@ enum ContractForm {
 enum Currency {
   USD
   ZAR
+  NGN
+  EUR
+  GBP
+  BWP
+  NAD
+  KES
+  GHS
 }
 
 // The two classification standards relevant to Setjeka's African market
@@ -142,7 +156,15 @@ enum ProjectMemberRole {
   PLANNER_SCHEDULER
   QUANTITY_SURVEYOR
   PROCUREMENT_MANAGER
+  // The register's User Roles sheet groups these as one role; PROCSA gives
+  // each its own Stage 1 responsibilities, so they're separate below.
+  // ARCHITECT_ENGINEER stays for members added before the split.
   ARCHITECT_ENGINEER
+  ARCHITECT
+  STRUCTURAL_ENGINEER
+  CIVIL_ENGINEER
+  ELECTRICAL_ENGINEER
+  MECHANICAL_ENGINEER
   SITE_MANAGER
   QA_QC_MANAGER
   HSE_MANAGER
@@ -213,6 +235,8 @@ enum OrganisationProjectRole {
   QUANTITY_SURVEYOR
   CIVIL_ENGINEER
   STRUCTURAL_ENGINEER
+  ELECTRICAL_ENGINEER
+  MECHANICAL_ENGINEER
   MAIN_CONTRACTOR
   SUBCONTRACTOR
   SUPPLIER
@@ -238,36 +262,75 @@ model User {
   status              UserStatus      @default(ACTIVE)
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
+  // Portal identity for EXTERNAL accounts: which client organisation (client
+  // portal) or which registered vendor/consultant (vendor portal) this login
+  // acts for. Pre-project there is no ProjectMember row to carry that link,
+  // so the opportunity-stage portals key off these instead.
+  clientId            String?
+  client              Client?         @relation("ClientPortalUsers", fields: [clientId], references: [id], onDelete: SetNull)
+  contractorId        String?
+  contractor          Contractor?     @relation("ContractorPortalUsers", fields: [contractorId], references: [id], onDelete: SetNull)
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
-  ownedProjects      Project[]
-  projectMemberOf    ProjectMember[]
-  contractorsCreated Contractor[]
-  complianceRecordsVerified ComplianceRecord[]          @relation("ComplianceVerifiedBy")
-  organisationStatusChanges OrganisationStatusHistory[]
-  paymentRecordsRecorded   PaymentRecord[]
+  clientsCreated              Client[]                     @relation("ClientCreatedBy")
+  opportunityAppointmentsMade OpportunityAppointment[]
+  ownedProjects               Project[]
+  projectMemberOf             ProjectMember[]
+  contractorsCreated          Contractor[]
+  complianceRecordsVerified   ComplianceRecord[]           @relation("ComplianceVerifiedBy")
+  organisationStatusChanges   OrganisationStatusHistory[]
+  paymentRecordsRecorded      PaymentRecord[]
   organisationRatingsRecorded OrganisationRating[]
-  scheduleBaselinesCreated ScheduleBaseline[]
-  commentsAuthored   Comment[]
-  notifications      Notification[]
-  documentsCreated   ProjectDocument[]
-  documentRevisionsUploaded DocumentRevision[] @relation("DocumentRevisionUploadedBy")
-  documentRevisionsReviewed DocumentRevision[] @relation("DocumentRevisionReviewedBy")
-  documentAccessLogs DocumentAccessLog[]
-  transmittalsCreated Transmittal[]
-  submittalStatusChanges SubmittalStatusHistory[]
-  auditLogEntries    AuditLogEntry[]
-  stageTransitionsRequested StageTransition[] @relation("StageTransitionRequestedBy")
-  stageTransitionsDecided   StageTransition[] @relation("StageTransitionDecidedBy")
-  rfqsCreated        Rfq[]
-  quotesSubmitted    Quote[]
-  purchaseOrderStatusChanges PurchaseOrderStatusHistory[]
-  vendorScorecardsRecorded   VendorScorecard[]
-  opportunitiesOwned        Opportunity[] @relation("OpportunityOwner")
-  opportunitiesCreated      Opportunity[] @relation("OpportunityCreatedBy")
-  opportunityStageChanges   OpportunityStageHistory[]
-  opportunityApprovalsOwned OpportunityApproval[]
+  scheduleBaselinesCreated    ScheduleBaseline[]
+  commentsAuthored            Comment[]                    @relation("CommentAuthor")
+  notesReceived               Comment[]                    @relation("CommentRecipient")
+  actionsCompleted            Comment[]                    @relation("CommentCompletedBy")
+  notifications               Notification[]
+  documentsCreated            ProjectDocument[]
+  documentRevisionsUploaded   DocumentRevision[]           @relation("DocumentRevisionUploadedBy")
+  documentRevisionsReviewed   DocumentRevision[]           @relation("DocumentRevisionReviewedBy")
+  documentAccessLogs          DocumentAccessLog[]
+  transmittalsCreated         Transmittal[]
+  submittalStatusChanges      SubmittalStatusHistory[]
+  auditLogEntries             AuditLogEntry[]
+  stageTransitionsRequested   StageTransition[]            @relation("StageTransitionRequestedBy")
+  stageTransitionsDecided     StageTransition[]            @relation("StageTransitionDecidedBy")
+  rfqsCreated                 Rfq[]
+  quotesSubmitted             Quote[]
+  purchaseOrderStatusChanges  PurchaseOrderStatusHistory[]
+  vendorScorecardsRecorded    VendorScorecard[]
+  opportunitiesOwned          Opportunity[]                @relation("OpportunityOwner")
+  opportunitiesCreated        Opportunity[]                @relation("OpportunityCreatedBy")
+  opportunityStageChanges     OpportunityStageHistory[]
+  opportunityApprovalsOwned   OpportunityApproval[]
+  consultantAdviceGiven       ConsultantAdvice[]
+  meetingsCreated             Meeting[]
+  deliverablesSubmitted       StageDeliverable[]           @relation("DeliverableSubmittedBy")
+  deliverablesDecided         StageDeliverable[]           @relation("DeliverableDecidedBy")
+  deliverableEvents           StageDeliverableEvent[]
+  responsibilityChecks        ResponsibilityCheck[]
+  viabilityScenariosCreated   ViabilityScenario[]
+  visionsConfirmed            Opportunity[]                @relation("OpportunityVisionConfirmedBy")
+  marketResearchRecorded      MarketResearch[]
+  paymentsRecorded            OpportunityPayment[]         @relation("OpportunityPaymentRecordedBy")
+  paymentsApproved            OpportunityPayment[]         @relation("OpportunityPaymentApprovedBy")
+  opportunityDocuments        OpportunityDocument[]
+  decisionsRequested          InvestmentDecision[]         @relation("DecisionRequestedBy")
+  decisionsMade               InvestmentDecision[]         @relation("DecisionDecidedBy")
+  opportunityChecks           OpportunityCheck[]
+  pricesUpdated               ResourcePrice[]              @relation("PriceUpdatedBy")
+  priceChanges                ResourcePriceHistory[]       @relation("PriceChangedBy")
+  estimatesCreated            Estimate[]                   @relation("EstimateCreatedBy")
+  takeoffsCreated             ModelTakeoff[]               @relation("TakeoffCreatedBy")
+  budgetsLocked               ProjectBudget[]              @relation("BudgetLockedBy")
+  variationsRaised            Variation[]                  @relation("VariationRaisedBy")
+  variationsAssessed          Variation[]                  @relation("VariationAssessedBy")
+  variationsDecided           Variation[]                  @relation("VariationDecidedBy")
+  variationEvents             VariationEvent[]             @relation("VariationEventActor")
+  invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
+  invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
+  fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
 
   @@index([resetTokenHash])
 }
@@ -282,98 +345,102 @@ model User {
 // file (see StageTransition's neighbours: Rfq, Quote, PurchaseOrder,
 // Delivery, VendorScorecard).
 model Contractor {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  tradingName   String?
-  tradeType     String?
+  id                      String                             @id @default(uuid())
+  name                    String                             @unique
+  tradingName             String?
+  tradeType               String?
   // Free text, not a fixed enum: the spec's own discipline/category lists
   // are explicitly "should be configurable" — a fixed taxonomy the client
   // hasn't confirmed would repeat the PROCSA-stage mistake from earlier in
   // this project. The frontend offers the spec's example lists as
   // suggestions, not a closed set.
-  disciplines   String[] @default([])
-  classifications OrganisationClassification[] @default([])
-  registrationNumber String?
-  taxVatNumber  String?
-  country       String?
-  stateProvince String?
-  city          String?
-  yearEstablished Int?
-  website       String?
-  contactName   String?
-  email         String?
-  phone         String?
-  address       String?
-  notes         String?
-  registrationStatus     OrganisationRegistrationStatus     @default(DRAFT)
-  prequalificationStatus OrganisationPrequalificationStatus @default(NOT_ASSESSED)
+  disciplines             String[]                           @default([])
+  classifications         OrganisationClassification[]       @default([])
+  registrationNumber      String?
+  taxVatNumber            String?
+  country                 String?
+  stateProvince           String?
+  city                    String?
+  yearEstablished         Int?
+  website                 String?
+  contactName             String?
+  email                   String?
+  phone                   String?
+  address                 String?
+  notes                   String?
+  registrationStatus      OrganisationRegistrationStatus     @default(DRAFT)
+  prequalificationStatus  OrganisationPrequalificationStatus @default(NOT_ASSESSED)
   // Financial/payment profile. Gated by InternalOnlyGuard (Administration
   // module) - visible to internal staff, not the fine-grained
   // role×module×action matrix, since this is a company-wide directory,
   // not project-scoped.
-  bankName               String?
-  bankAccountName        String?
-  bankAccountNumber      String?
-  preferredPaymentMethod String?
-  paymentTerms           String?
-  creditTerms            String?
-  withholdingTaxInfo     String?
-  createdById   String
-  createdBy     User     @relation(fields: [createdById], references: [id])
-  projectMembers ProjectMember[]
-  contacts      OrganisationContact[]
-  complianceRecords ComplianceRecord[]
-  appointments  OrganisationProjectAppointment[]
-  statusHistory OrganisationStatusHistory[]
-  paymentRecords PaymentRecord[]
-  ratings       OrganisationRating[]
-  scheduleActivities ScheduleActivity[]
-  rfqInvitations RfqInvitation[]
-  quotes        Quote[]
-  purchaseOrders PurchaseOrder[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  bankName                String?
+  bankAccountName         String?
+  bankAccountNumber       String?
+  preferredPaymentMethod  String?
+  paymentTerms            String?
+  creditTerms             String?
+  withholdingTaxInfo      String?
+  createdById             String
+  createdBy               User                               @relation(fields: [createdById], references: [id])
+  projectMembers          ProjectMember[]
+  contacts                OrganisationContact[]
+  complianceRecords       ComplianceRecord[]
+  appointments            OrganisationProjectAppointment[]
+  statusHistory           OrganisationStatusHistory[]
+  paymentRecords          PaymentRecord[]
+  ratings                 OrganisationRating[]
+  scheduleActivities      ScheduleActivity[]
+  rfqInvitations          RfqInvitation[]
+  quotes                  Quote[]
+  purchaseOrders          PurchaseOrder[]
+  portalUsers             User[]                             @relation("ContractorPortalUsers")
+  opportunityAppointments OpportunityAppointment[]
+  marketResearch          MarketResearch[]
+  opportunityPayments     OpportunityPayment[]
+  createdAt               DateTime                           @default(now())
+  updatedAt               DateTime                           @updatedAt
 
   @@index([registrationNumber])
   @@index([taxVatNumber])
 }
 
 model OrganisationContact {
-  id           String     @id @default(uuid())
-  contractorId String
-  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-  fullName     String
-  jobTitle     String?
-  department   String?
-  email        String?
-  phone        String?
-  mobile       String?
-  contactType  String?
-  isPrimary    Boolean    @default(false)
-  canReceiveRfqs               Boolean @default(false)
-  canReceiveCorrespondence     Boolean @default(false)
-  canReceivePaymentNotifications Boolean @default(false)
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                             String     @id @default(uuid())
+  contractorId                   String
+  contractor                     Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  fullName                       String
+  jobTitle                       String?
+  department                     String?
+  email                          String?
+  phone                          String?
+  mobile                         String?
+  contactType                    String?
+  isPrimary                      Boolean    @default(false)
+  canReceiveRfqs                 Boolean    @default(false)
+  canReceiveCorrespondence       Boolean    @default(false)
+  canReceivePaymentNotifications Boolean    @default(false)
+  isActive                       Boolean    @default(true)
+  createdAt                      DateTime   @default(now())
+  updatedAt                      DateTime   @updatedAt
 
   @@index([contractorId])
 }
 
 model ComplianceRecord {
-  id               String                        @id @default(uuid())
-  contractorId     String
-  contractor       Contractor                    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-  documentType     String
-  documentNumber   String?
-  issuingAuthority String?
-  issueDate        DateTime?
-  expiryDate       DateTime?
-  verificationStatus ComplianceVerificationStatus @default(PENDING)
-  verifiedById     String?
-  verifiedBy       User?                         @relation("ComplianceVerifiedBy", fields: [verifiedById], references: [id])
-  verifiedAt       DateTime?
-  notes            String?
+  id                   String                       @id @default(uuid())
+  contractorId         String
+  contractor           Contractor                   @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  documentType         String
+  documentNumber       String?
+  issuingAuthority     String?
+  issueDate            DateTime?
+  expiryDate           DateTime?
+  verificationStatus   ComplianceVerificationStatus @default(PENDING)
+  verifiedById         String?
+  verifiedBy           User?                        @relation("ComplianceVerifiedBy", fields: [verifiedById], references: [id])
+  verifiedAt           DateTime?
+  notes                String?
   // Local disk storage under UPLOAD_DIR (see uploads.config.ts) — the
   // stored, sanitized filename on disk. attachmentFilename is the original
   // name shown to users; the two differ to avoid path-traversal/collision
@@ -386,36 +453,48 @@ model ComplianceRecord {
   // app credentials (tenant/client id+secret, target site/drive) — not
   // built yet, this column just avoids another migration when it is.
   sharePointUrl        String?
-  createdAt        DateTime                      @default(now())
-  updatedAt        DateTime                      @updatedAt
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
 
   @@index([contractorId])
   @@index([expiryDate])
 }
 
 model OrganisationProjectAppointment {
-  id                   String                         @id @default(uuid())
-  contractorId         String
-  contractor           Contractor                     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-  projectId            String
-  project              Project                        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  role                 OrganisationProjectRole
-  appointmentType      String?
-  appointmentDate      DateTime?
-  appointmentReference String?
-  contractReference    String?
-  contractValue        Float?
-  currency             Currency?
-  scopeOfWork          String?
-  startDate            DateTime?
-  endDate              DateTime?
-  appointmentStatus    OrganisationAppointmentStatus  @default(PROPOSED)
-  payments             PaymentRecord[]
-  ratings              OrganisationRating[]
-  purchaseOrders       PurchaseOrder[]
-  vendorScorecards     VendorScorecard[]
-  createdAt            DateTime                       @default(now())
-  updatedAt            DateTime                       @updatedAt
+  id                       String                        @id @default(uuid())
+  contractorId             String
+  contractor               Contractor                    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  projectId                String
+  project                  Project                       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role                     OrganisationProjectRole
+  appointmentType          String?
+  appointmentDate          DateTime?
+  appointmentReference     String?
+  contractReference        String?
+  contractValue            Float?
+  currency                 Currency?
+  scopeOfWork              String?
+  startDate                DateTime?
+  endDate                  DateTime?
+  appointmentStatus        OrganisationAppointmentStatus @default(PROPOSED)
+  // PROCSA Stage 1 (PM 1.3/1.5/1.6, consultants 1.5/1.6): roles and
+  // responsibilities, scope of services and the agreement with the client.
+  rolesAndResponsibilities String?
+  feeBasis                 String?
+  feePercentage            Float?
+  agreementForm            String?
+  agreementStatus          AgreementStatus               @default(NOT_STARTED)
+  agreementSignedAt        DateTime?
+  // Set when the appointment came from a ranked consultant RFQ.
+  rankAtAward              Int?
+  scoreAtAward             Float?
+  awardJustification       String?
+  payments                 PaymentRecord[]
+  ratings                  OrganisationRating[]
+  purchaseOrders           PurchaseOrder[]
+  vendorScorecards         VendorScorecard[]
+  createdAt                DateTime                      @default(now())
+  updatedAt                DateTime                      @updatedAt
 
   @@index([contractorId])
   @@index([projectId])
@@ -471,119 +550,146 @@ model OrganisationRating {
 }
 
 model OrganisationStatusHistory {
-  id             String   @id @default(uuid())
+  id             String     @id @default(uuid())
   contractorId   String
   contractor     Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   previousStatus String
   newStatus      String
   changedById    String
-  changedBy      User     @relation(fields: [changedById], references: [id])
+  changedBy      User       @relation(fields: [changedById], references: [id])
   comment        String?
-  changedAt      DateTime @default(now())
+  changedAt      DateTime   @default(now())
 
   @@index([contractorId])
 }
 
 model Project {
-  id                     String                  @id @default(uuid())
-  projectCode            String?                 @unique
-  name                   String
-  description            String?
-  status                 ProjectStatus           @default(PLANNING)
-  stage                  ProjectStage            @default(INITIATION)
-  projectType            ProjectType?
-  contractForm           ContractForm?
-  currency               Currency                @default(ZAR)
-  classificationStandard ClassificationStandard  @default(ASAQS)
-  client                 String?
-  developer              String?
-  location               String?
-  value                  Float?
-  contingencyPct         Float?                  @default(25)
-  startDate              DateTime?
-  endDate                DateTime?
-  latitude               Float?
-  longitude              Float?
-  ownerId                String
-  owner                  User                    @relation(fields: [ownerId], references: [id])
-  nodes                  ProjectNode[]
-  members                ProjectMember[]
+  id                       String                           @id @default(uuid())
+  projectCode              String?                          @unique
+  name                     String
+  description              String?
+  status                   ProjectStatus                    @default(PLANNING)
+  stage                    ProjectStage                     @default(INITIATION)
+  projectType              ProjectType?
+  contractForm             ContractForm?
+  currency                 Currency                         @default(ZAR)
+  classificationStandard   ClassificationStandard           @default(ASAQS)
+  client                   String?
+  developer                String?
+  location                 String?
+  value                    Float?
+  contingencyPct           Float?                           @default(25)
+  startDate                DateTime?
+  endDate                  DateTime?
+  latitude                 Float?
+  longitude                Float?
+  ownerId                  String
+  owner                    User                             @relation(fields: [ownerId], references: [id])
+  nodes                    ProjectNode[]
+  members                  ProjectMember[]
   organisationAppointments OrganisationProjectAppointment[]
-  scheduleActivities     ScheduleActivity[]
-  scheduleDependencies   ScheduleDependency[]
-  scheduleBaselines      ScheduleBaseline[]
-  tasks                  ProjectTask[]
-  issues                 ProjectIssue[]
-  comments               Comment[]
-  notifications          Notification[]
-  documentFolders        DocumentFolder[]
-  documents              ProjectDocument[]
-  transmittals           Transmittal[]
-  risks                  ProjectRisk[]
-  rfis                   Rfi[]
-  submittals             Submittal[]
-  auditLogEntries        AuditLogEntry[]
-  stageTransitions       StageTransition[]
-  rfqs                   Rfq[]
-  purchaseOrders         PurchaseOrder[]
-  originatingOpportunity Opportunity?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+  scheduleActivities       ScheduleActivity[]
+  scheduleDependencies     ScheduleDependency[]
+  scheduleBaselines        ScheduleBaseline[]
+  tasks                    ProjectTask[]
+  issues                   ProjectIssue[]
+  comments                 Comment[]
+  notifications            Notification[]
+  documentFolders          DocumentFolder[]
+  documents                ProjectDocument[]
+  transmittals             Transmittal[]
+  risks                    ProjectRisk[]
+  rfis                     Rfi[]
+  submittals               Submittal[]
+  auditLogEntries          AuditLogEntry[]
+  stageTransitions         StageTransition[]
+  rfqs                     Rfq[]
+  purchaseOrders           PurchaseOrder[]
+  originatingOpportunity   Opportunity?
+  brief                    ProjectBrief?
+  procurementPolicy        ProcurementPolicy?
+  siteConstraints          SiteConstraint[]
+  siteInvestigations       SiteInvestigation[]
+  viabilityScenarios       ViabilityScenario[]
+  consentApprovals         ConsentApproval[]
+  informationItems         InformationItem[]
+  requiredServices         RequiredService[]
+  consultantAdvice         ConsultantAdvice[]
+  meetings                 Meeting[]
+  stageDeliverables        StageDeliverable[]
+  responsibilityChecks     ResponsibilityCheck[]
+  developmentMilestones    DevelopmentMilestone[]
+  designCriteria           DesignCriterion[]
+  createdAt                DateTime                         @default(now())
+  updatedAt                DateTime                         @updatedAt
+  estimates                Estimate[]
+  budget                   ProjectBudget?
+  budgetLines              BudgetLine[]
+  variations               Variation[]
+  supplierInvoices         SupplierInvoice[]
 }
 
 model ProjectNode {
-  id        String          @id @default(uuid())
-  projectId String
-  project   Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parentId  String?
-  parent    ProjectNode?    @relation("ProjectNodeChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  children  ProjectNode[]   @relation("ProjectNodeChildren")
-  type      ProjectNodeType
-  name      String
-  sortOrder Int             @default(0)
+  id                 String             @id @default(uuid())
+  projectId          String
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId           String?
+  parent             ProjectNode?       @relation("ProjectNodeChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children           ProjectNode[]      @relation("ProjectNodeChildren")
+  type               ProjectNodeType
+  name               String
+  sortOrder          Int                @default(0)
   scheduleActivities ScheduleActivity[]
-  tasks     ProjectTask[]
-  documents ProjectDocument[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  tasks              ProjectTask[]
+  documents          ProjectDocument[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([projectId])
   @@index([parentId])
 }
 
 model ProjectMember {
-  id              String            @id @default(uuid())
-  projectId       String
-  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId          String?
-  user            User?             @relation(fields: [userId], references: [id])
+  id                         String                     @id @default(uuid())
+  projectId                  String
+  project                    Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId                     String?
+  user                       User?                      @relation(fields: [userId], references: [id])
   // Set when this member is "someone from contractor X" pulled from the
   // shared Contractors directory rather than typed in one-off. externalName
   // then holds the specific contact person at that contractor for this
   // project (optional); externalCompany is unused in that case since the
   // company comes from the contractor record itself.
-  contractorId    String?
-  contractor      Contractor?       @relation(fields: [contractorId], references: [id])
-  externalName    String?
-  externalCompany String?
-  externalEmail   String?
-  externalPhone   String?
-  role            ProjectMemberRole
+  contractorId               String?
+  contractor                 Contractor?                @relation(fields: [contractorId], references: [id])
+  externalName               String?
+  externalCompany            String?
+  externalEmail              String?
+  externalPhone              String?
+  role                       ProjectMemberRole
   scheduleActivitiesAssigned ScheduleActivity[]
-  tasksAssigned   ProjectTask[]
-  issuesOwned     ProjectIssue[]
-  transmittalsFrom Transmittal[]
-  transmittalRecipientOf TransmittalRecipient[]
-  risksOwned      ProjectRisk[]
-  rfisRaised      Rfi[]             @relation("RfiRaisedBy")
-  rfisAssigned    Rfi[]             @relation("RfiAssignedTo")
-  rfisBallInCourt Rfi[]             @relation("RfiBallInCourt")
-  submittalsSubmitted Submittal[]   @relation("SubmittalSubmittedBy")
-  submittalsReviewing Submittal[]   @relation("SubmittalReviewer")
-  permissionOverrides MemberPermissionOverride[]
-  deliveriesAccepted Delivery[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  tasksAssigned              ProjectTask[]
+  issuesOwned                ProjectIssue[]
+  transmittalsFrom           Transmittal[]
+  transmittalRecipientOf     TransmittalRecipient[]
+  risksOwned                 ProjectRisk[]
+  rfisRaised                 Rfi[]                      @relation("RfiRaisedBy")
+  rfisAssigned               Rfi[]                      @relation("RfiAssignedTo")
+  rfisBallInCourt            Rfi[]                      @relation("RfiBallInCourt")
+  submittalsSubmitted        Submittal[]                @relation("SubmittalSubmittedBy")
+  submittalsReviewing        Submittal[]                @relation("SubmittalReviewer")
+  permissionOverrides        MemberPermissionOverride[]
+  deliveriesAccepted         Delivery[]
+  siteConstraintsRaised      SiteConstraint[]
+  investigationsRecommended  SiteInvestigation[]        @relation("InvestigationRecommendedBy")
+  investigationsResponsible  SiteInvestigation[]        @relation("InvestigationResponsible")
+  consentsResponsible        ConsentApproval[]
+  informationResponsible     InformationItem[]
+  servicesRecommended        RequiredService[]
+  meetingAttendance          MeetingAttendee[]
+  designCriteriaRaised       DesignCriterion[]
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
 
   @@index([projectId])
   @@index([contractorId])
@@ -629,53 +735,53 @@ enum ScheduleDependencyType {
 }
 
 model ScheduleActivity {
-  id          String                 @id @default(uuid())
-  projectId   String
-  project     Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      ScheduleActivity?      @relation("ScheduleActivityChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  children    ScheduleActivity[]     @relation("ScheduleActivityChildren")
+  id                    String                     @id @default(uuid())
+  projectId             String
+  project               Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId              String?
+  parent                ScheduleActivity?          @relation("ScheduleActivityChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children              ScheduleActivity[]         @relation("ScheduleActivityChildren")
   // Which phase/building/floor/zone/work package this activity happens in —
   // matches how a real Setjeka progress report actually groups activities
   // (by floor), independent of the WBS outline hierarchy above.
-  projectNodeId String?
-  projectNode   ProjectNode?         @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
-  contractorId  String?
-  contractor    Contractor?          @relation(fields: [contractorId], references: [id], onDelete: SetNull)
-  assignedToId  String?
-  assignedTo    ProjectMember?       @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
-  name        String
-  description String?
-  activityType ScheduleActivityType  @default(TASK)
-  startDate   DateTime
-  endDate     DateTime
+  projectNodeId         String?
+  projectNode           ProjectNode?               @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  contractorId          String?
+  contractor            Contractor?                @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  assignedToId          String?
+  assignedTo            ProjectMember?             @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  name                  String
+  description           String?
+  activityType          ScheduleActivityType       @default(TASK)
+  startDate             DateTime
+  endDate               DateTime
   // Working days (Mon-Fri), not calendar days — see schedule-cpm.util.ts.
   // Stored (not derived) since it's the primary user input; startDate/
   // endDate are kept in sync with it by the service layer.
-  durationDays Float                 @default(1)
-  percentComplete Int                @default(0)
-  priority    SchedulePriority       @default(MEDIUM)
-  status      ScheduleActivityStatus @default(NOT_STARTED)
-  sortOrder   Int                    @default(0)
+  durationDays          Float                      @default(1)
+  percentComplete       Int                        @default(0)
+  priority              SchedulePriority           @default(MEDIUM)
+  status                ScheduleActivityStatus     @default(NOT_STARTED)
+  sortOrder             Int                        @default(0)
   // Cached CPM output — recalculated and rewritten for every activity in
   // the project whenever an activity or dependency changes (see
   // schedule-cpm.util.ts). Never hand-edited.
-  earlyStart  DateTime?
-  earlyFinish DateTime?
-  lateStart   DateTime?
-  lateFinish  DateTime?
-  totalFloatDays Float?
-  isCriticalPath Boolean             @default(false)
-  importedFromMsProject Boolean      @default(false)
+  earlyStart            DateTime?
+  earlyFinish           DateTime?
+  lateStart             DateTime?
+  lateFinish            DateTime?
+  totalFloatDays        Float?
+  isCriticalPath        Boolean                    @default(false)
+  importedFromMsProject Boolean                    @default(false)
   // "As predecessor" = other activities depend on this one; "as successor"
   // = this activity depends on others.
-  asPredecessorOf ScheduleDependency[] @relation("DependencyPredecessor")
-  asSuccessorOf   ScheduleDependency[] @relation("DependencySuccessor")
-  baselineSnapshots ScheduleBaselineSnapshot[]
-  tasks       ProjectTask[]
-  documents   ProjectDocument[]
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  asPredecessorOf       ScheduleDependency[]       @relation("DependencyPredecessor")
+  asSuccessorOf         ScheduleDependency[]       @relation("DependencySuccessor")
+  baselineSnapshots     ScheduleBaselineSnapshot[]
+  tasks                 ProjectTask[]
+  documents             ProjectDocument[]
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
 
   @@index([projectId])
   @@index([parentId])
@@ -716,13 +822,13 @@ model ScheduleBaseline {
 }
 
 model ScheduleBaselineSnapshot {
-  id                  String           @id @default(uuid())
-  baselineId          String
-  baseline            ScheduleBaseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
-  activityId          String
-  activity            ScheduleActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  baselineStart       DateTime
-  baselineEnd         DateTime
+  id                   String           @id @default(uuid())
+  baselineId           String
+  baseline             ScheduleBaseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
+  activityId           String
+  activity             ScheduleActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  baselineStart        DateTime
+  baselineEnd          DateTime
   baselineDurationDays Float
 
   @@index([baselineId])
@@ -767,10 +873,14 @@ model ProjectTask {
   // Simple {text, done}[] — a dedicated child table would be overkill for
   // what the register asks for (a lightweight sub-list on a task).
   checklist          Json              @default("[]")
+  // Set when the task is an action item recorded in a meeting's minutes.
+  meetingId          String?
+  meeting            Meeting?          @relation(fields: [meetingId], references: [id], onDelete: SetNull)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
   @@index([projectId])
+  @@index([meetingId])
   @@index([assignedToId])
   @@index([scheduleActivityId])
   @@index([projectNodeId])
@@ -816,28 +926,60 @@ enum CommentEntityType {
   RFI
   SUBMITTAL
   STAGE_TRANSITION
+  STAGE_DELIVERABLE
+  PROJECT_BRIEF
+  MEETING
+  VARIATION
+  // A general note on the project itself, and pre-project notes on an
+  // opportunity (Stage 0).
+  PROJECT
+  OPPORTUNITY
 }
 
 model Comment {
-  id         String            @id @default(uuid())
-  projectId  String
-  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id             String            @id @default(uuid())
+  // A note belongs to a project, or (before one exists) to an opportunity.
+  projectId      String?
+  project        Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunityId  String?
+  opportunity    Opportunity?      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   // No FK on entityId — it can point at ProjectTask, ProjectIssue or
   // ScheduleActivity depending on entityType, so a single foreign key
   // isn't possible; the service layer validates the referenced entity
   // belongs to this project before allowing a comment (same trade-off
   // ScheduleActivity.projectNodeId already accepts for cross-entity
   // optional links).
-  entityType CommentEntityType
-  entityId   String
-  authorId   String
-  author     User              @relation(fields: [authorId], references: [id])
-  body       String
-  createdAt  DateTime          @default(now())
-  editedAt   DateTime?
+  entityType     CommentEntityType
+  entityId       String
+  authorId       String
+  author         User              @relation("CommentAuthor", fields: [authorId], references: [id])
+  body           String
+  createdAt      DateTime          @default(now())
+  editedAt       DateTime?
+  // Notes & actions (Meeting 3 §2.4, replacing "messaging"): a note can be
+  // addressed to a named person; as an action it joins their action list
+  // with a due date and priority. A plain note shows on their dashboard
+  // until they acknowledge it.
+  recipientId    String?
+  recipient      User?             @relation("CommentRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  isAction       Boolean           @default(false)
+  dueDate        DateTime?
+  priority       SchedulePriority?
+  actionStatus   ActionStatus?
+  completedAt    DateTime?
+  completedById  String?
+  completedBy    User?             @relation("CommentCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  acknowledgedAt DateTime?
 
   @@index([projectId])
+  @@index([opportunityId])
   @@index([entityType, entityId])
+  @@index([recipientId])
+}
+
+enum ActionStatus {
+  OPEN
+  DONE
 }
 
 enum NotificationType {
@@ -850,14 +992,24 @@ enum NotificationType {
   SUBMITTAL_STATUS_CHANGED
   STAGE_TRANSITION_REQUESTED
   STAGE_TRANSITION_DECIDED
+  DELIVERABLE_SUBMITTED
+  DELIVERABLE_DECIDED
+  MEETING_SCHEDULED
+  VARIATION_SUBMITTED
+  VARIATION_DECIDED
+  NOTE_FOR_YOU
+  ACTION_ASSIGNED
+  ACTION_COMPLETED
 }
 
 model Notification {
   id         String            @id @default(uuid())
   userId     String
   user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId  String
-  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Where clicking the notification goes; falls back to the project.
+  link       String?
   type       NotificationType
   entityType CommentEntityType
   entityId   String
@@ -875,48 +1027,52 @@ model Notification {
 // infrastructure gaps apply (no RBAC, no generic audit log, no
 // rendering/diffing library for true visual comparison).
 model DocumentFolder {
-  id        String           @id @default(uuid())
+  id        String            @id @default(uuid())
   projectId String
-  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   parentId  String?
-  parent    DocumentFolder?  @relation("DocumentFolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  children  DocumentFolder[] @relation("DocumentFolderChildren")
+  parent    DocumentFolder?   @relation("DocumentFolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  DocumentFolder[]  @relation("DocumentFolderChildren")
   name      String
-  sortOrder Int              @default(0)
+  sortOrder Int               @default(0)
   documents ProjectDocument[]
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   @@index([projectId])
   @@index([parentId])
 }
 
 model ProjectDocument {
-  id          String            @id @default(uuid())
-  projectId   String
-  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  folderId    String?
-  folder      DocumentFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  name        String
-  description String?
+  id                 String             @id @default(uuid())
+  projectId          String
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folderId           String?
+  folder             DocumentFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  name               String
+  description        String?
   // Free text, not a fixed enum — same reasoning as Contractor.disciplines:
   // the register lists example values (drawing/spec/report/contract/
   // correspondence) but doesn't confirm a closed taxonomy.
-  documentType String?
-  discipline   String?
-  projectNodeId String?
-  projectNode   ProjectNode?    @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  documentType       String?
+  discipline         String?
+  // Meeting 3: Setjeka controls what the client sees. Only documents
+  // switched on here appear in (and download from) the client portal.
+  clientVisible      Boolean            @default(false)
+  projectNodeId      String?
+  projectNode        ProjectNode?       @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
   scheduleActivityId String?
-  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
-  createdById String
-  createdBy   User              @relation(fields: [createdById], references: [id])
-  revisions   DocumentRevision[]
-  rfis        Rfi[]
-  submittals  Submittal[]
-  rfqs        Rfq[]
-  quotes      Quote[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  scheduleActivity   ScheduleActivity?  @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  createdById        String
+  createdBy          User               @relation(fields: [createdById], references: [id])
+  revisions          DocumentRevision[]
+  rfis               Rfi[]
+  submittals         Submittal[]
+  rfqs               Rfq[]
+  quotes             Quote[]
+  informationItems   InformationItem[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([projectId])
   @@index([folderId])
@@ -967,13 +1123,13 @@ enum DocumentAccessAction {
 // already makes — not an app-wide audit log, which doesn't exist anywhere
 // in this app.
 model DocumentAccessLog {
-  id                 String                @id @default(uuid())
+  id                 String               @id @default(uuid())
   documentRevisionId String
-  documentRevision   DocumentRevision      @relation(fields: [documentRevisionId], references: [id], onDelete: Cascade)
+  documentRevision   DocumentRevision     @relation(fields: [documentRevisionId], references: [id], onDelete: Cascade)
   userId             String
-  user               User                  @relation(fields: [userId], references: [id])
+  user               User                 @relation(fields: [userId], references: [id])
   action             DocumentAccessAction
-  createdAt          DateTime              @default(now())
+  createdAt          DateTime             @default(now())
 
   @@index([documentRevisionId])
 }
@@ -984,28 +1140,28 @@ enum TransmittalStatus {
 }
 
 model Transmittal {
-  id                String                  @id @default(uuid())
+  id                String                 @id @default(uuid())
   projectId         String
-  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  transmittalNumber String                  @unique
+  project           Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  transmittalNumber String                 @unique
   purpose           String?
   fromMemberId      String?
-  fromMember        ProjectMember?          @relation(fields: [fromMemberId], references: [id], onDelete: SetNull)
-  status            TransmittalStatus       @default(DRAFT)
+  fromMember        ProjectMember?         @relation(fields: [fromMemberId], references: [id], onDelete: SetNull)
+  status            TransmittalStatus      @default(DRAFT)
   issuedAt          DateTime?
   createdById       String
-  createdBy         User                    @relation(fields: [createdById], references: [id])
+  createdBy         User                   @relation(fields: [createdById], references: [id])
   recipients        TransmittalRecipient[]
   items             TransmittalItem[]
-  createdAt         DateTime                @default(now())
+  createdAt         DateTime               @default(now())
 
   @@index([projectId])
 }
 
 model TransmittalRecipient {
-  id            String      @id @default(uuid())
+  id            String        @id @default(uuid())
   transmittalId String
-  transmittal   Transmittal @relation(fields: [transmittalId], references: [id], onDelete: Cascade)
+  transmittal   Transmittal   @relation(fields: [transmittalId], references: [id], onDelete: Cascade)
   memberId      String
   member        ProjectMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
@@ -1077,36 +1233,37 @@ enum RfiStatus {
 }
 
 model Rfi {
-  id                            String         @id @default(uuid())
-  projectId                     String
-  project                       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  rfiNumber                     String         @unique
-  title                         String
-  question                      String?
-  officialResponse              String?
-  respondedAt                   DateTime?
-  raisedById                    String?
-  raisedBy                      ProjectMember? @relation("RfiRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
-  assignedToId                  String?
-  assignedTo                    ProjectMember? @relation("RfiAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-  ballInCourtId                 String?
-  ballInCourt                   ProjectMember? @relation("RfiBallInCourt", fields: [ballInCourtId], references: [id], onDelete: SetNull)
-  priority                      SchedulePriority @default(MEDIUM)
-  status                        RfiStatus      @default(OPEN)
-  dueDate                       DateTime?
+  id                          String           @id @default(uuid())
+  projectId                   String
+  project                     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rfiNumber                   String           @unique
+  title                       String
+  question                    String?
+  officialResponse            String?
+  respondedAt                 DateTime?
+  raisedById                  String?
+  raisedBy                    ProjectMember?   @relation("RfiRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
+  assignedToId                String?
+  assignedTo                  ProjectMember?   @relation("RfiAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  ballInCourtId               String?
+  ballInCourt                 ProjectMember?   @relation("RfiBallInCourt", fields: [ballInCourtId], references: [id], onDelete: SetNull)
+  priority                    SchedulePriority @default(MEDIUM)
+  status                      RfiStatus        @default(OPEN)
+  dueDate                     DateTime?
   // Plain figures, no currency handling — Meeting 002 decision 2.4
   // established this app monitors cost movements for reporting only,
   // it's not the system of record, so a bare number in the project's
   // assumed currency matches that boundary without duplicating the
   // Currency-handling machinery PaymentRecord/appointments already own.
-  costImpactPotential           Float?
-  costImpactConfirmed           Float?
-  scheduleImpactPotentialDays   Float?
-  scheduleImpactConfirmedDays   Float?
-  documentId                    String?
-  document                      ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  createdAt                     DateTime       @default(now())
-  updatedAt                     DateTime       @updatedAt
+  costImpactPotential         Float?
+  costImpactConfirmed         Float?
+  scheduleImpactPotentialDays Float?
+  scheduleImpactConfirmedDays Float?
+  documentId                  String?
+  document                    ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+  variations                  Variation[]
 
   @@index([projectId])
   @@index([raisedById])
@@ -1128,24 +1285,24 @@ enum SubmittalStatus {
 }
 
 model Submittal {
-  id              String            @id @default(uuid())
+  id              String                   @id @default(uuid())
   projectId       String
-  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  submittalNumber String            @unique
+  project         Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittalNumber String                   @unique
   title           String
   specSection     String?
   submittalType   String?
   submittedById   String?
-  submittedBy     ProjectMember?    @relation("SubmittalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedBy     ProjectMember?           @relation("SubmittalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
   reviewerId      String?
-  reviewer        ProjectMember?    @relation("SubmittalReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  status          SubmittalStatus   @default(SUBMITTED)
+  reviewer        ProjectMember?           @relation("SubmittalReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  status          SubmittalStatus          @default(SUBMITTED)
   dueDate         DateTime?
   documentId      String?
-  document        ProjectDocument?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  document        ProjectDocument?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
   statusHistory   SubmittalStatusHistory[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([projectId])
   @@index([submittedById])
@@ -1194,15 +1351,15 @@ model RolePermission {
 // e.g. granting one CLIENT view access to one specific document for two
 // weeks, independent of what their role would normally allow.
 model MemberPermissionOverride {
-  id              String        @id @default(uuid())
+  id              String           @id @default(uuid())
   projectMemberId String
-  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
+  projectMember   ProjectMember    @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
   module          PermissionModule
   action          PermissionAction
   recordId        String?
   allowed         Boolean
   expiresAt       DateTime?
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime         @default(now())
 
   @@index([projectMemberId])
   @@index([projectMemberId, module, action])
@@ -1215,17 +1372,17 @@ model MemberPermissionOverride {
 // entity-scoped OrganisationStatusHistory/SubmittalStatusHistory/
 // DocumentAccessLog logs, which stay as they are for their own entities.
 model AuditLogEntry {
-  id         String            @id @default(uuid())
+  id         String           @id @default(uuid())
   userId     String
-  user       User              @relation(fields: [userId], references: [id])
+  user       User             @relation(fields: [userId], references: [id])
   action     PermissionAction
   module     PermissionModule
   entityType String?
   entityId   String?
   projectId  String?
-  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project    Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
   metadata   Json?
-  createdAt  DateTime          @default(now())
+  createdAt  DateTime         @default(now())
 
   @@index([userId])
   @@index([projectId])
@@ -1284,25 +1441,48 @@ enum RfqStatus {
   CANCELLED
 }
 
+// An RFQ belongs to exactly one of a Project (works/supply procurement) or
+// an Opportunity (PROCSA Stage 0.7 consultant appointment, before any
+// Project exists) - enforced by a CHECK constraint in the migration.
+// discipline/currency/priceWeight/ratingWeight drive the opportunity-stage
+// automatic bid ranking (opportunity-rfqs.service.ts); they're unused for
+// project RFQs.
 model Rfq {
-  id               String          @id @default(uuid())
-  projectId        String
-  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  rfqNumber        String          @unique
-  title            String
-  scopeDescription String?
-  documentId       String?
-  document         ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  dueDate          DateTime?
-  status           RfqStatus       @default(DRAFT)
-  createdById      String
-  createdBy        User            @relation(fields: [createdById], references: [id])
-  invitations      RfqInvitation[]
-  quotes           Quote[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                      String                   @id @default(uuid())
+  projectId               String?
+  project                 Project?                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunityId           String?
+  opportunity             Opportunity?             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  rfqNumber               String                   @unique
+  title                   String
+  scopeDescription        String?
+  discipline              String?
+  currency                Currency?
+  priceWeight             Int                      @default(60)
+  ratingWeight            Int                      @default(40)
+  documentId              String?
+  document                ProjectDocument?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  dueDate                 DateTime?
+  status                  RfqStatus                @default(DRAFT)
+  createdById             String
+  createdBy               User                     @relation(fields: [createdById], references: [id])
+  invitations             RfqInvitation[]
+  quotes                  Quote[]
+  opportunityAppointments OpportunityAppointment[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  // Works/supply RFQs priced per item: the region whose price sheet the
+  // awarded rates update, the items requested, and the award.
+  costRegionId            String?
+  costRegion              CostRegion?              @relation(fields: [costRegionId], references: [id], onDelete: SetNull)
+  items                   RfqItem[]
+  awardedQuoteId          String?                  @unique
+  awardedQuote            Quote?                   @relation("RfqAwardedQuote", fields: [awardedQuoteId], references: [id], onDelete: SetNull)
+  awardedAt               DateTime?
+  pricesUpdatedAt         DateTime?
 
   @@index([projectId])
+  @@index([opportunityId])
   @@index([documentId])
 }
 
@@ -1331,26 +1511,29 @@ enum QuoteStatus {
 // .ts), never stored, the same convention as DocumentRevision's "current"
 // and ProjectRisk's score - so it can never drift from the raw scores.
 model Quote {
-  id                 String           @id @default(uuid())
-  rfqId              String
-  rfq                Rfq              @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  contractorId       String
-  contractor         Contractor       @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-  price              Float
-  currency           Currency
-  leadTimeDays       Int?
-  warrantyTerms      String?
-  commercialTerms    String?
-  technicalProposal  String?
-  documentId         String?
-  document           ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  evaluationScores   Json?
-  status             QuoteStatus      @default(SUBMITTED)
-  submittedById      String
-  submittedBy        User             @relation(fields: [submittedById], references: [id])
-  purchaseOrders     PurchaseOrder[]
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                      String                   @id @default(uuid())
+  rfqId                   String
+  rfq                     Rfq                      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  contractorId            String
+  contractor              Contractor               @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  price                   Float
+  currency                Currency
+  leadTimeDays            Int?
+  warrantyTerms           String?
+  commercialTerms         String?
+  technicalProposal       String?
+  documentId              String?
+  document                ProjectDocument?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  evaluationScores        Json?
+  status                  QuoteStatus              @default(SUBMITTED)
+  submittedById           String
+  submittedBy             User                     @relation(fields: [submittedById], references: [id])
+  purchaseOrders          PurchaseOrder[]
+  opportunityAppointments OpportunityAppointment[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  items                   QuoteItem[]
+  awardedFor              Rfq?                     @relation("RfqAwardedQuote")
 
   @@index([rfqId])
   @@index([contractorId])
@@ -1364,29 +1547,34 @@ enum PurchaseOrderStatus {
 }
 
 model PurchaseOrder {
-  id               String                        @id @default(uuid())
+  id               String                          @id @default(uuid())
   projectId        String
-  project          Project                       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  poNumber         String                        @unique
+  project          Project                         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  poNumber         String                          @unique
   contractorId     String
-  contractor       Contractor                    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractor       Contractor                      @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   quoteId          String?
-  quote            Quote?                        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  quote            Quote?                          @relation(fields: [quoteId], references: [id], onDelete: SetNull)
   appointmentId    String?
   appointment      OrganisationProjectAppointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   // Free text, not a link to a budget/cost ledger - this app monitors
   // cost movements for reporting, it isn't the system of record (Meeting
   // 002 decision 2.4), the same boundary Rfi's cost-impact fields respect.
   costCode         String?
+  // The standard cost code this order is committed against, for the cost
+  // report. The free-text costCode above is kept for the vendor's own ref.
+  budgetCodeId     String?
+  budgetCode       CostCode?                       @relation("PoCostCode", fields: [budgetCodeId], references: [id], onDelete: SetNull)
+  invoices         SupplierInvoice[]
   scopeDescription String?
   value            Float
   currency         Currency
-  status           PurchaseOrderStatus           @default(DRAFT)
+  status           PurchaseOrderStatus             @default(DRAFT)
   issuedAt         DateTime?
   statusHistory    PurchaseOrderStatusHistory[]
   deliveries       Delivery[]
-  createdAt        DateTime                      @default(now())
-  updatedAt        DateTime                      @updatedAt
+  createdAt        DateTime                        @default(now())
+  updatedAt        DateTime                        @updatedAt
 
   @@index([projectId])
   @@index([contractorId])
@@ -1467,9 +1655,10 @@ model VendorScorecard {
 // rows 8-12): captures a prospective development before it becomes a
 // real Project - the "Stage 0" the rest of this app's Project.stage
 // model doesn't cover, since that starts at Initiation. Deliberately not
-// project-nested (there is no Project yet) and gated by InternalOnlyGuard
-// like the Contractors directory, not the per-project RBAC engine - the
-// register lists no external/vendor/client user for any DEV row. The
+// project-nested (there is no Project yet): internal staff manage it behind
+// InternalOnlyGuard, while the client's portal users get a read-only view of
+// their own client's opportunities (client-portal.controller.ts) and invited
+// consultants quote through the vendor portal. The
 // Feasibility register row is explicitly marked "Not needed now" in the
 // register and is not modelled here; Development milestones (marked
 // "Default", lower priority than this section's two "Yes" rows) is also
@@ -1484,35 +1673,342 @@ enum OpportunityStage {
 }
 
 model Opportunity {
-  id                 String            @id @default(uuid())
-  name               String
-  description        String?
+  id                  String                    @id @default(uuid())
+  name                String
+  description         String?
   // Free text, not a fixed enum - same reasoning as Contractor.disciplines:
   // the register's categories are examples, not a confirmed closed set.
-  developmentType    String?
-  location           String?
-  estimatedValue     Float?
-  currency           Currency?
-  clientName         String?
-  clientContactName  String?
-  clientEmail        String?
-  clientPhone        String?
-  stage              OpportunityStage  @default(IDENTIFIED)
-  ownerId            String?
-  owner              User?             @relation("OpportunityOwner", fields: [ownerId], references: [id])
-  createdById        String
-  createdBy          User              @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  developmentType     String?
+  location            String?
+  estimatedValue      Float?
+  currency            Currency?
+  clientId            String?
+  client              Client?                   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  stage               OpportunityStage          @default(IDENTIFIED)
+  ownerId             String?
+  owner               User?                     @relation("OpportunityOwner", fields: [ownerId], references: [id])
+  createdById         String
+  createdBy           User                      @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
   // Set by convertToProject() once this opportunity becomes a real
   // Project - closes the opportunity-project-integration-deferred note
   // from before the setjeka-erp rebuild (Client dropdown + address
   // auto-populate on New Project), by pre-filling the new Project from
   // this record instead.
-  convertedProjectId String?           @unique
-  convertedProject   Project?          @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
-  stageHistory       OpportunityStageHistory[]
-  approvals          OpportunityApproval[]
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  convertedProjectId  String?                   @unique
+  convertedProject    Project?                  @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
+  // PROCSA 0.1 "Establish project need and desirability".
+  needAndDesirability String?
+  // PROCSA 0.3 "Formalise Client's Vision": the vision is formalised when
+  // the client confirms it through their portal. Editing the vision clears
+  // the confirmation (opportunities.service.ts).
+  clientVision        String?
+  visionConfirmedAt   DateTime?
+  visionConfirmedById String?
+  visionConfirmedBy   User?                     @relation("OpportunityVisionConfirmedBy", fields: [visionConfirmedById], references: [id], onDelete: SetNull)
+  stageHistory        OpportunityStageHistory[]
+  approvals           OpportunityApproval[]
+  sites               OpportunitySite[]
+  rfqs                Rfq[]
+  appointments        OpportunityAppointment[]
+  businessCases       ViabilityScenario[]
+  marketResearch      MarketResearch[]
+  payments            OpportunityPayment[]
+  documents           OpportunityDocument[]
+  decisions           InvestmentDecision[]
+  milestones          DevelopmentMilestone[]
+  checks              OpportunityCheck[]
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  estimates           Estimate[]
+  notes               Comment[]
+
+  @@index([clientId])
+}
+
+// PROCSA Stage 0.1-0.3 / Register PRJ "Project team directory" (clients):
+// the client organisation an opportunity is being developed for. A shared
+// directory (not per-opportunity text) so a repeat client is picked, not
+// retyped, and so client portal logins (User.clientId) have something to
+// belong to before any Project exists.
+model Client {
+  id                 String        @id @default(uuid())
+  name               String        @unique
+  registrationNumber String?
+  contactName        String?
+  email              String?
+  phone              String?
+  address            String?
+  notes              String?
+  createdById        String
+  createdBy          User          @relation("ClientCreatedBy", fields: [createdById], references: [id])
+  opportunities      Opportunity[]
+  portalUsers        User[]        @relation("ClientPortalUsers")
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+// PROCSA Stage 0.4 "Source appropriate land": the candidate sites
+// considered for an opportunity. At most one is SELECTED (enforced in
+// opportunity-sites.service.ts); converting to a project requires one, and
+// it pre-fills the new Project's location and coordinates.
+enum OpportunitySiteStatus {
+  CANDIDATE
+  SHORTLISTED
+  SELECTED
+  REJECTED
+}
+
+model OpportunitySite {
+  id                String                @id @default(uuid())
+  opportunityId     String
+  opportunity       Opportunity           @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  name              String
+  address           String?
+  erfNumber         String?
+  sizeSqm           Float?
+  zoning            String?
+  ownership         String?
+  askingPrice       Float?
+  currency          Currency?
+  latitude          Float?
+  longitude         Float?
+  notes             String?
+  status            OpportunitySiteStatus @default(CANDIDATE)
+  // PROCSA 0.5 "Manage procurement of land rights": the acquisition itself.
+  acquisitionStatus LandAcquisitionStatus @default(NOT_STARTED)
+  agreedPrice       Float?
+  agreementDate     DateTime?
+  transferDate      DateTime?
+  landRights        OpportunityApproval[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([opportunityId])
+}
+
+enum LandAcquisitionStatus {
+  NOT_STARTED
+  NEGOTIATING
+  OFFER_MADE
+  AGREEMENT_SIGNED
+  TRANSFERRED
+  LEASED
+  WITHDRAWN
+}
+
+// The four kinds of land right PROCSA 0.5 names: zoning, environmental,
+// infrastructural / external services, legal.
+enum LandRightCategory {
+  ZONING
+  ENVIRONMENTAL
+  INFRASTRUCTURE
+  LEGAL
+  OTHER
+}
+
+// PROCSA Stage 0.7 "Appoint necessary consultants": the consultant chosen
+// from an opportunity RFQ. Kept separate from OrganisationProjectAppointment
+// (which requires a Project) and turned into one on convertToProject. The
+// rank/score snapshot records what the automatic evaluation said at the
+// moment of award, so an override of the recommendation stays auditable
+// even after later ratings shift the live ranking.
+model OpportunityAppointment {
+  id                   String                  @id @default(uuid())
+  opportunityId        String
+  opportunity          Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  contractorId         String
+  contractor           Contractor              @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  rfqId                String?
+  rfq                  Rfq?                    @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  quoteId              String?
+  quote                Quote?                  @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  role                 OrganisationProjectRole
+  discipline           String?
+  contractValue        Float?
+  currency             Currency?
+  rankAtAward          Int?
+  scoreAtAward         Float?
+  justification        String?
+  appointedById        String
+  appointedBy          User                    @relation(fields: [appointedById], references: [id])
+  projectAppointmentId String?                 @unique
+  payments             OpportunityPayment[]
+  createdAt            DateTime                @default(now())
+
+  @@index([opportunityId])
+  @@index([contractorId])
+}
+
+enum MarketResearchStatus {
+  COMMISSIONED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// PROCSA 0.6 "Procure market research to assist in confirming the
+// appropriate product and income stream". The achievable rent / sale
+// figures pre-fill a business case scenario (0.2).
+model MarketResearch {
+  id                        String               @id @default(uuid())
+  opportunityId             String
+  opportunity               Opportunity          @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  title                     String
+  providerId                String?
+  provider                  Contractor?          @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  providerName              String?
+  status                    MarketResearchStatus @default(COMMISSIONED)
+  commissionedAt            DateTime?
+  completedAt               DateTime?
+  recommendedProduct        String?
+  targetMarket              String?
+  achievableRentPerSqmMonth Float?
+  achievableSalePricePerSqm Float?
+  expectedVacancyPct        Float?
+  demandEvidence            String?
+  findings                  String?
+  recordedById              String
+  recordedBy                User                 @relation(fields: [recordedById], references: [id])
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  @@index([opportunityId])
+}
+
+enum OpportunityPaymentStatus {
+  INVOICED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+// PROCSA 0.8 "Process Payments to all project creditors" during Stage 0:
+// consultants appointed pre-project, land deposits, research fees. The
+// Development Manager records an invoice, an Executive approves it, and it
+// is marked paid. Paid consultant payments become PaymentRecords on the
+// project appointment at conversion.
+model OpportunityPayment {
+  id               String                   @id @default(uuid())
+  opportunityId    String
+  opportunity      Opportunity              @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  contractorId     String?
+  contractor       Contractor?              @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  appointmentId    String?
+  appointment      OpportunityAppointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  payeeName        String?
+  description      String
+  invoiceReference String?
+  invoiceDate      DateTime?
+  amount           Float
+  currency         Currency
+  status           OpportunityPaymentStatus @default(INVOICED)
+  recordedById     String
+  recordedBy       User                     @relation("OpportunityPaymentRecordedBy", fields: [recordedById], references: [id])
+  approvedById     String?
+  approvedBy       User?                    @relation("OpportunityPaymentApprovedBy", fields: [approvedById], references: [id])
+  approvedAt       DateTime?
+  decisionComment  String?
+  paidAt           DateTime?
+  paymentReference String?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  @@index([opportunityId])
+}
+
+// Stage 0 evidence files (register DEV R11 "Approval register shows
+// status, owner, due date and evidence"): land agreements, approval
+// letters, research reports, invoices. Optionally linked to one record
+// via linkType/linkId (validated in the service, like Comment).
+model OpportunityDocument {
+  id               String      @id @default(uuid())
+  opportunityId    String
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  title            String
+  linkType         String?
+  linkId           String?
+  storedName       String
+  originalFilename String
+  mimeType         String
+  size             Int
+  uploadedById     String
+  uploadedBy       User        @relation(fields: [uploadedById], references: [id])
+  createdAt        DateTime    @default(now())
+
+  @@index([opportunityId])
+  @@index([linkType, linkId])
+}
+
+enum InvestmentDecisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// The register's "Executive" on the DEV pipeline/approvals rows: the
+// go / no-go on taking an opportunity forward. The Development Manager
+// requests it; an Executive (an internal MANAGER or ADMIN, not the
+// requester) decides. Approval is the only way an opportunity reaches
+// APPROVED, the precondition for converting it into a project.
+model InvestmentDecision {
+  id              String                   @id @default(uuid())
+  opportunityId   String
+  opportunity     Opportunity              @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  status          InvestmentDecisionStatus @default(PENDING)
+  requestedById   String
+  requestedBy     User                     @relation("DecisionRequestedBy", fields: [requestedById], references: [id])
+  requestComment  String?
+  decidedById     String?
+  decidedBy       User?                    @relation("DecisionDecidedBy", fields: [decidedById], references: [id])
+  decisionComment String?
+  decidedAt       DateTime?
+  // What the Executive saw: business case, site, vision, approvals.
+  snapshot        Json?
+  createdAt       DateTime                 @default(now())
+
+  @@index([opportunityId])
+}
+
+// Register DEV R12 "Development milestones: track milestones from concept
+// through handover; show baseline, target, actual and status". Started on
+// the opportunity and carried to the project on conversion (projectId set,
+// opportunityId kept). Status is computed at read time.
+model DevelopmentMilestone {
+  id            String       @id @default(uuid())
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  projectId     String?
+  project       Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  // Set on template milestones (opportunities/milestones.ts) so the event
+  // they mark — e.g. the investment decision, a stage gate — can record
+  // the actual date automatically. Null for milestones added by hand.
+  key           String?
+  sortOrder     Int          @default(0)
+  baselineDate  DateTime?
+  targetDate    DateTime?
+  actualDate    DateTime?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([opportunityId])
+  @@index([projectId])
+}
+
+// Manual sign-off of a Stage 0 responsibility (see opportunities/stage0.ts),
+// the opportunity-side equivalent of ResponsibilityCheck.
+model OpportunityCheck {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  roleKey       String
+  code          String
+  doneById      String
+  doneBy        User        @relation(fields: [doneById], references: [id])
+  note          String?
+  doneAt        DateTime    @default(now())
+
+  @@unique([opportunityId, roleKey, code])
 }
 
 // Same shape and reasoning as the existing SubmittalStatusHistory /
@@ -1521,15 +2017,15 @@ model Opportunity {
 // built for Projects (that exists for a requester/external-approver
 // split that doesn't apply to this single-actor internal pipeline record).
 model OpportunityStageHistory {
-  id             String      @id @default(uuid())
-  opportunityId  String
-  opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  previousStage  String
-  newStage       String
-  changedById    String
-  changedBy      User        @relation(fields: [changedById], references: [id])
-  comment        String?
-  changedAt      DateTime    @default(now())
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  previousStage String
+  newStage      String
+  changedById   String
+  changedBy     User        @relation(fields: [changedById], references: [id])
+  comment       String?
+  changedAt     DateTime    @default(now())
 
   @@index([opportunityId])
 }
@@ -1542,21 +2038,925 @@ enum OpportunityApprovalStatus {
 }
 
 model OpportunityApproval {
-  id             String                    @id @default(uuid())
-  opportunityId  String
-  opportunity    Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id               String                    @id @default(uuid())
+  opportunityId    String
+  opportunity      Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   // Free text (planning/statutory/environmental/other are the register's
   // examples, not a closed set) - same convention as elsewhere in this app.
-  approvalType   String
-  status         OpportunityApprovalStatus @default(PENDING)
-  ownerId        String?
-  owner          User?                     @relation(fields: [ownerId], references: [id])
-  dueDate        DateTime?
-  // No project-agnostic document store exists pre-Project; a text
-  // reference is the honest V1 rather than building one just for this.
-  evidenceNotes  String?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  approvalType     String
+  category         LandRightCategory?
+  siteId           String?
+  site             OpportunitySite?          @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  authority        String?
+  reference        String?
+  status           OpportunityApprovalStatus @default(PENDING)
+  ownerId          String?
+  owner            User?                     @relation(fields: [ownerId], references: [id])
+  dueDate          DateTime?
+  // Evidence files are OpportunityDocuments linked to this approval;
+  // this stays for a short note alongside them.
+  evidenceNotes    String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  consentApprovals ConsentApproval[]
 
   @@index([opportunityId])
+}
+
+// ---------------------------------------------------------------------------
+// PROCSA Stage 1 — Inception. "Establish the client requirements and
+// preferences, assess user needs and options, appointment of necessary
+// consultants, establish the project brief including project objectives,
+// priorities, constraints, assumptions, aspirations and strategies."
+// Each model below is named for the Stage 1 line items it serves; the
+// line-item catalogue per role lives in backend/src/inception/procsa.ts.
+// ---------------------------------------------------------------------------
+
+enum AgreementStatus {
+  NOT_STARTED
+  DRAFTED
+  ISSUED
+  SIGNED
+}
+
+// DM 1.1, PM 1.1, every consultant 1.1. Consultant input is the existing
+// polymorphic Comment thread (entityType PROJECT_BRIEF); approval and
+// version history live on the BRIEF StageDeliverable.
+model ProjectBrief {
+  id                 String    @id @default(uuid())
+  projectId          String    @unique
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  clientRequirements String?
+  userNeeds          String?
+  optionsConsidered  String?
+  objectives         String?
+  priorities         String?
+  constraints        String?
+  assumptions        String?
+  aspirations        String?
+  strategies         String?
+  budgetTarget       Float?
+  targetCompletion   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+enum ConstraintImpact {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SiteConstraintStatus {
+  OPEN
+  MITIGATED
+  ACCEPTED
+  RESOLVED
+}
+
+// DM 1.2, PM 1.4, consultants 1.4: site characteristics, rights and
+// constraints. Category is free text with suggestions (zoning, servitude,
+// geotechnical, bulk services, access, environmental, heritage, title).
+model SiteConstraint {
+  id          String               @id @default(uuid())
+  projectId   String
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category    String
+  description String
+  impact      ConstraintImpact     @default(MEDIUM)
+  status      SiteConstraintStatus @default(OPEN)
+  mitigation  String?
+  raisedById  String?
+  raisedBy    ProjectMember?       @relation(fields: [raisedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([projectId])
+}
+
+enum InvestigationStatus {
+  RECOMMENDED
+  COMMISSIONED
+  IN_PROGRESS
+  COMPLETED
+  NOT_REQUIRED
+}
+
+// Engineers 1.7: "Advise on the necessary surveys, analyses, tests and site
+// or other investigations where such information will be required for
+// stage 2 including the availability and location of infrastructure and
+// services."
+model SiteInvestigation {
+  id                String              @id @default(uuid())
+  projectId         String
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investigationType String
+  description       String?
+  recommendedById   String?
+  recommendedBy     ProjectMember?      @relation("InvestigationRecommendedBy", fields: [recommendedById], references: [id], onDelete: SetNull)
+  responsibleId     String?
+  responsible       ProjectMember?      @relation("InvestigationResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  status            InvestigationStatus @default(RECOMMENDED)
+  requiredByStage   ProjectStage        @default(CONCEPT)
+  dueDate           DateTime?
+  estimatedCost     Float?
+  findings          String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([projectId])
+}
+
+enum ViabilityRevenueMode {
+  SALE
+  RENTAL
+}
+
+// DM 1.3 "Prepare a preliminary desk top project viability". Only inputs
+// are stored; costs, value, profit and yield are computed at read time
+// (inception/viability.ts) so they can't drift from the inputs. Kept
+// deliberately lighter than the register's DEV "Feasibility register" row,
+// which the client marked "Not needed now". Also used for PROCSA 0.2 "First
+// Business Case" on an opportunity: exactly one of projectId /
+// opportunityId is set (CHECK in the migration); the opportunity's
+// scenarios are copied to the project on conversion.
+model ViabilityScenario {
+  id                     String               @id @default(uuid())
+  projectId              String?
+  project                Project?             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunityId          String?
+  opportunity            Opportunity?         @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  name                   String
+  isPreferred            Boolean              @default(false)
+  landCost               Float                @default(0)
+  gbaSqm                 Float                @default(0)
+  constructionRatePerSqm Float                @default(0)
+  professionalFeesPct    Float                @default(12)
+  contingencyPct         Float                @default(5)
+  otherCosts             Float                @default(0)
+  financeRatePct         Float                @default(11)
+  financeMonths          Int                  @default(24)
+  revenueMode            ViabilityRevenueMode @default(SALE)
+  sellableAreaSqm        Float                @default(0)
+  salePricePerSqm        Float                @default(0)
+  lettableAreaSqm        Float                @default(0)
+  rentPerSqmMonth        Float                @default(0)
+  vacancyPct             Float                @default(5)
+  capRatePct             Float                @default(9)
+  targetProfitPct        Float                @default(20)
+  assumptions            String?
+  createdById            String
+  createdBy              User                 @relation(fields: [createdById], references: [id])
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  @@index([projectId])
+  @@index([opportunityId])
+}
+
+enum DeliveryStrategy {
+  TRADITIONAL
+  DESIGN_AND_BUILD
+  MANAGEMENT_CONTRACTING
+  CONSTRUCTION_MANAGEMENT
+  TURNKEY
+  OTHER
+}
+
+enum TenderMethod {
+  OPEN
+  SELECTIVE
+  NEGOTIATED
+  NOMINATED
+}
+
+// DM 1.5, PM 1.2 "Establish procurement policy"; consultants 1.3 advise on
+// it (ConsultantAdvice, topic PROCUREMENT_POLICY). Its evaluation weights
+// become the default for this project's consultant RFQs. The contract form
+// is Project.contractForm, edited from here.
+model ProcurementPolicy {
+  id                      String            @id @default(uuid())
+  projectId               String            @unique
+  project                 Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveryStrategy        DeliveryStrategy?
+  tenderMethod            TenderMethod?
+  minimumQuotes           Int               @default(3)
+  priceWeight             Int               @default(60)
+  ratingWeight            Int               @default(40)
+  preferentialProcurement String?
+  localContentTargetPct   Float?
+  approvalThresholds      String?
+  notes                   String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+}
+
+enum ConsentStatus {
+  NOT_STARTED
+  IN_PREPARATION
+  SUBMITTED
+  APPROVED
+  REJECTED
+  NOT_REQUIRED
+}
+
+// PM 1.7 "Facilitate a schedule of the required consents and approvals".
+// Stage 0 authority approvals are copied in when an opportunity converts.
+model ConsentApproval {
+  id                String               @id @default(uuid())
+  projectId         String
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title             String
+  authority         String?
+  category          String?
+  responsibleId     String?
+  responsible       ProjectMember?       @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  requiredByStage   ProjectStage         @default(CONCEPT)
+  plannedSubmission DateTime?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  status            ConsentStatus        @default(NOT_STARTED)
+  reference         String?
+  notes             String?
+  sourceApprovalId  String?
+  sourceApproval    OpportunityApproval? @relation(fields: [sourceApprovalId], references: [id], onDelete: SetNull)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([projectId])
+}
+
+enum InformationStatus {
+  REQUIRED
+  REQUESTED
+  RECEIVED
+  NOT_AVAILABLE
+}
+
+// Architect 1.7 / engineers 1.8 "Determine availability of data, drawings
+// and plans relating to the project"; consultants 1.8-1.10 "provide
+// necessary information to the other consultants" (the document itself is
+// shared through Documents/Transmittals; this tracks what exists and where).
+model InformationItem {
+  id            String            @id @default(uuid())
+  projectId     String
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  category      String?
+  heldBy        String?
+  responsibleId String?
+  responsible   ProjectMember?    @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  status        InformationStatus @default(REQUIRED)
+  dueDate       DateTime?
+  documentId    String?
+  document      ProjectDocument?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([projectId])
+}
+
+// Architect 1.5 / QS 1.4 "Advise on the other consultants and services
+// required". Whether a service is covered is derived from the project's
+// appointments, never stored, so it can't go stale.
+model RequiredService {
+  id              String         @id @default(uuid())
+  projectId       String
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  discipline      String
+  notes           String?
+  notRequired     Boolean        @default(false)
+  recommendedById String?
+  recommendedBy   ProjectMember? @relation(fields: [recommendedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+
+  @@unique([projectId, discipline])
+}
+
+enum AdviceTopic {
+  PROCUREMENT_POLICY
+  RIGHTS_CONSTRAINTS_CONSENTS
+  CONSULTANTS_REQUIRED
+  ECONOMIC_FACTORS
+  FINANCIAL_DESIGN_CRITERIA
+  SURVEYS_INVESTIGATIONS
+  GENERAL
+}
+
+// QS 1.8 and engineers 1.9 "Advise on appropriate financial design
+// criteria": the measurable limits the design must stay within — a
+// cost-per-m² ceiling, a services allowance, escalation, life-cycle cost
+// targets. Structured (value + unit) rather than prose so the team can
+// check the design against them later.
+model DesignCriterion {
+  id          String         @id @default(uuid())
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category    String
+  description String
+  value       Float?
+  unit        String?
+  raisedById  String?
+  raisedBy    ProjectMember? @relation(fields: [raisedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([projectId])
+}
+
+// The many "Advise on ..." items in every consultant's Stage 1 list. The
+// author's project role is snapshotted so the responsibility tracker can
+// credit the right role even if their membership changes later.
+model ConsultantAdvice {
+  id         String             @id @default(uuid())
+  projectId  String
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  topic      AdviceTopic
+  body       String
+  authorId   String
+  author     User               @relation(fields: [authorId], references: [id])
+  authorRole ProjectMemberRole?
+  createdAt  DateTime           @default(now())
+
+  @@index([projectId, topic])
+}
+
+enum MeetingType {
+  INITIATION
+  DESIGN
+  CONSULTANTS
+  CLIENT
+  SITE
+  OTHER
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+}
+
+// Every consultant's 1.2 "Attend project initiation meetings", and the
+// register's CLI "Client communications" (meeting information and action
+// items). Action items are ordinary ProjectTasks with meetingId set.
+model Meeting {
+  id              String            @id @default(uuid())
+  projectId       String
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title           String
+  meetingType     MeetingType       @default(OTHER)
+  scheduledAt     DateTime
+  location        String?
+  agenda          String?
+  minutes         String?
+  status          MeetingStatus     @default(SCHEDULED)
+  minutesIssuedAt DateTime?
+  createdById     String
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  attendees       MeetingAttendee[]
+  actionItems     ProjectTask[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([projectId])
+}
+
+model MeetingAttendee {
+  id              String        @id @default(uuid())
+  meetingId       String
+  meeting         Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  projectMemberId String
+  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
+  present         Boolean?
+
+  @@unique([meetingId, projectMemberId])
+}
+
+enum DeliverableStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum DeliverableEventType {
+  SUBMITTED
+  APPROVED
+  REVISION_REQUESTED
+  REOPENED
+}
+
+// PM 1.9 "Facilitate client approval of all stage 1 documentation" and the
+// register's CLI "Client approvals" / COL "Approval center". One row per
+// stage document (key from inception/procsa.ts). Editing an approved
+// document reopens it as a new version; each approval stores a snapshot
+// of what was approved.
+model StageDeliverable {
+  id              String                  @id @default(uuid())
+  projectId       String
+  project         Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage           ProjectStage
+  key             String
+  status          DeliverableStatus       @default(DRAFT)
+  version         Int                     @default(1)
+  submittedById   String?
+  submittedBy     User?                   @relation("DeliverableSubmittedBy", fields: [submittedById], references: [id])
+  submittedAt     DateTime?
+  decidedById     String?
+  decidedBy       User?                   @relation("DeliverableDecidedBy", fields: [decidedById], references: [id])
+  decidedAt       DateTime?
+  decisionComment String?
+  events          StageDeliverableEvent[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@unique([projectId, stage, key])
+}
+
+model StageDeliverableEvent {
+  id            String               @id @default(uuid())
+  deliverableId String
+  deliverable   StageDeliverable     @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  type          DeliverableEventType
+  version       Int
+  actorId       String
+  actor         User                 @relation(fields: [actorId], references: [id])
+  comment       String?
+  snapshot      Json?
+  createdAt     DateTime             @default(now())
+
+  @@index([deliverableId])
+}
+
+// Manual sign-off of a PROCSA responsibility line item, for items the app
+// can't evidence on its own (or completed off-platform). roleKey/code
+// match inception/procsa.ts.
+model ResponsibilityCheck {
+  id        String       @id @default(uuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage     ProjectStage
+  roleKey   String
+  code      String
+  doneById  String
+  doneBy    User         @relation(fields: [doneById], references: [id])
+  note      String?
+  doneAt    DateTime     @default(now())
+
+  @@unique([projectId, stage, roleKey, code])
+}
+
+// ---------------------------------------------------------------------------
+// Cost database: Setjeka's own regional price sheets and build-ups.
+// Starts empty - Setjeka enters regions, resource prices and work items.
+// ---------------------------------------------------------------------------
+
+enum CostResourceType {
+  MATERIAL
+  LABOUR
+  PLANT
+  SUBCONTRACT
+  OTHER
+}
+
+// Which model quantity a work item is measured by when costed from a
+// BIM/CAD takeoff.
+enum TakeoffBasis {
+  AREA
+  VOLUME
+  LENGTH
+  COUNT
+}
+
+// A titled pricing region, e.g. "Nigeria - Lagos". Prices are per region,
+// in the region's currency.
+model CostRegion {
+  id           String                 @id @default(uuid())
+  name         String                 @unique
+  country      String?
+  currency     Currency
+  notes        String?
+  isActive     Boolean                @default(true)
+  prices       ResourcePrice[]
+  priceHistory ResourcePriceHistory[]
+  estimates    Estimate[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  rfqs         Rfq[]
+}
+
+// A material, labour trade, item of plant or other cost input, e.g.
+// "Cement OPC 42.5, 50 kg bag" per bag. Priced separately in each region.
+model CostResource {
+  id           String                 @id @default(uuid())
+  code         String                 @unique
+  name         String
+  type         CostResourceType
+  unit         String
+  category     String?
+  description  String?
+  isActive     Boolean                @default(true)
+  prices       ResourcePrice[]
+  priceHistory ResourcePriceHistory[]
+  components   WorkItemComponent[]
+  lines        EstimateLine[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  rfqItems     RfqItem[]
+}
+
+// The current price of one resource in one region.
+model ResourcePrice {
+  id            String       @id @default(uuid())
+  resourceId    String
+  resource      CostResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  regionId      String
+  region        CostRegion   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  rate          Float
+  source        String?
+  effectiveDate DateTime
+  updatedById   String?
+  updatedBy     User?        @relation("PriceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([resourceId, regionId])
+  @@index([regionId])
+}
+
+// Every price change, so movement over time stays visible.
+model ResourcePriceHistory {
+  id            String       @id @default(uuid())
+  resourceId    String
+  resource      CostResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  regionId      String
+  region        CostRegion   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  rate          Float
+  previousRate  Float?
+  source        String?
+  effectiveDate DateTime
+  changedById   String?
+  changedBy     User?        @relation("PriceChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  // Set when the price came from an RFQ quote.
+  sourceRfqId   String?
+
+  @@index([resourceId, regionId])
+}
+
+// A unit of measured work with its build-up, e.g. "225 mm block wall" per
+// m2 = 10 blocks + 0.3 bags cement + 0.04 m3 sand + mason and labourer
+// hours. Its rate in a region is the sum of its components at that
+// region's prices - the automated-QS core.
+model WorkItem {
+  id              String              @id @default(uuid())
+  code            String              @unique
+  name            String
+  unit            String
+  description     String?
+  costCodeId      String?
+  costCode        CostCode?           @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
+  takeoffBasis    TakeoffBasis?
+  // Words matched against BIM/CAD categories and type names to suggest
+  // this item during a model takeoff, e.g. ["wall", "IfcWall"].
+  takeoffKeywords String[]            @default([])
+  isActive        Boolean             @default(true)
+  components      WorkItemComponent[]
+  lines           EstimateLine[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model WorkItemComponent {
+  id         String       @id @default(uuid())
+  workItemId String
+  workItem   WorkItem     @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  resourceId String
+  resource   CostResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  // Per one unit of the work item, before waste.
+  quantity   Float
+  wastePct   Float        @default(0)
+  notes      String?
+  sortOrder  Int          @default(0)
+
+  @@index([workItemId])
+  @@index([resourceId])
+}
+
+// ---------------------------------------------------------------------------
+// Estimates: a rough cost estimate / BOQ priced from one region's sheet.
+// ---------------------------------------------------------------------------
+
+enum EstimateStatus {
+  DRAFT
+  FINAL
+}
+
+enum EstimateLineKind {
+  WORK_ITEM
+  RESOURCE
+  LUMP_SUM
+}
+
+enum EstimateLineSource {
+  MANUAL
+  MODEL
+}
+
+model Estimate {
+  id                String          @id @default(uuid())
+  reference         String          @unique
+  name              String
+  description       String?
+  // Optional owner: a project, an opportunity, or neither (a standalone
+  // rough estimate).
+  projectId         String?
+  project           Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunityId     String?
+  opportunity       Opportunity?    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  regionId          String
+  region            CostRegion      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  status            EstimateStatus  @default(DRAFT)
+  grossFloorArea    Float?
+  preliminariesPct  Float           @default(0)
+  contingencyPct    Float           @default(0)
+  overheadProfitPct Float           @default(0)
+  vatPct            Float           @default(0)
+  // Set when finalised: every line's rate is frozen at that moment so a
+  // later price update doesn't change a final estimate.
+  finalisedAt       DateTime?
+  createdById       String
+  createdBy         User            @relation("EstimateCreatedBy", fields: [createdById], references: [id])
+  lines             EstimateLine[]
+  takeoffs          ModelTakeoff[]
+  budgetsAdopted    ProjectBudget[] @relation("BudgetSourceEstimate")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([opportunityId])
+  @@index([regionId])
+}
+
+model EstimateLine {
+  id              String             @id @default(uuid())
+  estimateId      String
+  estimate        Estimate           @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  kind            EstimateLineKind
+  costCodeId      String?
+  costCode        CostCode?          @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
+  workItemId      String?
+  workItem        WorkItem?          @relation(fields: [workItemId], references: [id], onDelete: Restrict)
+  resourceId      String?
+  resource        CostResource?      @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+  description     String
+  unit            String?
+  quantity        Float              @default(0)
+  // A lump-sum line's amount, or a manual rate that overrides the
+  // computed one on a work-item or resource line.
+  lumpSum         Float?
+  rateOverride    Float?
+  frozenRate      Float?
+  frozenBreakdown Json?
+  source          EstimateLineSource @default(MANUAL)
+  // For a model line: "category / type" of the model group it came from.
+  sourceRef       String?
+  takeoffId       String?
+  takeoff         ModelTakeoff?      @relation(fields: [takeoffId], references: [id], onDelete: SetNull)
+  sortOrder       Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([estimateId])
+}
+
+// One BIM/CAD file run through the converter service for an estimate. The
+// grouped quantities are kept so lines can be added from them later.
+model ModelTakeoff {
+  id            String         @id @default(uuid())
+  estimateId    String
+  estimate      Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  fileName      String
+  format        String
+  totalElements Int
+  groups        Json
+  createdById   String
+  createdBy     User           @relation("TakeoffCreatedBy", fields: [createdById], references: [id])
+  lines         EstimateLine[]
+  createdAt     DateTime       @default(now())
+
+  @@index([estimateId])
+}
+
+// ---------------------------------------------------------------------------
+// Commercial control on a project. Monitoring only: the QS keeps the cost
+// system of record (Meeting 002 decision 2.4).
+// ---------------------------------------------------------------------------
+
+enum CostCodeCategory {
+  WORKS
+  CONSULTANTS
+  PROCUREMENT
+  OVERHEADS
+}
+
+model CostCode {
+  id             String           @id @default(uuid())
+  code           String           @unique
+  name           String
+  category       CostCodeCategory
+  sortOrder      Int              @default(0)
+  isActive       Boolean          @default(true)
+  workItems      WorkItem[]
+  estimateLines  EstimateLine[]
+  budgetLines    BudgetLine[]
+  variations     Variation[]
+  purchaseOrders PurchaseOrder[]  @relation("PoCostCode")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+// Contingency is held against the budget, separately from the cost-code
+// lines (Meeting 002 decision 2.5). Approved variations draw it down.
+model ProjectBudget {
+  id                String    @id @default(uuid())
+  projectId         String    @unique
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contingencyAmount Float     @default(0)
+  sourceEstimateId  String?
+  sourceEstimate    Estimate? @relation("BudgetSourceEstimate", fields: [sourceEstimateId], references: [id], onDelete: SetNull)
+  // Once locked the budget lines are the approved baseline; changes then
+  // come through variations only.
+  lockedAt          DateTime?
+  lockedById        String?
+  lockedBy          User?     @relation("BudgetLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model BudgetLine {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  costCodeId  String
+  costCode    CostCode @relation(fields: [costCodeId], references: [id], onDelete: Restrict)
+  description String?
+  amount      Float
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+enum VariationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum VariationReason {
+  CLIENT_INSTRUCTION
+  DESIGN_CHANGE
+  SITE_CONDITION
+  RFI
+  OMISSION
+  OTHER
+}
+
+// A variation / change order. Only a CLIENT member of the project can
+// approve it - Setjeka may never approve on the client's behalf (Meeting 3
+// hard rule), whatever the permission matrix or admin role says.
+model Variation {
+  id              String           @id @default(uuid())
+  projectId       String
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number          String
+  title           String
+  description     String?
+  reason          VariationReason  @default(CLIENT_INSTRUCTION)
+  rfiId           String?
+  rfi             Rfi?             @relation(fields: [rfiId], references: [id], onDelete: SetNull)
+  costCodeId      String?
+  costCode        CostCode?        @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
+  // Negative for an omission. In the project's currency.
+  estimatedValue  Float            @default(0)
+  assessedValue   Float?
+  timeImpactDays  Int?
+  status          VariationStatus  @default(DRAFT)
+  raisedById      String
+  raisedBy        User             @relation("VariationRaisedBy", fields: [raisedById], references: [id])
+  assessedById    String?
+  assessedBy      User?            @relation("VariationAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
+  assessedAt      DateTime?
+  submittedAt     DateTime?
+  decidedById     String?
+  decidedBy       User?            @relation("VariationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt       DateTime?
+  decisionComment String?
+  events          VariationEvent[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([projectId, number])
+  @@index([projectId])
+}
+
+model VariationEvent {
+  id          String           @id @default(uuid())
+  variationId String
+  variation   Variation        @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  fromStatus  VariationStatus?
+  toStatus    VariationStatus
+  actorId     String
+  actor       User             @relation("VariationEventActor", fields: [actorId], references: [id])
+  comment     String?
+  createdAt   DateTime         @default(now())
+
+  @@index([variationId])
+}
+
+enum SupplierInvoiceStatus {
+  RECEIVED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+// A supplier invoice against a purchase order, in the order's currency.
+// Invoiced and paid amounts are tracked against the order value so no
+// supplier is overpaid (Meeting 002 decision 2.8).
+model SupplierInvoice {
+  id               String                @id @default(uuid())
+  projectId        String
+  project          Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  invoiceNumber    String
+  invoiceDate      DateTime
+  amount           Float
+  status           SupplierInvoiceStatus @default(RECEIVED)
+  recordedById     String
+  recordedBy       User                  @relation("InvoiceRecordedBy", fields: [recordedById], references: [id])
+  approvedById     String?
+  approvedBy       User?                 @relation("InvoiceApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  paymentReference String?
+  rejectionReason  String?
+  notes            String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@unique([purchaseOrderId, invoiceNumber])
+  @@index([projectId])
+}
+
+// Exchange rates Setjeka records, used to report spend in another currency
+// against the project's currency (Meeting 002 decision 2.12).
+model FxRate {
+  id            String   @id @default(uuid())
+  fromCurrency  Currency
+  toCurrency    Currency
+  rate          Float
+  effectiveDate DateTime
+  source        String?
+  enteredById   String?
+  enteredBy     User?    @relation("FxRateEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  @@index([fromCurrency, toCurrency, effectiveDate])
+}
+
+// A priced line on a works/supply RFQ. Linked to a cost-database resource
+// so the quoted unit rate can update that resource's regional price.
+model RfqItem {
+  id          String        @id @default(uuid())
+  rfqId       String
+  rfq         Rfq           @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  resourceId  String?
+  resource    CostResource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  description String
+  unit        String
+  quantity    Float
+  sortOrder   Int           @default(0)
+  quoteItems  QuoteItem[]
+  createdAt   DateTime      @default(now())
+
+  @@index([rfqId])
+}
+
+model QuoteItem {
+  id        String  @id @default(uuid())
+  quoteId   String
+  quote     Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  rfqItemId String
+  rfqItem   RfqItem @relation(fields: [rfqItemId], references: [id], onDelete: Cascade)
+  unitRate  Float
+
+  @@unique([quoteId, rfqItemId])
 }

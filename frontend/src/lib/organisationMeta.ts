@@ -162,6 +162,8 @@ export type OrganisationProjectRole =
   | 'QUANTITY_SURVEYOR'
   | 'CIVIL_ENGINEER'
   | 'STRUCTURAL_ENGINEER'
+  | 'ELECTRICAL_ENGINEER'
+  | 'MECHANICAL_ENGINEER'
   | 'MAIN_CONTRACTOR'
   | 'SUBCONTRACTOR'
   | 'SUPPLIER'
@@ -176,6 +178,8 @@ export const APPOINTMENT_ROLE_LABEL: Record<OrganisationProjectRole, string> = {
   QUANTITY_SURVEYOR: 'Quantity Surveyor',
   CIVIL_ENGINEER: 'Civil Engineer',
   STRUCTURAL_ENGINEER: 'Structural Engineer',
+  ELECTRICAL_ENGINEER: 'Electrical Engineer',
+  MECHANICAL_ENGINEER: 'Mechanical Engineer',
   MAIN_CONTRACTOR: 'Main Contractor',
   SUBCONTRACTOR: 'Subcontractor',
   SUPPLIER: 'Supplier',

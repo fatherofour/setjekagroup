@@ -1,16 +1,32 @@
 export type ProjectType = 'NEW_BUILD' | 'REFURBISHMENT' | 'REDEVELOPMENT' | 'RENEWAL' | 'ADDITION';
 export type ContractForm = 'FIDIC' | 'JBCC' | 'GCC' | 'NEC' | 'OTHER';
-export type Currency = 'USD' | 'ZAR';
+export type Currency = 'ZAR' | 'USD' | 'NGN' | 'EUR' | 'GBP' | 'BWP' | 'NAD' | 'KES' | 'GHS';
 export type ClassificationStandard = 'ASAQS' | 'NRM';
 
 export const CURRENCY_LABEL: Record<Currency, string> = {
-  USD: 'USD ($)',
   ZAR: 'ZAR (R)',
+  USD: 'USD ($)',
+  NGN: 'NGN (₦)',
+  EUR: 'EUR (€)',
+  GBP: 'GBP (£)',
+  BWP: 'BWP (P)',
+  NAD: 'NAD (N$)',
+  KES: 'KES (KSh)',
+  GHS: 'GHS (GH₵)',
 };
 
+export const CURRENCY_OPTIONS = (Object.keys(CURRENCY_LABEL) as Currency[]).map((c) => ({ value: c, label: c }));
+
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
-  USD: '$',
   ZAR: 'R',
+  USD: '$',
+  NGN: '₦',
+  EUR: '€',
+  GBP: '£',
+  BWP: 'P',
+  NAD: 'N$',
+  KES: 'KSh',
+  GHS: 'GH₵',
 };
 
 export const CLASSIFICATION_STANDARD_LABEL: Record<ClassificationStandard, string> = {

@@ -30,9 +30,18 @@ export class ProjectDocumentsService {
     private readonly projectsService: ProjectsService,
   ) {}
 
+  /** A client login sees only the documents Setjeka has made visible to
+   * the client (Meeting 3: Setjeka controls what the client sees). */
+  private async clientOnly(projectId: string, userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { accountType: true } });
+    if (user?.accountType !== 'EXTERNAL') return false;
+    return Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
+  }
+
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    return this.prisma.projectDocument.findMany({ where: { projectId }, include: DOCUMENT_INCLUDE, orderBy: { createdAt: 'desc' } });
+    const client = await this.clientOnly(projectId, ownerId);
+    return this.prisma.projectDocument.findMany({ where: { projectId, ...(client ? { clientVisible: true } : {}) }, include: DOCUMENT_INCLUDE, orderBy: { createdAt: 'desc' } });
   }
 
   private async assertFolderInProject(folderId: string, projectId: string) {
@@ -103,6 +112,7 @@ export class ProjectDocumentsService {
         description: dto.description,
         documentType: dto.documentType,
         discipline: dto.discipline,
+        clientVisible: dto.clientVisible,
         folderId: dto.folderId === undefined ? undefined : dto.folderId,
         projectNodeId: dto.projectNodeId === undefined ? undefined : dto.projectNodeId,
         scheduleActivityId: dto.scheduleActivityId === undefined ? undefined : dto.scheduleActivityId,
@@ -157,6 +167,10 @@ export class ProjectDocumentsService {
 
   async getRevisionForDownload(projectId: string, ownerId: string, documentId: string, revisionId: string, userId: string, action: DocumentAccessAction) {
     const revision = await this.findOwnedRevision(projectId, ownerId, documentId, revisionId);
+    if (await this.clientOnly(projectId, userId)) {
+      const doc = await this.prisma.projectDocument.findUnique({ where: { id: documentId }, select: { clientVisible: true } });
+      if (!doc?.clientVisible) throw new NotFoundException('Revision not found');
+    }
     await this.prisma.documentAccessLog.create({ data: { documentRevisionId: revision.id, userId, action } });
     return revision;
   }

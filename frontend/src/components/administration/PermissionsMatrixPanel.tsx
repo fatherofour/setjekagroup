@@ -17,7 +17,11 @@ type PermissionModule =
   | 'SUBMITTALS'
   | 'PROJECT_STRUCTURE'
   | 'TEAM'
-  | 'COMMENTS';
+  | 'COMMENTS'
+  | 'STAGE_GATE'
+  | 'PROCUREMENT'
+  | 'PROJECT_DEFINITION'
+  | 'MEETINGS';
 
 type PermissionAction = 'VIEW' | 'CREATE' | 'EDIT' | 'DELETE' | 'APPROVE' | 'COMMENT';
 
@@ -40,6 +44,10 @@ const MODULE_OPTIONS: { value: PermissionModule; label: string }[] = [
   { value: 'PROJECT_STRUCTURE', label: 'Project structure' },
   { value: 'TEAM', label: 'Team' },
   { value: 'COMMENTS', label: 'Comments' },
+  { value: 'STAGE_GATE', label: 'Stage gate' },
+  { value: 'PROCUREMENT', label: 'Procurement (RFQs, POs)' },
+  { value: 'PROJECT_DEFINITION', label: 'Inception documents (brief, viability, policy…)' },
+  { value: 'MEETINGS', label: 'Meetings' },
 ];
 
 const ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];

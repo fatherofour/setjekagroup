@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationType, CommentEntityType } from '../generated/prisma/enums.js';
+import { recordLink } from './links.js';
 
 const DUE_SOON_WINDOW_DAYS = 2;
 
@@ -12,17 +13,21 @@ export class NotificationsService {
    * assignee that's an external contact with no linked platform account). */
   async notify(params: {
     userId: string | null | undefined;
-    projectId: string;
+    projectId: string | null;
+    opportunityId?: string | null;
     type: NotificationType;
     entityType: CommentEntityType;
     entityId: string;
     message: string;
+    /** Defaults to the record's page. */
+    link?: string;
   }) {
     if (!params.userId) return;
     await this.prisma.notification.create({
       data: {
         userId: params.userId,
         projectId: params.projectId,
+        link: params.link ?? recordLink(params.entityType, { projectId: params.projectId, opportunityId: params.opportunityId }),
         type: params.type,
         entityType: params.entityType,
         entityId: params.entityId,
@@ -87,6 +92,7 @@ export class NotificationsService {
           projectId: projectIdByMemberId.get(task.assignedToId!) ?? '',
           type: 'DUE_SOON',
           entityType: 'TASK',
+          link: recordLink('TASK', { projectId: projectIdByMemberId.get(task.assignedToId!) }),
           entityId: task.id,
           message: `Task "${task.title}" is due soon`,
           isRead: false,
@@ -101,6 +107,7 @@ export class NotificationsService {
           projectId: projectIdByMemberId.get(issue.ownerId!) ?? '',
           type: 'DUE_SOON',
           entityType: 'ISSUE',
+          link: recordLink('ISSUE', { projectId: projectIdByMemberId.get(issue.ownerId!) }),
           entityId: issue.id,
           message: `Issue "${issue.title}" is due soon`,
           isRead: false,
@@ -115,6 +122,7 @@ export class NotificationsService {
           projectId: projectIdByMemberId.get(risk.ownerId!) ?? '',
           type: 'DUE_SOON',
           entityType: 'RISK',
+          link: recordLink('RISK', { projectId: projectIdByMemberId.get(risk.ownerId!) }),
           entityId: risk.id,
           message: `Risk "${risk.title}" is due for review`,
           isRead: false,
@@ -129,6 +137,7 @@ export class NotificationsService {
           projectId: projectIdByMemberId.get(rfi.ballInCourtId!) ?? '',
           type: 'DUE_SOON',
           entityType: 'RFI',
+          link: recordLink('RFI', { projectId: projectIdByMemberId.get(rfi.ballInCourtId!) }),
           entityId: rfi.id,
           message: `RFI "${rfi.title}" is due soon`,
           isRead: false,
@@ -143,12 +152,33 @@ export class NotificationsService {
           projectId: projectIdByMemberId.get(submittal.reviewerId!) ?? '',
           type: 'DUE_SOON',
           entityType: 'SUBMITTAL',
+          link: recordLink('SUBMITTAL', { projectId: projectIdByMemberId.get(submittal.reviewerId!) }),
           entityId: submittal.id,
           message: `Submittal "${submittal.title}" is due soon`,
           isRead: false,
           createdAt: submittal.dueDate!,
         });
       }
+    }
+
+    // Note actions addressed to this user and due soon (Meeting 3 §2.4).
+    const dueActions = await this.prisma.comment.findMany({
+      where: { recipientId: userId, isAction: true, actionStatus: 'OPEN', dueDate: { lte: dueWindow, not: null } },
+    });
+    for (const a of dueActions) {
+      if (alreadyNotifiedToday.has(`${a.entityType}:${a.id}`)) continue;
+      synthetic.push({
+        id: `synthetic-action-${a.id}`,
+        userId,
+        projectId: a.projectId,
+        link: recordLink(a.entityType, a),
+        type: 'DUE_SOON',
+        entityType: a.entityType,
+        entityId: a.entityId,
+        message: `Action due soon: "${a.body.length > 80 ? `${a.body.slice(0, 77)}…` : a.body}"`,
+        isRead: false,
+        createdAt: a.dueDate!,
+      });
     }
 
     return [...synthetic, ...persisted].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());

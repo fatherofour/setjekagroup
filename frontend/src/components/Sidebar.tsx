@@ -7,7 +7,7 @@ import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { GREEN } from '@/lib/auth-theme';
 import { useCurrentProject } from '@/lib/current-project-context';
 import { useAuth } from '@/lib/auth-context';
-import { NAV, isNavGroup } from './nav';
+import { NAV, canSee, isNavGroup, type NavEntry } from './nav';
 
 const OPEN_GROUPS_KEY = 'setjeka_sidebar_open_groups';
 const COLLAPSED_KEY = 'setjeka_sidebar_collapsed';
@@ -26,7 +26,13 @@ export function Sidebar({ open }: { open: boolean }) {
   const currentTab = searchParams.get('tab');
   const { currentProject } = useCurrentProject();
   const { user } = useAuth();
-  const visibleNav = NAV.filter((entry) => !(isNavGroup(entry) && entry.adminOnly && user?.role !== 'ADMIN'));
+  const visibleNav = NAV.flatMap((entry): NavEntry[] => {
+    if (!isNavGroup(entry)) return canSee(entry.audience, user) ? [entry] : [];
+    if (entry.adminOnly && user?.role !== 'ADMIN') return [];
+    if (!canSee(entry.audience, user)) return [];
+    const children = entry.children.filter((c) => canSee(c.audience, user));
+    return children.length ? [{ ...entry, children }] : [];
+  });
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpenState);
   const [collapsed, setCollapsed] = useState(false);
 

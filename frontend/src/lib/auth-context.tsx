@@ -10,6 +10,10 @@ export interface AuthUser {
   fullName: string;
   role: string;
   accountType: string;
+  // Set for client portal / vendor portal logins. Optional because a session
+  // stored before these existed won't have them until the next sign-in.
+  clientId?: string | null;
+  contractorId?: string | null;
 }
 
 interface TokenPair {
@@ -29,7 +33,7 @@ interface AuthContextValue {
   logout: () => void;
   authedFetch: <T>(
     path: string,
-    options?: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; formData?: FormData },
+    options?: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown; formData?: FormData },
   ) => Promise<T>;
 }
 
@@ -119,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authedFetch = useCallback(
     async <T,>(
       path: string,
-      options: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; formData?: FormData } = {},
+      options: { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; body?: unknown; formData?: FormData } = {},
     ): Promise<T> => {
       try {
         return await apiFetch<T>(path, { ...options, accessToken });

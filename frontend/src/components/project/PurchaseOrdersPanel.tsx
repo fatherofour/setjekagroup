@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { CURRENCY_OPTIONS } from '@/lib/projectMeta';
 import { Plus, X, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -14,6 +15,7 @@ interface PurchaseOrder {
   id: string;
   poNumber: string;
   costCode: string | null;
+  budgetCode: { id: string; code: string; name: string } | null;
   scopeDescription: string | null;
   value: number;
   currency: string;
@@ -209,7 +211,12 @@ function PoDetailPanel({
         <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
           {po.currency} {po.value.toLocaleString()}
         </p>
-        {po.costCode && <p className="text-xs text-slate-400 dark:text-slate-500">Cost code: {po.costCode}</p>}
+        {(po.budgetCode || po.costCode) && (
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Cost code: {po.budgetCode ? `${po.budgetCode.code} ${po.budgetCode.name}` : ''}
+            {po.costCode && ` · ref ${po.costCode}`}
+          </p>
+        )}
 
         <div className="mt-2 flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${STATUS_DOT[po.status]}`} />
@@ -267,7 +274,8 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
   const [pos, setPos] = useState<PurchaseOrder[] | null>(null);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ contractorId: '', value: '', currency: 'ZAR', costCode: '', scopeDescription: '' });
+  const [form, setForm] = useState({ contractorId: '', value: '', currency: 'ZAR', costCode: '', budgetCodeId: '', scopeDescription: '' });
+  const [codes, setCodes] = useState<{ id: string; code: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -280,6 +288,7 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
   useEffect(() => {
     load();
     if (!isExternal) authedFetch<Contractor[]>('/contractors').then(setContractors).catch(() => {});
+    if (!isExternal) authedFetch<{ id: string; code: string; name: string }[]>('/cost-codes').then(setCodes).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -296,10 +305,11 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
           value: Number(form.value),
           currency: form.currency,
           costCode: form.costCode || undefined,
+          budgetCodeId: form.budgetCodeId || undefined,
           scopeDescription: form.scopeDescription || undefined,
         },
       });
-      setForm({ contractorId: '', value: '', currency: 'ZAR', costCode: '', scopeDescription: '' });
+      setForm({ contractorId: '', value: '', currency: 'ZAR', costCode: '', budgetCodeId: '', scopeDescription: '' });
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create purchase order.');
@@ -347,10 +357,17 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
               options={[{ value: '', label: 'Select vendor…' }, ...contractors.map((c) => ({ value: c.id, label: c.name }))]}
             />
             <input type="number" placeholder="Value" className={`${inputClass} w-28`} value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
-            <Select value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={[{ value: 'ZAR', label: 'ZAR' }, { value: 'USD', label: 'USD' }]} className={inputClass} />
+            <Select value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={CURRENCY_OPTIONS} className={inputClass} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <input placeholder="Cost code (optional)" className={`${inputClass} w-40`} value={form.costCode} onChange={(e) => setForm({ ...form, costCode: e.target.value })} />
+            <Select
+              aria-label="Budget cost code"
+              value={form.budgetCodeId}
+              onChange={(v) => setForm({ ...form, budgetCodeId: v })}
+              options={[{ value: '', label: 'Budget cost code…' }, ...codes.map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))]}
+              className={`${inputClass} w-52`}
+            />
+            <input placeholder="Vendor ref (optional)" className={`${inputClass} w-40`} value={form.costCode} onChange={(e) => setForm({ ...form, costCode: e.target.value })} />
             <input placeholder="Scope (optional)" className={`${inputClass} flex-1`} value={form.scopeDescription} onChange={(e) => setForm({ ...form, scopeDescription: e.target.value })} />
             <button
               type="submit"

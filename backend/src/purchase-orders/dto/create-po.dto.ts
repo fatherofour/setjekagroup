@@ -27,4 +27,9 @@ export class CreatePurchaseOrderDto {
 
   @IsEnum(Currency)
   currency!: Currency;
+
+  // The standard cost code the order is committed against (cost report).
+  @IsOptional()
+  @IsUUID()
+  budgetCodeId?: string;
 }

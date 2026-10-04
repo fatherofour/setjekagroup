@@ -32,17 +32,25 @@ import { RfisPanel } from '@/components/project/RfisPanel';
 import { SubmittalsPanel } from '@/components/project/SubmittalsPanel';
 import { RfqsPanel } from '@/components/project/RfqsPanel';
 import { PurchaseOrdersPanel } from '@/components/project/PurchaseOrdersPanel';
+import { MeetingsPanel } from '@/components/project/MeetingsPanel';
+import { InceptionWorkspace } from '@/components/inception/InceptionWorkspace';
+import { ProjectCommercial } from '@/components/commercial/ProjectCommercial';
+import { ActionRegister } from '@/components/project/ActionRegister';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
 const WORKSPACE_TABS: TabItem[] = [
   { value: 'overview', label: 'Overview' },
+  { value: 'inception', label: 'Inception (Stage 1)' },
+  { value: 'meetings', label: 'Meetings' },
+  { value: 'actions', label: 'Actions' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'issues', label: 'Issues' },
   { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
   { value: 'technical', label: 'RFIs & Submittals' },
   { value: 'procurement', label: 'Procurement' },
+  { value: 'commercial', label: 'Commercial' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
 ];
@@ -87,6 +95,9 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams();
   const { authedFetch, user } = useAuth();
   const isExternal = user?.accountType === 'EXTERNAL';
+  // Budgets, variations and fees: Setjeka staff and the client only.
+  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId);
+  const visibleTabs = seesCommercial ? WORKSPACE_TABS : WORKSPACE_TABS.filter((t) => t.value !== 'commercial');
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +239,7 @@ export default function ProjectDetailPage() {
         </p>
       )}
 
-      <Tabs tabs={WORKSPACE_TABS} value={tab} onChange={setTab} />
+      <Tabs tabs={visibleTabs} value={tab} onChange={setTab} />
 
       {tab === 'overview' && (
       <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -402,6 +413,10 @@ export default function ProjectDetailPage() {
 
       {tab === 'overview' && <StageGatePanel currentStage={project.stage} projectId={project.id} onStageChanged={loadProject} />}
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
+      {tab === 'inception' && (
+        <InceptionWorkspace projectId={project.id} projectName={project.name} stage={project.stage} currency={project.currency} onProjectChanged={loadProject} />
+      )}
+      {tab === 'meetings' && <MeetingsPanel projectId={project.id} />}
       {tab === 'tasks' && <ProjectTasksPanel projectId={project.id} />}
       {tab === 'issues' && <ProjectIssuesPanel projectId={project.id} />}
       {tab === 'risks' && <ProjectRisksPanel projectId={project.id} />}
@@ -423,6 +438,8 @@ export default function ProjectDetailPage() {
           <PurchaseOrdersPanel projectId={project.id} isExternal={isExternal} />
         </div>
       )}
+      {tab === 'actions' && <ActionRegister projectId={project.id} />}
+      {tab === 'commercial' && seesCommercial && <ProjectCommercial projectId={project.id} currency={project.currency} />}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
       {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}
     </div>

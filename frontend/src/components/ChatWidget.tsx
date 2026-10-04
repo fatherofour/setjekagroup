@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { GREEN, GREEN_HOVER } from '@/lib/auth-theme';
 
@@ -12,10 +12,94 @@ interface ChatMessage {
 
 const PLACEHOLDER_REPLY = "The AI assistant isn't wired up yet — this is just the chat panel's UI shell for now.";
 
+const BUTTON_SIZE = 56;
+const EDGE_MARGIN = 16;
+const DRAG_THRESHOLD = 5;
+const POSITION_STORAGE_KEY = 'setjeka-ai-chat-position';
+
+type Position = { right: number; bottom: number };
+
+function clampPosition(pos: Position): Position {
+  const maxRight = Math.max(window.innerWidth - BUTTON_SIZE - EDGE_MARGIN, EDGE_MARGIN);
+  const maxBottom = Math.max(window.innerHeight - BUTTON_SIZE - EDGE_MARGIN, EDGE_MARGIN);
+  return {
+    right: Math.min(Math.max(pos.right, EDGE_MARGIN), maxRight),
+    bottom: Math.min(Math.max(pos.bottom, EDGE_MARGIN), maxBottom),
+  };
+}
+
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
+  const [position, setPosition] = useState<Position>({ right: EDGE_MARGIN, bottom: EDGE_MARGIN });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef<{ startX: number; startY: number; startRight: number; startBottom: number; dragged: boolean } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(POSITION_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.right === 'number' && typeof parsed.bottom === 'number') {
+          setPosition(clampPosition(parsed));
+        }
+      }
+    } catch {
+      // per-viewer convenience only; ignore unreadable/blocked storage
+    }
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      setPosition((prev) => clampPosition(prev));
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  function handlePointerDown(e: ReactPointerEvent<HTMLButtonElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startRight: position.right,
+      startBottom: position.bottom,
+      dragged: false,
+    };
+    setIsDragging(true);
+  }
+
+  function handlePointerMove(e: ReactPointerEvent<HTMLButtonElement>) {
+    const state = dragState.current;
+    if (!state) return;
+    const deltaX = e.clientX - state.startX;
+    const deltaY = e.clientY - state.startY;
+    if (!state.dragged && Math.hypot(deltaX, deltaY) > DRAG_THRESHOLD) {
+      state.dragged = true;
+    }
+    if (state.dragged) {
+      setPosition(clampPosition({ right: state.startRight - deltaX, bottom: state.startBottom - deltaY }));
+    }
+  }
+
+  function handlePointerUp() {
+    const state = dragState.current;
+    dragState.current = null;
+    setIsDragging(false);
+    if (state?.dragged) {
+      setPosition((prev) => {
+        try {
+          localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(prev));
+        } catch {
+          // per-viewer convenience only; ignore unreadable/blocked storage
+        }
+        return prev;
+      });
+    } else {
+      setOpen(true);
+    }
+  }
 
   function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -31,10 +115,15 @@ export function ChatWidget() {
     <>
       {!open && (
         <button
-          onClick={() => setOpen(true)}
-          aria-label="Open AI chat"
-          className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition hover:scale-105"
-          style={{ backgroundColor: GREEN }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          aria-label="Open AI chat (drag to move)"
+          className={`fixed z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform ${
+            isDragging ? 'scale-105 cursor-grabbing' : 'cursor-grab hover:scale-105'
+          }`}
+          style={{ backgroundColor: GREEN, right: position.right, bottom: position.bottom, touchAction: 'none' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

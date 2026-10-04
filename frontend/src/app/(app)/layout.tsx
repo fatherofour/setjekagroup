@@ -40,7 +40,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         />
       )}
       <Sidebar open={sidebarOpen} />
-      <div className="flex flex-1 flex-col">
+      {/* min-w-0: without it this flex child grows to fit its widest
+          descendant (tab strips, tables), pushing the page sideways on phones. */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-slate-50 px-4 pb-24 pt-6 dark:bg-slate-950 sm:px-8 sm:pb-28 sm:pt-8">{children}</main>
       </div>

@@ -3,6 +3,8 @@ import { RfqsService } from './rfqs.service.js';
 import { CreateRfqDto } from './dto/create-rfq.dto.js';
 import { UpdateRfqDto } from './dto/update-rfq.dto.js';
 import { InviteVendorDto } from './dto/invite-vendor.dto.js';
+import { AwardRfqQuoteDto, CreateRfqItemDto, UpdateRfqItemDto } from './dto/rfq-item.dto.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
@@ -59,5 +61,42 @@ export class RfqsController {
   @RequirePermission('PROCUREMENT', 'DELETE')
   remove(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.rfqsService.remove(projectId, user.sub, id);
+  }
+
+  // Items, award and price-sheet updates are Setjeka's - vendors hold
+  // PROCUREMENT edit only so they can quote.
+  @Post(':id/items')
+  @UseGuards(InternalOnlyGuard)
+  @RequirePermission('PROCUREMENT', 'EDIT')
+  addItem(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: CreateRfqItemDto) {
+    return this.rfqsService.addItem(projectId, id, dto);
+  }
+
+  @Patch(':id/items/:itemId')
+  @UseGuards(InternalOnlyGuard)
+  @RequirePermission('PROCUREMENT', 'EDIT')
+  updateItem(@Param('projectId') projectId: string, @Param('id') id: string, @Param('itemId') itemId: string, @Body() dto: UpdateRfqItemDto) {
+    return this.rfqsService.updateItem(projectId, id, itemId, dto);
+  }
+
+  @Delete(':id/items/:itemId')
+  @UseGuards(InternalOnlyGuard)
+  @RequirePermission('PROCUREMENT', 'EDIT')
+  removeItem(@Param('projectId') projectId: string, @Param('id') id: string, @Param('itemId') itemId: string) {
+    return this.rfqsService.removeItem(projectId, id, itemId);
+  }
+
+  @Post(':id/award')
+  @UseGuards(InternalOnlyGuard)
+  @RequirePermission('PROCUREMENT', 'APPROVE')
+  award(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: AwardRfqQuoteDto, @CurrentUser() user: JwtPayload) {
+    return this.rfqsService.award(projectId, id, user.sub, dto.quoteId);
+  }
+
+  @Post(':id/update-prices')
+  @UseGuards(InternalOnlyGuard)
+  @RequirePermission('PROCUREMENT', 'APPROVE')
+  reapplyPrices(@Param('projectId') projectId: string, @Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.rfqsService.reapplyAwardedPrices(projectId, id, user.sub);
   }
 }

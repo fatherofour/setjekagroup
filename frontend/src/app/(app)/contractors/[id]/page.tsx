@@ -16,6 +16,7 @@ import { OrganisationAppointmentsTab } from '@/components/organisation/Organisat
 import { OrganisationFinancialTab } from '@/components/organisation/OrganisationFinancialTab';
 import { OrganisationRatingsTab } from '@/components/organisation/OrganisationRatingsTab';
 import { VendorScorecardPanel } from '@/components/organisation/VendorScorecardPanel';
+import { PortalAccessPanel } from '@/components/portal/PortalAccessPanel';
 
 export default function ContractorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -83,6 +84,7 @@ export default function ContractorDetailPage() {
           { value: 'appointments', label: 'Project Associations', count: contractor.appointments.length },
           { value: 'financial', label: 'Financial' },
           { value: 'ratings', label: 'Ratings' },
+          { value: 'portal', label: 'Portal access' },
         ]}
       />
 
@@ -104,6 +106,15 @@ export default function ContractorDetailPage() {
       <div hidden={tab !== 'ratings'}>
         <OrganisationRatingsTab contractor={contractor} onChange={load} />
         <VendorScorecardPanel contractor={contractor} />
+      </div>
+      <div hidden={tab !== 'portal'}>
+        <PortalAccessPanel
+          basePath={`/contractors/${contractor.id}`}
+          title="Vendor portal access"
+          description="Logins for this firm's people. They see the RFQs Setjeka sends them — at opportunity stage and on projects — and submit their own quotes. They never see other firms' quotes or the evaluation."
+          defaultName={contractor.contactName}
+          defaultEmail={contractor.email}
+        />
       </div>
     </div>
   );
