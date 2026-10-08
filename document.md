@@ -1901,6 +1901,88 @@ data removed):
   - No sideways scroll and zero console errors.
   - The run caught two copy issues, both fixed: the services card claimed "covered" while a pick was only indicative, and My Day repeated the project name.
 
+### 2.16 Site photos and in-app notifications
+
+Built on 2026-10-04. The user asked for the site photos module and better
+in-app notifications and alerts. **Email alerts** and **document numbering**
+are deliberately on hold. Document numbering is held because the scheme
+reaches everyone from the client to the contractors.
+
+**Site photos** (register FIELD "Site photo capture")
+- **Model.** `SitePhoto`: the stored file plus an optional small preview; caption; `takenAt`; latitude/longitude; "where on site" text; tags; `clientVisible`. It can link to one issue, task, programme activity and project area. Migrations `20261004100000_site_photos` and `…100100_site_photos_data`.
+- **Taken on a phone.** A **Take photo** button opens the rear camera, and **Add photos** picks several from the gallery (on a desktop you can also drag photos in). Before upload, the device:
+  - reads the camera's own date and GPS (`exifr`);
+  - shrinks the photo to 2560 px on the long edge, keeping the original when that is already smaller;
+  - makes a 480 px preview.
+  
+  A future date from a wrong phone clock is clamped to now. If a photo has no GPS of its own, the uploader can use the device's current location instead.
+- **One sheet per batch.** Each photo gets its own caption. Where on site, the links and the tags apply to the whole batch, and Setjeka can share the batch with the client straight away.
+- **Gallery.** Project tab **Site photos** (also in the nav), grouped by the day the photos were taken.
+  - **Search** covers captions, places, tags, file names, who took them and the titles of linked records.
+  - **Filters:** date range, linked record, and shared or not.
+  - Tiles show note counts and, for Setjeka staff, whether a photo is shared.
+- **Viewer.** Full image, date and time, who took it, a map link, tags, links to the related records, download, edit and delete. It also has the photo's **notes** (`CommentEntityType.SITE_PHOTO`). Arrow keys move between photos.
+- **Linked both ways.** Issue and task details have a "Site photos of this issue/task" link to the filtered gallery (`?tab=photos&issue=…`).
+- **Who can do what** (`SITE_PHOTOS` permission module):
+
+  | Who | Rights |
+  |---|---|
+  | Setjeka delivery roles | Everything |
+  | Consultants and contractors | View, add, comment, and edit or delete **their own** photos (enforced in `SitePhotosService`) |
+  | Client and Other | View and comment |
+  | Setjeka only | Decides what the client sees, one photo at a time or by selecting several |
+
+- **Client portal.** The project page has a **Site photos** section showing only shared photos, with read-only details and notes. Unshared photos return 404 for a client, including their files.
+- **Alerts.**
+  - **Linked to an issue or task:** a photo alerts that record's owner, or the task's assignee. Repeat uploads fold into one unread alert.
+  - **Shared with the client:** the client gets one "New site photos from <project>" alert per batch, which opens the portal's photos section.
+- **Storage.** Files go under `PHOTO_UPLOAD_DIR` (default `./uploads/site-photos`), up to 25 MB each, in .jpg, .png, .webp or .heic. HEIC previews only in Safari; other browsers offer the download.
+
+**In-app notifications & alerts** (no email)
+- **Categories** (`notifications/categories.ts`, mirrored in `lib/notifications.ts`): Approvals, Notes & actions, Assignments, Due soon, Meetings, Site photos.
+- **Notifications page** (`/notifications`, under Overview):
+  - filter by kind, by project and to unread only;
+  - entries grouped Today / Yesterday / This week / Earlier;
+  - mark read or unread, and mark all read.
+- **Alert settings.** Each person can switch off any category except **Approvals**, which is always on so the client's decisions can't be missed. The setting is stored on `User.mutedAlertCategories` and checked in `NotificationsService.notify`.
+- **Bell.**
+  - Category icons and the project name on each entry, plus "See all notifications".
+  - It checks every 30 s while the tab is visible and immediately when you return to it. It also refreshes at once when the page marks something read.
+  - The unread count shows in the browser tab title.
+  - **Pop-up alert:** anything that arrives while you're working appears briefly at the top of the screen.
+- **Folding repeats.** `notify({ collapse: true })` refreshes an existing unread alert for the same record instead of stacking another.
+- **Due-soon reminders can now be read.** They are still computed on read, since there is no scheduler. Reading one, or marking all read, stores it as read for the day, so it no longer shows as new until the next day's reminder. Action reminders are keyed by the note, so two actions on one record are dismissed separately.
+- **API:**
+  - `GET /notifications?category=&unread=1&projectId=`;
+  - `PATCH /notifications/:id/unread`;
+  - `GET|PUT /notifications/preferences`.
+
+**Production fixes found on the way**
+- **Uploads were lost on rebuild.** Project documents and photos were written inside the backend container. `docker-compose.prod.yml` now puts them on named volumes (`project_documents`, `site_photos`) via `DOCUMENT_UPLOAD_DIR` and `PHOTO_UPLOAD_DIR`. **Before the first redeploy with this change**, copy the files already uploaded on the server out of the old container and into the new volume.
+- **Location was blocked.** nginx's `Permissions-Policy` had `geolocation=()`, which would have blocked "use my current location". It is now `geolocation=(self)`. The phone camera opens through a file input, which the policy doesn't govern.
+- **Uploads were capped too low.** nginx's body limit was raised from 25 MB to 30 MB. Estimate model take-offs (up to 200 MB in the backend) get their own 210 MB location; the old 25 MB cap would have rejected most models.
+
+**Verified**
+- **API, 54 checks:**
+  - **Uploads:** upload and links; tag clean-up; camera date kept and a future date clamped; preview stored or absent; links outside the project and non-photo files refused.
+  - **Contractors:** they can add photos and edit or delete their own, but not others', and cannot share.
+  - **Alerts:** the issue owner and the task assignee are alerted, with repeats folded together.
+  - **Client:** sees nothing until a photo is shared, then only shared photos; gets one alert; cannot upload or edit. Their note reaches the PM with a link to that photo.
+  - **Search and filters:** every search field and filter.
+  - **Notification settings:** six categories, with Approvals locked; a muted category stays quiet.
+  - **Notification list:** category and project filters; read and unread; reading a due-soon reminder dismisses it, as does mark all read.
+  - **Delete** removes the photo's notes and files.
+- **Browser (Playwright, 27 checks):** Setjeka on desktop; the client and Setjeka on a 390 px phone, with Setjeka also in dark mode.
+  - **Setjeka:** upload sheet; thumbnails; viewer with full image, issue link, sharing state and a note; arrow keys; search; bulk stop-sharing; alert settings.
+  - **Client:** the bell alert opens `/portal/projects/:id#photos`; only shared photos are shown, with no upload, edit or share controls, and Setjeka's note is visible.
+  - **Setjeka on a phone:** Take photo opens the rear camera.
+  - No sideways scroll and no script errors.
+- **Problems the run caught, all fixed:**
+  - the upload sheet's previews were revoked by React's development double-mount;
+  - the chat launcher sat on top of the photo viewer's Post button;
+  - the filter dropdowns were unstyled.
+
+
 ---
 
 ## 3. Frontend (Next.js)

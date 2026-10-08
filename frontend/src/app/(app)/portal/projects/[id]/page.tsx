@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, FileText, Gauge, History, MapPin, Stamp, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, Camera, CalendarCheck, CalendarClock, CheckCircle2, ChevronDown, FileText, Gauge, History, MapPin, Stamp, Users, Wallet } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { PROJECT_STAGES } from '@/lib/projectStages';
 import { formatRate } from '@/lib/commercial';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 import { CommentThread } from '@/components/project/CommentThread';
+import { SitePhotosPanel } from '@/components/photos/SitePhotosPanel';
 
 interface PortalProject {
   project: { id: string; name: string; projectCode: string | null; description: string | null; stage: string; location: string | null; startDate: string | null; endDate: string | null; currency: string };
@@ -54,10 +55,10 @@ const roleLabel = (r: string) => r.replace(/_/g, ' ').toLowerCase().replace(/^\w
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900';
 const btn = 'inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-medium transition disabled:opacity-50';
 
-function Section({ icon, title, children, defaultOpen = true }: { icon: ReactNode; title: string; children: ReactNode; defaultOpen?: boolean }) {
+function Section({ id, icon, title, children, defaultOpen = true }: { id?: string; icon: ReactNode; title: string; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className={card}>
+    <section id={id} className={`${card} scroll-mt-20`}>
       <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 text-left" aria-expanded={open}>
         <span className="text-emerald-700 dark:text-emerald-400">{icon}</span>
         <h2 className="flex-1 text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
@@ -375,7 +376,7 @@ export default function ClientProjectPage() {
         </Section>
       )}
 
-      <Section icon={<FileText size={18} />} title={`Documents & drawings (${data.documents.length})`} defaultOpen={data.documents.length > 0}>
+      <Section id="documents" icon={<FileText size={18} />} title={`Documents & drawings (${data.documents.length})`} defaultOpen={data.documents.length > 0}>
         {data.documents.length === 0 ? (
           <p className="text-sm text-slate-400">Setjeka hasn&apos;t shared any documents with you yet.</p>
         ) : (
@@ -396,7 +397,11 @@ export default function ClientProjectPage() {
         )}
       </Section>
 
-      <Section icon={<CalendarClock size={18} />} title="Meetings" defaultOpen={upcomingMeetings.length > 0}>
+      <Section id="photos" icon={<Camera size={18} />} title="Site photos">
+        <SitePhotosPanel projectId={id} clientView />
+      </Section>
+
+      <Section id="meetings" icon={<CalendarClock size={18} />} title="Meetings" defaultOpen={upcomingMeetings.length > 0}>
         {upcomingMeetings.length === 0 && pastMeetings.length === 0 ? (
           <p className="text-sm text-slate-400">No meetings you&apos;re invited to.</p>
         ) : (

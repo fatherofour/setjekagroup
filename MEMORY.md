@@ -780,6 +780,29 @@ that step gets skipped.
       the documents API;
     - client logins land on the portal.
   - **Document numbering:** user said to ignore it for now.
+- **Site photos and in-app notifications (2026-10-04).** Detail in
+  `document.md` §2.16. Decisions:
+  - **Photos** are compressed on the device (2560 px), and a 480 px preview
+    is made there too, so there's no server image library. The camera's
+    date and GPS are read with `exifr`.
+  - **Who changes what:** Setjeka staff decide what the client sees. Outside
+    parties edit or delete only their own photos.
+  - **Links:** a photo links to an issue, task, activity or area and has
+    notes (`SITE_PHOTO`).
+  - **Alerts:** in-app only. Email is on hold at the user's request.
+    - Six categories; each person can mute any except Approvals.
+    - Repeats fold into one unread alert (`collapse`).
+    - Due-soon reminders can be marked read for the day.
+    - The bell checks every 30 s, shows a pop-up for new arrivals, and puts
+      the unread count in the tab title.
+  - **Document numbering stays on hold:** the scheme affects everyone
+    from the client to the contractors.
+  - **Production:** uploads moved onto named volumes. nginx now allows
+    geolocation, a 30 MB body limit, and a 210 MB route for model
+    take-offs. Existing project documents on the VPS must be copied into
+    the new volume on the first redeploy.
+  - **Project-specific sign-in address (scope §4.9)** was explained to the
+    user, not built.
 
 ## Local dev environment
 

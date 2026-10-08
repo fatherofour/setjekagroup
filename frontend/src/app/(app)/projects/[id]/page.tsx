@@ -36,6 +36,7 @@ import { MeetingsPanel } from '@/components/project/MeetingsPanel';
 import { InceptionWorkspace } from '@/components/inception/InceptionWorkspace';
 import { ProjectCommercial } from '@/components/commercial/ProjectCommercial';
 import { ActionRegister } from '@/components/project/ActionRegister';
+import { SitePhotosPanel } from '@/components/photos/SitePhotosPanel';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
@@ -48,6 +49,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'issues', label: 'Issues' },
   { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
+  { value: 'photos', label: 'Site photos' },
   { value: 'technical', label: 'RFIs & Submittals' },
   { value: 'procurement', label: 'Procurement' },
   { value: 'commercial', label: 'Commercial' },
@@ -439,6 +441,7 @@ export default function ProjectDetailPage() {
         </div>
       )}
       {tab === 'actions' && <ActionRegister projectId={project.id} />}
+      {tab === 'photos' && <SitePhotosPanel projectId={project.id} />}
       {tab === 'commercial' && seesCommercial && <ProjectCommercial projectId={project.id} currency={project.currency} />}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
       {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}

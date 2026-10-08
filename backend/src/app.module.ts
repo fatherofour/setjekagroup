@@ -23,6 +23,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { ProjectDashboardModule } from './project-dashboard/project-dashboard.module.js';
 import { DocumentFoldersModule } from './document-folders/document-folders.module.js';
 import { ProjectDocumentsModule } from './project-documents/project-documents.module.js';
+import { SitePhotosModule } from './site-photos/site-photos.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -69,6 +70,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     ProjectDashboardModule,
     DocumentFoldersModule,
     ProjectDocumentsModule,
+    SitePhotosModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

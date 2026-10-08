@@ -60,6 +60,8 @@ enum PermissionModule {
   MEETINGS
   // Budget, contingency, variations, supplier invoices and the cost report.
   COMMERCIAL
+  // Site photo capture (FIELD register): upload, link, share with the client.
+  SITE_PHOTOS
 }
 
 enum PermissionAction {
@@ -287,6 +289,10 @@ model User {
   notesReceived               Comment[]                    @relation("CommentRecipient")
   actionsCompleted            Comment[]                    @relation("CommentCompletedBy")
   notifications               Notification[]
+  sitePhotos                  SitePhoto[]
+  // In-app alert categories this person has switched off (see
+  // notifications/categories.ts). Approvals can never be muted.
+  mutedAlertCategories        String[]                     @default([])
   documentsCreated            ProjectDocument[]
   documentRevisionsUploaded   DocumentRevision[]           @relation("DocumentRevisionUploadedBy")
   documentRevisionsReviewed   DocumentRevision[]           @relation("DocumentRevisionReviewedBy")
@@ -595,6 +601,7 @@ model Project {
   issues                   ProjectIssue[]
   comments                 Comment[]
   notifications            Notification[]
+  sitePhotos               SitePhoto[]
   documentFolders          DocumentFolder[]
   documents                ProjectDocument[]
   transmittals             Transmittal[]
@@ -631,6 +638,7 @@ model Project {
 
 model ProjectNode {
   id                 String             @id @default(uuid())
+  sitePhotos         SitePhoto[]
   projectId          String
   project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   parentId           String?
@@ -736,6 +744,7 @@ enum ScheduleDependencyType {
 
 model ScheduleActivity {
   id                    String                     @id @default(uuid())
+  sitePhotos            SitePhoto[]
   projectId             String
   project               Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   parentId              String?
@@ -854,6 +863,7 @@ enum ProjectTaskStatus {
 
 model ProjectTask {
   id                 String            @id @default(uuid())
+  sitePhotos         SitePhoto[]
   projectId          String
   project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignedToId       String?
@@ -896,6 +906,7 @@ enum ProjectIssueStatus {
 
 model ProjectIssue {
   id              String             @id @default(uuid())
+  sitePhotos      SitePhoto[]
   projectId       String
   project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   ownerId         String?
@@ -934,6 +945,7 @@ enum CommentEntityType {
   // opportunity (Stage 0).
   PROJECT
   OPPORTUNITY
+  SITE_PHOTO
 }
 
 model Comment {
@@ -1000,6 +1012,8 @@ enum NotificationType {
   NOTE_FOR_YOU
   ACTION_ASSIGNED
   ACTION_COMPLETED
+  PHOTO_ADDED
+  PHOTOS_SHARED
 }
 
 model Notification {
@@ -2959,4 +2973,48 @@ model QuoteItem {
   unitRate  Float
 
   @@unique([quoteId, rfqItemId])
+}
+
+// Site photo capture (FIELD register): a dated, located photograph from
+// site, optionally tied to the issue, task, programme activity or part of
+// the project it shows. Setjeka decides which photos the client sees
+// (Meeting 3), the same as documents.
+model SitePhoto {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  storedFilename     String
+  // A small preview made on the uploading device; null when the browser
+  // couldn't make one (e.g. HEIC outside Safari) - the full image is used.
+  thumbFilename      String?
+  originalFilename   String
+  mimeType           String
+  sizeBytes          Int
+  caption            String?
+  // When the photo was taken: from the camera's own data where present,
+  // otherwise when it was uploaded.
+  takenAt            DateTime
+  latitude           Float?
+  longitude          Float?
+  // Where on site, in words ("Block B, level 2, east stair").
+  locationNote       String?
+  tags               String[]          @default([])
+  clientVisible      Boolean           @default(false)
+  projectNodeId      String?
+  projectNode        ProjectNode?      @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  taskId             String?
+  task               ProjectTask?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  issueId            String?
+  issue              ProjectIssue?     @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  uploadedById       String
+  uploadedBy         User              @relation(fields: [uploadedById], references: [id])
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([projectId, takenAt])
+  @@index([issueId])
+  @@index([taskId])
+  @@index([scheduleActivityId])
 }

@@ -2,7 +2,7 @@ import type { CommentEntityType } from '../generated/prisma/enums.js';
 
 /** Where a record lives in the app, so a notification or a note in someone's
  * action list opens the right page. */
-export function recordLink(entityType: CommentEntityType, ids: { projectId?: string | null; opportunityId?: string | null }): string {
+export function recordLink(entityType: CommentEntityType, ids: { projectId?: string | null; opportunityId?: string | null; entityId?: string | null }): string {
   if (entityType === 'OPPORTUNITY' && ids.opportunityId) return `/opportunities/${ids.opportunityId}`;
   if (!ids.projectId) return ids.opportunityId ? `/opportunities/${ids.opportunityId}` : '/my-day';
   const p = `/projects/${ids.projectId}`;
@@ -29,6 +29,8 @@ export function recordLink(entityType: CommentEntityType, ids: { projectId?: str
       return `${p}?tab=commercial`;
     case 'PROJECT':
       return `${p}?tab=actions`;
+    case 'SITE_PHOTO':
+      return ids.entityId ? `${p}?tab=photos&photo=${ids.entityId}` : `${p}?tab=photos`;
     default:
       return `${p}?tab=overview`;
   }

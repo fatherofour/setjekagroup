@@ -23,6 +23,8 @@ import {
   Calculator,
   Database,
   Coins,
+  Camera,
+  Bell,
   type LucideIcon,
 } from 'lucide-react';
 import type { AuthUser } from '@/lib/auth-context';
@@ -78,6 +80,7 @@ export const NAV: NavEntry[] = [
     icon: LayoutDashboard,
     children: [
       { label: 'My Day', href: '/my-day', icon: Sun },
+      { label: 'Notifications', href: '/notifications', icon: Bell },
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Approvals', href: '/approvals', icon: Stamp },
     ],
@@ -112,6 +115,7 @@ export const NAV: NavEntry[] = [
       { label: 'Issues', href: '/projects', icon: AlertTriangle, requiresProject: true, projectPathSuffix: '?tab=issues' },
       { label: 'Risks', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=risks' },
       { label: 'Documents', href: '/projects', icon: FileText, requiresProject: true, projectPathSuffix: '?tab=documents' },
+      { label: 'Site photos', href: '/projects', icon: Camera, requiresProject: true, projectPathSuffix: '?tab=photos' },
       { label: 'RFIs & Submittals', href: '/projects', icon: HelpCircle, requiresProject: true, projectPathSuffix: '?tab=technical' },
     ],
   },

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
+import Link from 'next/link';
 import { CommentThread } from './CommentThread';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -181,6 +182,9 @@ function IssueDetailPanel({
         </div>
 
         <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <Link href={`/projects/${projectId}?tab=photos&issue=${issue.id}`} className="mb-3 inline-flex min-h-9 items-center gap-1.5 text-sm text-emerald-700 hover:underline dark:text-emerald-400">
+            <Camera size={14} /> Site photos of this issue
+          </Link>
           <CommentThread projectId={projectId} entityType="ISSUE" entityId={issue.id} />
         </div>
 

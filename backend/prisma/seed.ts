@@ -77,7 +77,7 @@ const ALL_ROLES: ProjectMemberRole[] = [...FULL_ACCESS_ROLES, ...CONSULTANT_ROLE
 const ALL_MODULES: PermissionModule[] = [
   'SCHEDULE', 'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS',
   'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS', 'STAGE_GATE', 'PROCUREMENT',
-  'PROJECT_DEFINITION', 'MEETINGS', 'COMMERCIAL',
+  'PROJECT_DEFINITION', 'MEETINGS', 'COMMERCIAL', 'SITE_PHOTOS',
 ];
 const ALL_ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];
 // PROCUREMENT is included so a vendor (CONTRACTOR role) can submit and
@@ -92,6 +92,14 @@ function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, actio
   if (module === 'COMMERCIAL') {
     if (role === 'CLIENT') return action === 'VIEW' || action === 'COMMENT' || action === 'APPROVE';
     return FULL_ACCESS_ROLES.includes(role) && action !== 'APPROVE';
+  }
+  // Site photos: anyone on site can add them; outside parties edit only
+  // their own (SitePhotosService). Clients see what Setjeka shares.
+  if (module === 'SITE_PHOTOS') {
+    if (action === 'APPROVE') return false;
+    if (FULL_ACCESS_ROLES.includes(role)) return true;
+    if (CONSULTANT_ROLES.includes(role) || role === 'CONTRACTOR') return true;
+    return action === 'VIEW' || action === 'COMMENT';
   }
   // PROCSA PM 1.9 and the Meeting 3 hard rule: the client alone approves
   // Stage 1 documents - never Setjeka on the client's behalf.

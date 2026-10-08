@@ -40,6 +40,7 @@ export class CommentsService {
       STAGE_TRANSITION: () => this.prisma.stageTransition.findFirst({ where: { id: entityId, projectId } }),
       STAGE_DELIVERABLE: () => this.prisma.stageDeliverable.findFirst({ where: { id: entityId, projectId } }),
       MEETING: () => this.prisma.meeting.findFirst({ where: { id: entityId, projectId } }),
+      SITE_PHOTO: () => this.prisma.sitePhoto.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),

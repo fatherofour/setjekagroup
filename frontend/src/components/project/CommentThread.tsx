@@ -19,7 +19,8 @@ type CommentEntityType =
   | 'MEETING'
   | 'VARIATION'
   | 'PROJECT'
-  | 'OPPORTUNITY';
+  | 'OPPORTUNITY'
+  | 'SITE_PHOTO';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

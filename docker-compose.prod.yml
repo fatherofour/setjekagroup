@@ -32,8 +32,14 @@ services:
       PORT: "4000"
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://localhost}
       UPLOAD_DIR: /data/vendor-documents
+      DOCUMENT_UPLOAD_DIR: /data/project-documents
+      PHOTO_UPLOAD_DIR: /data/site-photos
+    # Uploaded files live on named volumes so a rebuild or redeploy never
+    # loses them.
     volumes:
       - vendor_documents:/data/vendor-documents
+      - project_documents:/data/project-documents
+      - site_photos:/data/site-photos
     expose:
       - "4000"
     healthcheck:
@@ -79,3 +85,5 @@ services:
 volumes:
   pg_data:
   vendor_documents:
+  project_documents:
+  site_photos:

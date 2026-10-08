@@ -17,6 +17,7 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   VARIATION: 'Variation',
   PROJECT: 'Project',
   OPPORTUNITY: 'Opportunity',
+  SITE_PHOTO: 'Site photo',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -71,6 +72,9 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'PROJECT_BRIEF':
         for (const id of ids) out.set(`${type}:${id}`, 'Project brief');
+        break;
+      case 'SITE_PHOTO':
+        put(type, (await prisma.sitePhoto.findMany({ where, select: { id: true, caption: true, originalFilename: true } })).map((r) => ({ id: r.id, label: r.caption ?? r.originalFilename })));
         break;
       case 'OPPORTUNITY':
         put(type, (await prisma.opportunity.findMany({ where, select: { id: true, name: true } })).map((r) => ({ id: r.id, label: r.name })));

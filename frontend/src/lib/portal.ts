@@ -10,5 +10,9 @@ export function isClientUser(user: Pick<AuthUser, 'accountType' | 'role' | 'clie
 export function clientLink(link: string, user: Pick<AuthUser, 'accountType' | 'role' | 'clientId'> | null | undefined) {
   if (!isClientUser(user)) return link;
   const m = link.match(/^\/projects\/([0-9a-f-]{36})/);
-  return m ? `/portal/projects/${m[1]}` : link;
+  if (!m) return link;
+  // Land on the matching part of the portal page where there is one.
+  const tab = new URLSearchParams(link.split('?')[1] ?? '').get('tab');
+  const anchor = tab === 'photos' ? '#photos' : tab === 'documents' ? '#documents' : tab === 'meetings' ? '#meetings' : '';
+  return `/portal/projects/${m[1]}${anchor}`;
 }

@@ -1,4 +1,4 @@
-import { Sun, LayoutDashboard, FolderKanban, HardHat, Database, Calculator, type LucideIcon } from 'lucide-react';
+import { Sun, LayoutDashboard, FolderKanban, HardHat, Database, Calculator, Bell, type LucideIcon } from 'lucide-react';
 
 interface PageTitle {
   label: string;
@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, PageTitle> = {
   '/cost-database': { label: 'Cost database', icon: Database },
   '/estimates': { label: 'Estimates', icon: Calculator },
   '/portal': { label: 'My projects', icon: FolderKanban },
+  '/notifications': { label: 'Notifications', icon: Bell },
 };
 
 export function getPageTitle(pathname: string): PageTitle {
