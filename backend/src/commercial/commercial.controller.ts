@@ -160,14 +160,14 @@ export class CommercialController {
 
   @Post('invoices/:id/pay')
   @RequirePermission('COMMERCIAL', 'EDIT')
-  payInvoice(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: PayInvoiceDto) {
-    return this.commercial.payInvoice(projectId, id, dto);
+  payInvoice(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: PayInvoiceDto, @CurrentUser() user: JwtPayload) {
+    return this.commercial.payInvoice(projectId, id, user.sub, dto);
   }
 
   @Post('invoices/:id/reject')
   @RequirePermission('COMMERCIAL', 'EDIT')
-  rejectInvoice(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: RejectInvoiceDto) {
-    return this.commercial.rejectInvoice(projectId, id, dto);
+  rejectInvoice(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: RejectInvoiceDto, @CurrentUser() user: JwtPayload) {
+    return this.commercial.rejectInvoice(projectId, id, user.sub, dto);
   }
 
   @Delete('invoices/:id')

@@ -2489,6 +2489,125 @@ At every stage, the run checks that the architect's PROCSA items tick themselves
 
 ---
 
+### 2.25 The quantity surveyor — PROCSA Stages 2 to 6
+
+Built on 2026-10-28. The user asked what the QS can do according to the requirements register and the meeting notes, and what to bring over from OpenConstructionERP. They then made two decisions:
+
+- **Who issues payment certificates** (scope of work, decision 4): Setjeka's Project Manager ("most likely"; to be confirmed with the client).
+- **How much the QS does here:** "the QS being able to do what is necessary for them to do in the system". This replaces Meeting 002's "monitoring only" for the QS's own work.
+
+**Sources**
+- **PROCSA:** the QS's 33 duties for Stages 2 to 6. Stage 1 was built in §2.13a.
+- **Register COM:** the bill of quantities (import, edit, version, approve), payment certificates with retention, and RFI cost impact.
+- **Meetings:**
+  - Feature Register Review: "the QS also needs to be involved" when an RFI has a cost.
+  - Meeting 3: Setjeka may later employ its own QS without new code.
+- **From OpenConstructionERP:** the ideas were rebuilt natively, not copied:
+  - `boq` importers: reading a bill from Excel;
+  - `contracts` and `cvr`: the retention ledger, payment applications and the cash-flow S-curve;
+  - `variations`: the final account;
+  - `tendering`: tender packages from the bill.
+- **Left out of the donor features:** the statutory payment clock, AIA forms, lien waivers, GAEB, e-invoicing and full earned value. None apply to how Setjeka works.
+
+**Access**
+- **The QS's permissions.** `QUANTITY_SURVEYOR` moved from full access to the consultant permissions. It keeps creating and editing Commercial and Procurement records, and deleting Commercial drafts. Before this, an outside QS could edit the team and award procurement. Migration `20261028090100_quantity_surveyor_permissions`; `seed.ts` matches.
+- **Setjeka-only steps.** Setjeka staff alone:
+  - lock or unlock the budget;
+  - send a variation to the client, or withdraw it;
+  - approve, pay or reject supplier invoices;
+  - accept a bill or adopt it as the budget;
+  - issue a tender or award it;
+  - certify a valuation, return it or record its payment;
+  - record a final account as agreed.
+- **What the QS sees.** The project's Commercial tab now shows for the QS. Setjeka's own estimates, rough estimate and cost database stay internal; the QS works in bills instead.
+- **The client** approves payment certificates themselves, as with variations: the service refuses anyone but an outside account with the client role on the project.
+
+**Bills and cost plans** (Commercial → Bills & cost plans; `quantity-surveying/cost-plans.service.ts`)
+- **Kinds:** preliminary and elemental (QS 2.5), detailed (3.5), pre-tender (4.3), the bill for tender (4.4), and the priced contract bill. Numbered BQ-001 per project.
+- **Items:** a bill or element heading, item number, description, unit, quantity, rate and amount (quantity × rate, or a lump sum), with a type and a cost code. Types: measured, provisional sum, prime-cost sum, daywork.
+- **Totals in QS order:** preliminaries %, contingency %, escalation %, then VAT; with per-bill subtotals and the cost per m².
+- **Import** (`boq-import.ts`) from .xlsx or .csv, replacing or adding to the items:
+  - **finding the columns:** it uses the first sheet with a Description heading, whatever the column order or wording;
+  - **reading the rows:** a row with no figures starts a new bill; total and carried-forward rows are skipped; provisional, prime-cost and daywork sums are recognised by their wording; amounts like "1 234,50" and "R 1,234.50" both read correctly;
+  - **export:** back out to Excel.
+- **Revisions:**
+  - Issuing freezes the items as rev N and tells the PM and DM.
+  - Editing an issued bill takes it back to a draft.
+  - Any revision can be compared with the bill as it stands, bill by bill.
+- **Setjeka accepts** an issued bill. An accepted bill can become the project budget by cost code: escalation spread pro rata, preliminaries on code 01, the bill's contingency as the budget contingency, VAT left out.
+- **Tender on the bill** (QS 4.5, 4.6):
+  - The QS creates a draft RFQ whose items are the bill's. Setjeka invites, issues and awards it as before.
+  - Under the bill, each tenderer's total is set against the QS's own, with the five rates furthest from the QS's.
+
+**Contracts** (Commercial → Contracts & valuations; `contracts.service.ts`)
+- **Fields:** contractor, form of contract, contract sum, retention % (default 10), retention limit (default 5% of the sum), VAT %, dates, and the priced bill.
+- **From an awarded tender** (QS 4.7): the winner's rates become the priced contract bill, and their total the contract sum.
+- **Fixed once certified:** the sum and the retention terms can't change after a certificate is issued; changes come through variations.
+- **Variations** can now be linked to their contract at any status.
+- **Final account** (QS 5.9, 6.2), worked out live:
+  1. the contract sum;
+  2. less the provisional and prime-cost sums, plus what the latest valuation shows spent against them;
+  3. plus approved variations and agreed claims from the claims register.
+
+  The QS prepares and submits it; Setjeka records it agreed. The final-accounts register follows each step.
+- **Cash flow** (QS 5.2): the contract sum spread over the months on an S-curve, into the Cash flow register.
+  - Running it again re-spreads the forecast and keeps the actuals.
+  - A paid certificate adds to that month's actual.
+
+**Valuations and payment certificates** (`valuations.service.ts`, `valuation-pdf.ts`)
+1. **The QS starts a valuation.** It begins from the contract bill and the approved variations, each at the percentage last certified. Work certified before can't be taken back.
+2. **The figures:**
+   - gross = work done + variations + materials on site;
+   - retention is capped at its limit, and half or all of it is released at practical or final completion;
+   - less what was certified before, plus VAT.
+3. **Submit.** The statement PDF is filed as a project document. A payment-certificates register entry is created, and the architect is asked to review it. The PM sees it in Approvals.
+4. **Setjeka's PM certifies it** (PC-001 per project), with a response date. Where the project has an architect, their signed approval since the valuation was submitted comes first. The PM can instead return it to the QS with a reason.
+5. **The client approves or rejects payment**, signed. They do it in Approvals, on the Commercial tab or in the client portal.
+6. **Setjeka marks it paid.** The register entry follows each step, and the certificate PDF downloads from the valuation.
+7. **A rejected certificate** goes back to the QS to revise. It is re-certified under the same number, after a fresh architect review.
+
+**Also in this build**
+- **RFIs.** An RFI given a cost impact alerts the project's QS (`RFI_COST_IMPACT`).
+- **Registers.** The QS keeps the cash flow, claims and final accounts registers alongside Setjeka.
+- **PROCSA.** The QS's Stage 2 to 6 list (`procsa-delivery.ts`), ticking itself from:
+  - bills and estimates issued, by kind, and re-issued for 3.3;
+  - transmittals the QS received, and variations the QS assessed;
+  - tenders on the bill, contracts set up, and valuations the QS prepared;
+  - the final valuation certified, and final accounts.
+
+  The QS can sign their own items off by hand, as the architect can.
+- **Notes and actions** on bills, contracts and valuations (`COST_PLAN`, `PROJECT_CONTRACT`, `VALUATION`).
+- **The guide.** The QS starts on their PROCSA list. The Commercial tip and the journey (Stage 2 to 6) are written for the QS. Setjeka's and the client's Commercial tips mention the bills and certificates.
+- **Migrations:**
+  - `20261028090000_quantity_surveyor` (the models and new enum values);
+  - `…090100_quantity_surveyor_permissions`;
+  - `…090200_qs_note_types`.
+
+**Verified**
+- **QS journey (API), 84 of 84 checks.** One project from the first estimate to the final account, everyone signed in as themselves:
+  - **The bill:** an Excel bill imports with a formula column, a cover sheet and a total row: 6 items, 4 bills, R 1 366 000.
+  - **Rev 2:** repricing and remeasuring makes rev 2; comparing it with rev 1 shows concrete up R 9 250.
+  - **The budget:** Setjeka accepts the bill and adopts it as the budget (R 1 402 250, contingency R 140 225).
+  - **The tender:** two tenderers price the bill; the cheapest is R 1 399 000, 0.23% under the QS's total. The contract comes from the award with the winner's rates.
+  - **Valuation 1:** 30% gives R 434 389.50 due, which passes review, certification, approval and payment, and lands as December's actual.
+  - **Valuation 2:**
+    - retention stops at R 69 950;
+    - it is returned by the PM, then rejected by the client;
+    - the architect's earlier review doesn't count for the resubmission;
+    - it is re-certified as PC-002.
+  - **The final valuation** releases all the retention. The final account is R 1 432 000 and is agreed.
+  - **Every QS item ticks:** Stage 2 8/8, 3 8/8, 4 7/7 (4.2 signed by hand), 5 9/9, 6 2/2.
+  - **Refused, as they should be:** the QS locking the budget, accepting their own bill, sending a variation, certifying, or paying; Setjeka deciding for the client; the architect and contractor opening Commercial.
+- **Browser, 12 of 12 checks, no console errors:**
+  - the QS imports a CSV with comma decimals, edits a row, saves and issues;
+  - the QS sees the tender comparison and the contract with PC-001 to PC-003, and downloads the PDF;
+  - Setjeka accepts the new bill;
+  - the client sees payment certificates on a phone in dark mode, with no sideways scroll.
+
+  A 13th check (the QS's first-visit Commercial tip) passed on the first run and correctly doesn't repeat.
+- **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems) and the guide (18/18) all still pass.
+- **Not tested:** the portal page for a client-organisation login. The run's client is a team member, who decides from the Commercial tab.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

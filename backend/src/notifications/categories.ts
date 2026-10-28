@@ -42,6 +42,15 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   PUNCH_ITEM_READY: 'APPROVALS',
   PUNCH_ITEM_DECIDED: 'ACTIONS',
   TEXT_EXTRACTED: 'ACTIONS',
+  // The QS's work (2026-10-28): a valuation waiting for the PM to certify,
+  // and a certificate waiting for the client, are decisions owed.
+  COST_PLAN_ISSUED: 'ACTIONS',
+  VALUATION_SUBMITTED: 'APPROVALS',
+  VALUATION_RETURNED: 'ACTIONS',
+  PAYMENT_CERTIFICATE_ISSUED: 'APPROVALS',
+  PAYMENT_CERTIFICATE_DECIDED: 'APPROVALS',
+  // An RFI with a cost impact brings the QS in (Feature Register Review).
+  RFI_COST_IMPACT: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

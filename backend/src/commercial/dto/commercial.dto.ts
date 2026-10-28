@@ -27,6 +27,8 @@ export class CreateVariationDto {
   @IsOptional() @IsEnum(VariationReason) reason?: VariationReason;
   @IsOptional() @IsUUID() rfiId?: string;
   @IsOptional() @IsUUID() costCodeId?: string;
+  /** The contract it varies (for the QS's valuations and final account). */
+  @IsOptional() @IsUUID() contractId?: string;
   /** Negative for an omission. */
   @IsNumber() estimatedValue!: number;
   @IsOptional() @IsInt() @Min(-3650) @Max(3650) timeImpactDays?: number;
@@ -38,6 +40,7 @@ export class UpdateVariationDto {
   @IsOptional() @IsEnum(VariationReason) reason?: VariationReason;
   @IsOptional() @IsUUID() rfiId?: string | null;
   @IsOptional() @IsUUID() costCodeId?: string | null;
+  @IsOptional() @IsUUID() contractId?: string | null;
   @IsOptional() @IsNumber() estimatedValue?: number;
   @IsOptional() @IsInt() @Min(-3650) @Max(3650) timeImpactDays?: number | null;
 }

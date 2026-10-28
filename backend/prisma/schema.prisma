@@ -348,6 +348,13 @@ model User {
   variationsAssessed          Variation[]                  @relation("VariationAssessedBy")
   variationsDecided           Variation[]                  @relation("VariationDecidedBy")
   variationEvents             VariationEvent[]             @relation("VariationEventActor")
+  costPlansPrepared           CostPlan[]                   @relation("CostPlanPreparedBy")
+  costPlansAccepted           CostPlan[]                   @relation("CostPlanAcceptedBy")
+  costPlanRevisions           CostPlanRevision[]
+  contractsCreated            ProjectContract[]
+  valuationsPrepared          Valuation[]                  @relation("ValuationPreparedBy")
+  valuationsCertified         Valuation[]                  @relation("ValuationCertifiedBy")
+  valuationsDecided           Valuation[]                  @relation("ValuationDecidedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -389,6 +396,7 @@ model User {
 model Contractor {
   id                      String                             @id @default(uuid())
   registerEntries         ProjectRegisterEntry[]
+  projectContracts        ProjectContract[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -675,6 +683,9 @@ model Project {
   budget                   ProjectBudget?
   budgetLines              BudgetLine[]
   variations               Variation[]
+  costPlans                CostPlan[]
+  contracts                ProjectContract[]
+  valuations               Valuation[]
   supplierInvoices         SupplierInvoice[]
   plannedDrawings          PlannedDrawing[]
   communications           ProjectCommunication[]
@@ -1016,6 +1027,10 @@ enum CommentEntityType {
   CONSENT
   PUNCH_ITEM
   CLASH
+  // The QS's records (2026-10-28).
+  COST_PLAN
+  PROJECT_CONTRACT
+  VALUATION
 }
 
 model Comment {
@@ -1100,6 +1115,12 @@ enum NotificationType {
   PUNCH_ITEM_READY
   PUNCH_ITEM_DECIDED
   TEXT_EXTRACTED
+  COST_PLAN_ISSUED
+  VALUATION_SUBMITTED
+  VALUATION_RETURNED
+  PAYMENT_CERTIFICATE_ISSUED
+  PAYMENT_CERTIFICATE_DECIDED
+  RFI_COST_IMPACT
 }
 
 model Notification {
@@ -1626,6 +1647,10 @@ model Rfq {
   items                   RfqItem[]
   awardedQuoteId          String?                  @unique
   awardedQuote            Quote?                   @relation("RfqAwardedQuote", fields: [awardedQuoteId], references: [id], onDelete: SetNull)
+  // A tender priced against the QS's bill of quantities.
+  costPlanId              String?
+  costPlan                CostPlan?                @relation(fields: [costPlanId], references: [id], onDelete: SetNull)
+  contracts               ProjectContract[]
   awardedAt               DateTime?
   pricesUpdatedAt         DateTime?
 
@@ -2934,6 +2959,7 @@ model CostCode {
   budgetLines    BudgetLine[]
   variations     Variation[]
   purchaseOrders PurchaseOrder[]  @relation("PoCostCode")
+  costPlanItems  CostPlanItem[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 }
@@ -3028,6 +3054,11 @@ model Variation {
   updatedAt       DateTime              @updatedAt
   communicationId String?
   communication   ProjectCommunication? @relation(fields: [communicationId], references: [id], onDelete: SetNull)
+  // The contract it varies, so the QS can value it and carry it into that
+  // contractor's final account.
+  contractId      String?
+  contract        ProjectContract?      @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  valuationLines  ValuationLine[]
 
   @@unique([projectId, number])
   @@index([projectId])
@@ -3112,6 +3143,9 @@ model RfqItem {
   quantity    Float
   sortOrder   Int           @default(0)
   quoteItems  QuoteItem[]
+  // The bill item it was taken from.
+  costPlanItemId String?
+  costPlanItem   CostPlanItem? @relation(fields: [costPlanItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime      @default(now())
 
   @@index([rfqId])
@@ -3227,6 +3261,8 @@ enum ApprovalSubject {
   // An architect's review of a delivery register entry (2026-10-26):
   // a payment valuation, a completion certificate, O&M documents.
   REGISTER_ENTRY
+  // The client's approval of a payment certificate (2026-10-28).
+  PAYMENT_CERTIFICATE
 }
 
 enum DocumentApprovalStatus {
@@ -4021,4 +4057,235 @@ model RomEstimate {
   createdById    String
   createdBy      User         @relation(fields: [createdById], references: [id])
   createdAt      DateTime     @default(now())
+}
+
+// ---- The quantity surveyor (PROCSA QS, Stages 2 to 6; 2026-10-28) -------
+// The user's direction: the QS does their own work in the platform - bills
+// of quantities, estimates, valuations, claims and final accounts - and
+// Setjeka's Project Manager issues the payment certificates.
+
+// From the preliminary estimate (QS 2.5) to the priced contract bill.
+enum CostPlanKind {
+  PRELIMINARY
+  ELEMENTAL
+  DETAILED
+  PRE_TENDER
+  TENDER_BOQ
+  CONTRACT_BOQ
+}
+
+enum CostPlanStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+}
+
+enum CostPlanItemType {
+  MEASURED
+  PROVISIONAL_SUM
+  PRIME_COST_SUM
+  DAYWORK
+}
+
+// A bill of quantities or cost plan (register COM "BOQ management": import,
+// edit, version, approve). Issuing it freezes a numbered revision; editing
+// an issued plan takes it back to draft. Setjeka accepts it.
+model CostPlan {
+  id             String             @id @default(uuid())
+  projectId      String
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number         String
+  title          String
+  kind           CostPlanKind
+  status         CostPlanStatus     @default(DRAFT)
+  revision       Int                @default(0)
+  currency       Currency
+  grossFloorArea Float?
+  // Added in QS order on the items' total: preliminaries, contingency,
+  // escalation, then VAT.
+  prelimsPct     Float              @default(0)
+  contingencyPct Float              @default(0)
+  escalationPct  Float              @default(0)
+  vatPct         Float              @default(15)
+  notes          String?
+  sourceFileName String?
+  preparedById   String
+  preparedBy     User               @relation("CostPlanPreparedBy", fields: [preparedById], references: [id])
+  issuedAt       DateTime?
+  acceptedById   String?
+  acceptedBy     User?              @relation("CostPlanAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedAt     DateTime?
+  items          CostPlanItem[]
+  revisions      CostPlanRevision[]
+  rfqs           Rfq[]
+  contracts      ProjectContract[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  // Numbered per project, so every project starts at BQ-001.
+  @@unique([projectId, number])
+  @@index([projectId])
+}
+
+model CostPlanItem {
+  id             String           @id @default(uuid())
+  costPlanId     String
+  costPlan       CostPlan         @relation(fields: [costPlanId], references: [id], onDelete: Cascade)
+  sortOrder      Int              @default(0)
+  // The bill or element it sits under, e.g. "Bill 3 - Concrete".
+  section        String?
+  ref            String?
+  description    String
+  unit           String?
+  quantity       Float?
+  rate           Float?
+  // Quantity x rate, or the sum itself for a lump sum.
+  amount         Float            @default(0)
+  type           CostPlanItemType @default(MEASURED)
+  costCodeId     String?
+  costCode       CostCode?        @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
+  notes          String?
+  rfqItems       RfqItem[]
+  valuationLines ValuationLine[]
+
+  @@index([costPlanId])
+}
+
+model CostPlanRevision {
+  id         String   @id @default(uuid())
+  costPlanId String
+  costPlan   CostPlan @relation(fields: [costPlanId], references: [id], onDelete: Cascade)
+  revision   Int
+  total      Float
+  itemCount  Int
+  // The items as issued.
+  snapshot   Json
+  reason     String?
+  issuedById String
+  issuedBy   User     @relation(fields: [issuedById], references: [id])
+  issuedAt   DateTime @default(now())
+
+  @@unique([costPlanId, revision])
+}
+
+enum FinalAccountStatus {
+  NOT_STARTED
+  IN_PREPARATION
+  SUBMITTED
+  AGREED
+}
+
+// A contract with a contractor (QS 4.7), the basis for its valuations,
+// retention and final account.
+model ProjectContract {
+  id                  String             @id @default(uuid())
+  projectId           String
+  project             Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractorId        String
+  contractor          Contractor         @relation(fields: [contractorId], references: [id])
+  title               String
+  contractForm        ContractForm?
+  contractSum         Float
+  currency            Currency
+  // The priced contract bill, and the tender it came from.
+  costPlanId          String?
+  costPlan            CostPlan?          @relation(fields: [costPlanId], references: [id], onDelete: SetNull)
+  rfqId               String?
+  rfq                 Rfq?               @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  retentionPct        Float              @default(10)
+  // Retention stops growing at this share of the contract sum.
+  retentionLimitPct   Float?             @default(5)
+  vatPct              Float              @default(15)
+  startDate           DateTime?
+  completionDate      DateTime?
+  finalAccountStatus  FinalAccountStatus @default(NOT_STARTED)
+  // The final-accounts register entry kept in step with it.
+  finalAccountEntryId String?
+  createdById         String
+  createdBy           User               @relation(fields: [createdById], references: [id])
+  valuations          Valuation[]
+  variations          Variation[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([projectId])
+}
+
+enum ValuationStatus {
+  DRAFT
+  SUBMITTED
+  CERTIFIED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+// A payment valuation (QS 5.8, 6.1). The QS prepares it, the architect
+// reviews it, Setjeka's PM issues the certificate, the client approves
+// payment, and Setjeka records it paid.
+model Valuation {
+  id                  String           @id @default(uuid())
+  projectId           String
+  project             Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId          String
+  contract            ProjectContract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  number              Int
+  isFinal             Boolean          @default(false)
+  valuationDate       DateTime
+  status              ValuationStatus  @default(DRAFT)
+  materialsOnSite     Float            @default(0)
+  // 50 once half the retention is released at practical completion, 100 at final.
+  retentionReleasePct Float            @default(0)
+  // Worked out from the lines; fixed once submitted.
+  workDone            Float            @default(0)
+  variationsDone      Float            @default(0)
+  grossValuation      Float            @default(0)
+  retention           Float            @default(0)
+  cumulativeNet       Float            @default(0)
+  previouslyCertified Float            @default(0)
+  netDue              Float            @default(0)
+  vat                 Float            @default(0)
+  amountDue           Float            @default(0)
+  notes               String?
+  preparedById        String
+  preparedBy          User             @relation("ValuationPreparedBy", fields: [preparedById], references: [id])
+  submittedAt         DateTime?
+  returnedReason      String?
+  certificateNumber   String?
+  certifiedById       String?
+  certifiedBy         User?            @relation("ValuationCertifiedBy", fields: [certifiedById], references: [id], onDelete: SetNull)
+  certifiedAt         DateTime?
+  // The payment-certificates register entry the architect reviews.
+  registerEntryId     String?
+  responseDueAt       DateTime?
+  decidedById         String?
+  decidedBy           User?            @relation("ValuationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt           DateTime?
+  decisionOutcome     ApprovalOutcome?
+  decisionComment     String?
+  paidAt              DateTime?
+  paymentReference    String?
+  lines               ValuationLine[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@unique([contractId, number])
+  @@index([projectId])
+}
+
+model ValuationLine {
+  id              String        @id @default(uuid())
+  valuationId     String
+  valuation       Valuation     @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+  sortOrder       Int           @default(0)
+  costPlanItemId  String?
+  costPlanItem    CostPlanItem? @relation(fields: [costPlanItemId], references: [id], onDelete: SetNull)
+  variationId     String?
+  variation       Variation?    @relation(fields: [variationId], references: [id], onDelete: SetNull)
+  description     String
+  contractAmount  Float
+  percentComplete Float         @default(0)
+  valueToDate     Float         @default(0)
+
+  @@index([valuationId])
 }

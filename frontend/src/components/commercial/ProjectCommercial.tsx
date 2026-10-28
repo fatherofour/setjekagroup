@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Calculator, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Tabs } from '@/components/ui/Tabs';
@@ -12,6 +13,8 @@ import { CostReportPanel } from './CostReportPanel';
 import { BudgetPanel } from './BudgetPanel';
 import { VariationsPanel } from './VariationsPanel';
 import { InvoicesPanel } from './InvoicesPanel';
+import { BillsPanel } from '@/components/qs/BillsPanel';
+import { ContractsPanel } from '@/components/qs/ContractsPanel';
 
 interface EstimateRow {
   id: string;
@@ -70,38 +73,48 @@ function ProjectEstimates({ projectId }: { projectId: string }) {
 }
 
 /** Register COM (Commercial Management) on one project: cost report,
- * budget & contingency, variations, supplier invoices and estimates. The
- * client sees the cost report and decides variations. */
-export function ProjectCommercial({ projectId, currency }: { projectId: string; currency: string }) {
-  const { user } = useAuth();
-  const isClient = Boolean(user && user.accountType !== 'INTERNAL' && user.role !== 'ADMIN' && user.clientId);
-  const [tab, setTab] = useState(isClient ? 'variations' : 'report');
+ * budget & contingency, variations, the QS's bills, contracts and
+ * valuations, supplier invoices and estimates. The QS (an outside firm)
+ * does the commercial work but not Setjeka's steps; the client sees the
+ * cost report, decides variations and approves payment certificates. */
+export function ProjectCommercial({ projectId, currency, isClient, internal }: { projectId: string; currency: string; isClient: boolean; internal: boolean }) {
+  const params = useSearchParams();
+  const [tab, setTab] = useState(params.get('ctab') ?? (isClient ? 'variations' : 'report'));
   const [version, setVersion] = useState(0);
   const changed = () => setVersion((v) => v + 1);
 
   const tabs = isClient
     ? [
         { value: 'variations', label: 'Variations' },
+        { value: 'contracts', label: 'Payment certificates' },
         { value: 'report', label: 'Cost report' },
       ]
     : [
         { value: 'report', label: 'Cost report' },
         { value: 'budget', label: 'Budget & contingency' },
         { value: 'variations', label: 'Variations' },
+        { value: 'bills', label: 'Bills & cost plans' },
+        { value: 'contracts', label: 'Contracts & valuations' },
         { value: 'invoices', label: 'Supplier invoices' },
-        { value: 'estimates', label: 'Estimates' },
-        { value: 'rom', label: 'Rough estimate' },
+        ...(internal
+          ? [
+              { value: 'estimates', label: 'Estimates' },
+              { value: 'rom', label: 'Rough estimate' },
+            ]
+          : []),
       ];
 
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === 'report' && <CostReportPanel projectId={projectId} version={version} />}
-      {tab === 'budget' && <BudgetPanel projectId={projectId} onChanged={changed} />}
-      {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} onChanged={changed} />}
-      {tab === 'invoices' && <InvoicesPanel projectId={projectId} readOnly={isClient} onChanged={changed} />}
-      {tab === 'estimates' && <ProjectEstimates projectId={projectId} />}
-      {tab === 'rom' && <RomPanel projectId={projectId} />}
+      {tab === 'budget' && <BudgetPanel projectId={projectId} onChanged={changed} internal={internal} />}
+      {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} internal={internal} onChanged={changed} />}
+      {tab === 'bills' && !isClient && <BillsPanel projectId={projectId} internal={internal} isClient={isClient} initialPlanId={params.get('plan')} onChanged={changed} />}
+      {tab === 'contracts' && <ContractsPanel projectId={projectId} internal={internal} isClient={isClient} onChanged={changed} />}
+      {tab === 'invoices' && <InvoicesPanel projectId={projectId} readOnly={isClient || !internal} onChanged={changed} />}
+      {tab === 'estimates' && internal && <ProjectEstimates projectId={projectId} />}
+      {tab === 'rom' && internal && <RomPanel projectId={projectId} />}
     </div>
   );
 }

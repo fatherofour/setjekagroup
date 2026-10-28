@@ -122,13 +122,19 @@ export class ClientProjectsService {
       }),
       this.programme(projectId),
     ]);
-    const [docApprovals, records] = await Promise.all([
+    const [docApprovals, records, certificates] = await Promise.all([
       this.prisma.documentApprovalRequest.findMany({
         where: { projectId, status: { in: ['PENDING', 'DECIDED'] }, revision: { document: { clientVisible: true } } },
         include: { requestedBy: PERSON, decidedBy: PERSON, revision: { select: { id: true, revisionNumber: true, originalFilename: true, mimeType: true, document: { select: { id: true, name: true, documentType: true } } } } },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.approvalRecord.findMany({ where: { projectId }, select: { id: true, subject: true, subjectId: true, signedAt: true }, orderBy: { signedAt: 'desc' } }),
+      // Payment certificates issued by Setjeka's PM, for the client to approve.
+      this.prisma.valuation.findMany({
+        where: { projectId, status: { in: ['CERTIFIED', 'APPROVED', 'REJECTED', 'PAID'] } },
+        include: { contract: { select: { title: true, currency: true, contractor: { select: { name: true } } } }, certifiedBy: PERSON, decidedBy: PERSON },
+        orderBy: { certifiedAt: 'desc' },
+      }),
     ]);
     // The latest signed copy for each decided item.
     const recordFor = (subjectId: string) => records.find((r) => r.subjectId === subjectId)?.id ?? null;
@@ -164,6 +170,9 @@ export class ClientProjectsService {
       ...variations
         .filter((v) => v.decidedAt && v.decidedBy)
         .map((v) => ({ kind: 'Variation', title: `${v.number} ${v.title}`, outcome: outcomeOf(v.decisionOutcome, v.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: v.decidedBy!.fullName, at: v.decidedAt!, comment: v.decisionComment, recordId: recordFor(v.id) })),
+      ...certificates
+        .filter((v) => v.decidedAt && v.decidedBy)
+        .map((v) => ({ kind: 'Payment certificate', title: `${v.certificateNumber} ${v.contract.contractor.name}`, outcome: outcomeOf(v.decisionOutcome, v.status === 'REJECTED' ? 'Rejected' : 'Approved'), by: v.decidedBy!.fullName, at: v.decidedAt!, comment: v.decisionComment, recordId: recordFor(v.id) })),
       ...transitions
         .filter((t) => t.decidedAt && t.decidedBy)
         .map((t) => ({ kind: 'Stage gate', title: `${t.fromStage} → ${t.toStage}`, outcome: outcomeOf(t.decisionOutcome, t.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: t.decidedBy!.fullName, at: t.decidedAt!, comment: t.decisionComment, recordId: recordFor(t.id) })),
@@ -186,6 +195,26 @@ export class ClientProjectsService {
         variations: variations
           .filter((v) => v.status === 'SUBMITTED')
           .map((v) => ({ id: v.id, number: v.number, title: v.title, description: v.description, reason: v.reason, value: v.assessedValue ?? v.estimatedValue, timeImpactDays: v.timeImpactDays, raisedBy: v.raisedBy.fullName, submittedAt: v.submittedAt, dueAt: v.responseDueAt })),
+        certificates: certificates
+          .filter((v) => v.status === 'CERTIFIED')
+          .map((v) => ({
+            id: v.id,
+            certificateNumber: v.certificateNumber,
+            contract: v.contract.title,
+            contractor: v.contract.contractor.name,
+            currency: v.contract.currency,
+            valuationDate: v.valuationDate,
+            grossValuation: v.grossValuation,
+            retention: v.retention,
+            previouslyCertified: v.previouslyCertified,
+            netDue: v.netDue,
+            vat: v.vat,
+            amountDue: v.amountDue,
+            isFinal: v.isFinal,
+            certifiedBy: v.certifiedBy?.fullName ?? null,
+            certifiedAt: v.certifiedAt,
+            dueAt: v.responseDueAt,
+          })),
         stageGate: pendingGate ? { id: pendingGate.id, fromStage: pendingGate.fromStage, toStage: pendingGate.toStage, comment: pendingGate.requestComment, requestedBy: pendingGate.requestedBy.fullName, requestedAt: pendingGate.createdAt, dueAt: pendingGate.responseDueAt } : null,
         drawings: docApprovals
           .filter((r) => r.status === 'PENDING')

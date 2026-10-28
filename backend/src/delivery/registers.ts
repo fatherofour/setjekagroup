@@ -72,6 +72,8 @@ export interface DeliveryRegister {
 }
 
 const ARCHITECT: ProjectMemberRole[] = ['ARCHITECT', 'ARCHITECT_ENGINEER'];
+// The QS keeps the money registers with Setjeka (2026-10-28).
+const QS: ProjectMemberRole[] = ['QUANTITY_SURVEYOR'];
 
 const opt = (...pairs: [string, string][]) => Object.fromEntries(pairs);
 
@@ -142,8 +144,9 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'cash-flow',
     label: 'Cash flow',
-    procsa: 'DM 3.9',
-    description: 'Monthly cash flow: what the project needs, against what was spent.',
+    procsa: 'DM 3.9 · QS 5.2',
+    description: 'Monthly cash flow: what the project needs, against what was spent. The QS spreads each contract over its months from Contracts & valuations, and paid certificates fill in the actuals.',
+    editableBy: QS,
     fields: [
       { column: 'date', label: 'Month', type: 'date', required: true, inList: true },
       { column: 'amount', label: 'Forecast', type: 'money', required: true, inList: true },
@@ -224,8 +227,8 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'payment-certificates',
     label: 'Payment certificates',
-    procsa: 'DM 5.9 · PM 5.14, 6.5',
-    description: "Interim and final payment certificates: the QS's valuation, the amount certified and payment.",
+    procsa: 'DM 5.9 · PM 5.14, 6.5 · QS 5.8, 6.1',
+    description: "Interim and final payment certificates: the QS's valuation, the amount certified and payment. Valuations made under Commercial, Contracts & valuations come here by themselves.",
     contractorsSee: true,
     review: { roles: ARCHITECT, label: "Architect's review", procsa: 'Architect 5.7, 6.2' },
     fields: [
@@ -249,9 +252,10 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'claims',
     label: 'Contractual claims',
-    procsa: 'DM 5.10 · PM 5.8, 5.15',
-    description: "Contractors' claims for time and money, the principal agent's recommendation and the settlement.",
+    procsa: 'DM 5.10 · PM 5.8, 5.15 · QS 5.5, 5.6',
+    description: "Contractors' claims for time and money, the QS's assessment, the principal agent's recommendation and the settlement. An agreed claim goes into that contractor's final account.",
     contractorsSee: true,
+    editableBy: QS,
     fields: [
       { column: 'reference', label: 'Claim no.', type: 'text', inList: true },
       { column: 'title', label: 'Claim', type: 'text', required: true, inList: true },
@@ -365,9 +369,10 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'final-accounts',
     label: 'Final accounts',
-    procsa: 'DM 6.7 · PM 6.7',
-    description: "Each contractor's final account, from preparation to agreement.",
+    procsa: 'DM 6.7 · PM 6.7 · QS 5.9, 6.2',
+    description: "Each contractor's final account, from preparation to agreement. The QS prepares it from the contract under Commercial, Contracts & valuations, which keeps this register up to date.",
     contractorsSee: true,
+    editableBy: QS,
     fields: [
       { column: 'contractorId', label: 'Contractor', type: 'contractor', inList: true },
       { column: 'title', label: 'Contract', type: 'text', required: true, inList: true },

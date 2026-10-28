@@ -46,6 +46,9 @@ export class CommentsService {
       CONSENT: () => this.prisma.consentApproval.findFirst({ where: { id: entityId, projectId } }),
       PUNCH_ITEM: () => this.prisma.punchItem.findFirst({ where: { id: entityId, projectId } }),
       CLASH: () => this.prisma.clash.findFirst({ where: { id: entityId, projectId } }),
+      COST_PLAN: () => this.prisma.costPlan.findFirst({ where: { id: entityId, projectId } }),
+      PROJECT_CONTRACT: () => this.prisma.projectContract.findFirst({ where: { id: entityId, projectId } }),
+      VALUATION: () => this.prisma.valuation.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),

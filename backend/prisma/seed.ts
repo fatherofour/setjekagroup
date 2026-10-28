@@ -65,14 +65,18 @@ async function seedCostCodes() {
 // afterwards via PermissionsController - this is only the starting
 // default.
 const FULL_ACCESS_ROLES: ProjectMemberRole[] = [
-  'DEVELOPMENT_MANAGER', 'PROJECT_MANAGER', 'PLANNER_SCHEDULER', 'QUANTITY_SURVEYOR',
+  'DEVELOPMENT_MANAGER', 'PROJECT_MANAGER', 'PLANNER_SCHEDULER',
   'PROCUREMENT_MANAGER', 'ARCHITECT_ENGINEER', 'SITE_MANAGER', 'QA_QC_MANAGER', 'HSE_MANAGER',
 ];
-// PROCSA consultants (external firms): contribute, don't administer.
-const CONSULTANT_ROLES: ProjectMemberRole[] = ['ARCHITECT', 'STRUCTURAL_ENGINEER', 'CIVIL_ENGINEER', 'ELECTRICAL_ENGINEER', 'MECHANICAL_ENGINEER'];
+// PROCSA consultants (external firms): contribute, don't administer. The
+// QS joined them on 2026-10-28, with their own commercial work on top.
+const CONSULTANT_ROLES: ProjectMemberRole[] = ['ARCHITECT', 'STRUCTURAL_ENGINEER', 'CIVIL_ENGINEER', 'ELECTRICAL_ENGINEER', 'MECHANICAL_ENGINEER', 'QUANTITY_SURVEYOR'];
 const CONSULTANT_EDIT_MODULES: PermissionModule[] = [
   'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS', 'RFIS', 'SUBMITTALS', 'PROJECT_DEFINITION', 'MEETINGS',
 ];
+// The QS prices and values the works (bills, valuations, claims, final
+// accounts) and prepares tenders; Setjeka still awards and issues.
+const QS_EDIT_MODULES: PermissionModule[] = ['COMMERCIAL', 'PROCUREMENT'];
 const ALL_ROLES: ProjectMemberRole[] = [...FULL_ACCESS_ROLES, ...CONSULTANT_ROLES, 'CONTRACTOR', 'CLIENT', 'OTHER'];
 const ALL_MODULES: PermissionModule[] = [
   'SCHEDULE', 'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS',
@@ -91,7 +95,7 @@ function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, actio
   // Only the client approves (variations) - Meeting 3 hard rule.
   if (module === 'COMMERCIAL') {
     if (role === 'CLIENT') return action === 'VIEW' || action === 'COMMENT' || action === 'APPROVE';
-    return FULL_ACCESS_ROLES.includes(role) && action !== 'APPROVE';
+    return (FULL_ACCESS_ROLES.includes(role) || role === 'QUANTITY_SURVEYOR') && action !== 'APPROVE';
   }
   // Site photos: anyone on site can add them; outside parties edit only
   // their own (SitePhotosService). Clients see what Setjeka shares.
@@ -127,6 +131,7 @@ function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, actio
   if (CONSULTANT_ROLES.includes(role)) {
     if (action === 'VIEW' || action === 'COMMENT') return true;
     if ((action === 'CREATE' || action === 'EDIT') && CONSULTANT_EDIT_MODULES.includes(module)) return true;
+    if ((action === 'CREATE' || action === 'EDIT') && role === 'QUANTITY_SURVEYOR' && QS_EDIT_MODULES.includes(module)) return true;
     return action === 'APPROVE' && (module === 'RFIS' || module === 'SUBMITTALS');
   }
   if (role === 'CONTRACTOR') {

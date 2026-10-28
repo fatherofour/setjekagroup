@@ -47,7 +47,7 @@ const MENU: Record<GuidePersona, string> = {
   setjeka: 'Opportunities, clients and every project live here. Project screens open for the project chosen at the top.',
   architect: 'Your work is under Design & site: drawings, models, the BIM hub, authorities, instructions, inspections and the punch list. Your PROCSA list is under Projects.',
   engineer: 'Your work is under Design & site: drawings, models and the BIM hub for coordination, plus inspections. Your responsibilities sit under Projects.',
-  qs: 'Registers, documents and the drawings the architect sends you are here. Commercial figures stay with Setjeka.',
+  qs: "Your work is in each project's Commercial tab: bills and cost plans, variations, contracts, valuations and final accounts. Your PROCSA list is under Projects.",
   contractor: 'Instructions, inspections, RFIs and submittals, the punch list and site photos are your day to day.',
   client: 'Your projects, what is waiting for your approval, drawings, photos and your requests to Setjeka.',
   consultant: 'Everything for the projects you are on: meetings, documents, drawings, inspections and registers.',
@@ -95,7 +95,7 @@ export const START: Record<GuidePersona, { text: string; screen: string; tab?: s
   setjeka: { text: 'Start with My Day: your actions and what is due. Then open a project.', screen: 'my-day', href: '/my-day' },
   architect: { text: 'Start with your PROCSA list on a project: it shows what is expected of you at each stage, and ticks itself as you work.', screen: 'project.procsa', tab: 'procsa' },
   engineer: { text: 'Start with your responsibilities on a project, then the drawings and models.', screen: 'project.procsa', tab: 'procsa' },
-  qs: { text: 'Start with the project documents and the registers you keep.', screen: 'project.documents', tab: 'documents' },
+  qs: { text: 'Start with your PROCSA list on a project: what is expected of you at each stage. It ticks itself as your bills, valuations and final accounts go in.', screen: 'project.procsa', tab: 'procsa' },
   contractor: { text: 'Start with the instructions issued to you, then inspections and the punch list.', screen: 'project.instructions', tab: 'instructions' },
   client: { text: 'Start with your project: anything waiting for your approval is at the top.', screen: 'portal', href: '/portal' },
   consultant: { text: 'Start with My Day, then open your project.', screen: 'my-day', href: '/my-day' },
@@ -188,6 +188,14 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       steps: [
         s('What is expected of you', 'Every architect responsibility from Stage 1 to 6, by stage. Your current stage is open.'),
         s('It ticks itself', 'Each item ticks when your work shows it: drawings with the right purpose, a submission to the authority, an inspection done, a signed review. The note says what counts.'),
+        s('Sign off by hand', 'If you did something outside the platform, sign the item off yourself with a note.'),
+      ],
+    },
+    qs: {
+      title: 'Your PROCSA list',
+      steps: [
+        s('What is expected of you', 'Every quantity surveyor responsibility from Stage 1 to 6, by stage. Your current stage is open.'),
+        s('It ticks itself', 'Each item ticks when your work shows it: an estimate or bill issued, a variation assessed, a valuation submitted, a final account agreed. The note says what counts.'),
         s('Sign off by hand', 'If you did something outside the platform, sign the item off yourself with a note.'),
       ],
     },
@@ -390,14 +398,27 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
     setjeka: {
       title: 'Commercial',
       steps: [
-        s('Budget', 'Budget by cost code with contingency. Lock it as the approved baseline.'),
-        s('Variations', 'Raise a variation (or turn an instruction into one) and send it to the client. Only the client approves it.'),
-        s('Invoices and estimates', 'Supplier invoices against orders, estimates, and the rough estimate.'),
+        s('Budget', 'Budget by cost code with contingency, or adopt a bill the QS issued. Lock it as the approved baseline.'),
+        s('Variations', 'Raise a variation (or turn an instruction into one), let the QS assess it, and send it to the client. Only the client approves it.'),
+        s("The QS's bills", 'Accept each bill or estimate the QS issues. Tender on the bill for tender, and set up the contract from the award.'),
+        s('Certificates', "Valuations come from the QS. Once the architect has approved one, issue the payment certificate; the client approves payment, then you mark it paid."),
+      ],
+    },
+    qs: {
+      title: 'Commercial',
+      steps: [
+        s('Bills and cost plans', 'Your estimates and bills, stage by stage. Import from your own software as Excel or CSV, or work here. Issuing a revision sends it to Setjeka.'),
+        s('Variations', "Price each variation with your assessed value and link it to its contract. Setjeka sends it to the client."),
+        s('Contracts and valuations', 'Set up each contract from the awarded tender, value the work each month, and submit. The architect reviews it and Setjeka certifies it.'),
+        s('Final account and cash flow', 'Keep the final account up as the works go, and spread each contract over its months for the cash flow.'),
       ],
     },
     client: {
       title: 'Commercial',
-      steps: [s('Your budget', 'The budget, its contingency and variations. Variations wait for your approval in Approvals.')],
+      steps: [
+        s('Your budget', 'The budget, its contingency and variations. Variations wait for your approval in Approvals.'),
+        s('Payment certificates', 'Setjeka issues each certificate after the QS and the architect. Only you approve payment.'),
+      ],
     },
   },
   'project.registers': {
@@ -406,6 +427,13 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       steps: [
         s('Yours to keep', 'The finishes schedule, area schedule, handover documents and defects are kept by you.'),
         s('Yours to review', "Payment valuations and completion certificates wait for your signed review. Setjeka can't sign it for you."),
+      ],
+    },
+    qs: {
+      title: 'Registers',
+      steps: [
+        s('Yours to keep', 'The area schedule, cash flow, contractual claims and final accounts. An agreed claim goes into that contractor\'s final account.'),
+        s('Kept for you', 'Payment certificates fill in as your valuations go through; you do not enter them here.'),
       ],
     },
     all: { title: 'Registers', steps: [s('Project registers', 'Insurances, certificates, defects, handover documents and more. Each says who keeps it.')] },
@@ -587,8 +615,41 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
     },
   ],
   qs: [
-    GETTING_STARTED(),
-    { title: 'Your work', items: [tab('documents', 'Documents from the team', 'Transmittals and files for your estimates.'), tab('registers', 'Registers you keep', 'Area schedule, valuations.'), tab('meetings', 'Meetings', 'Attend and pick up actions.')] },
+    GETTING_STARTED([tab('procsa', 'Your PROCSA list', 'What is expected of you, by stage.')]),
+    {
+      title: 'Stage 2 - Concept',
+      items: [
+        tab('documents', 'Information from the team', 'Drawings and data sent to you on transmittals.'),
+        tab('commercial', 'Preliminary and elemental estimates', 'Under Bills & cost plans; issue them to Setjeka.'),
+        tab('registers', 'Area schedule', 'Audit the space against the brief.'),
+        tab('meetings', 'Design meetings', 'Attend and pick up your actions.'),
+      ],
+    },
+    {
+      title: 'Stage 3 - Design development',
+      items: [tab('commercial', 'Detailed estimate', 'Re-issue the cost plan as the design develops.'), tab('drawings', 'Design drawings', 'Check them against the budget.')],
+    },
+    {
+      title: 'Stage 4 - Documentation',
+      items: [
+        tab('commercial', 'Bill of quantities for tender', 'Pre-tender estimate, then the bill; go to tender on it.'),
+        tab('procurement', 'Tenders', 'Prices come in against your bill; compare them under Bills & cost plans.'),
+        tab('commercial', 'Contracts', 'Set up the contract from the awarded tender.'),
+      ],
+    },
+    {
+      title: 'Stage 5 - Construction',
+      items: [
+        tab('commercial', 'Valuations', 'Value the work each month and submit.'),
+        tab('commercial', 'Variations', 'Assess each one before the client decides.'),
+        tab('technical', 'RFIs with a cost', 'You are told when an RFI carries a cost.'),
+        tab('registers', 'Cash flow and claims', 'Forecast the cash flow; assess claims.'),
+      ],
+    },
+    {
+      title: 'Stage 6 - Close-out',
+      items: [tab('commercial', 'Final valuation', 'Release the retention.'), tab('commercial', 'Final account', 'Submit it; Setjeka records it agreed.')],
+    },
   ],
   contractor: [
     GETTING_STARTED(),

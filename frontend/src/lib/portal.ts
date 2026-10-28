@@ -13,6 +13,6 @@ export function clientLink(link: string, user: Pick<AuthUser, 'accountType' | 'r
   if (!m) return link;
   // Land on the matching part of the portal page where there is one.
   const tab = new URLSearchParams(link.split('?')[1] ?? '').get('tab');
-  const anchor = tab === 'photos' ? '#photos' : tab === 'documents' ? '#documents' : tab === 'meetings' ? '#meetings' : '';
+  const anchor = tab === 'photos' ? '#photos' : tab === 'documents' ? '#documents' : tab === 'meetings' ? '#meetings' : tab === 'commercial' ? '#approvals' : '';
   return `/portal/projects/${m[1]}${anchor}`;
 }

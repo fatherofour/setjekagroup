@@ -83,8 +83,25 @@ export class RfisService {
     });
 
     await this.notifyBallInCourt(projectId, rfi.id, rfi.title, dto.assignedToId);
+    if (dto.costImpactPotential || dto.costImpactConfirmed) await this.notifyQs(projectId, rfi.id, rfi.rfiNumber, rfi.title, dto.costImpactConfirmed ?? dto.costImpactPotential!, Boolean(dto.costImpactConfirmed));
 
     return this.getOne(projectId, rfi.id);
+  }
+
+  /** An RFI that carries a cost brings the quantity surveyor in (Feature
+   * Register Review: "the QS also needs to be involved"). */
+  private async notifyQs(projectId: string, rfiId: string, rfiNumber: string, title: string, amount: number, confirmed: boolean) {
+    const qs = await this.prisma.projectMember.findMany({ where: { projectId, role: 'QUANTITY_SURVEYOR', userId: { not: null } }, select: { userId: true } });
+    for (const userId of new Set(qs.map((m) => m.userId))) {
+      await this.notifications.notify({
+        userId,
+        projectId,
+        type: 'RFI_COST_IMPACT',
+        entityType: 'RFI',
+        entityId: rfiId,
+        message: `${rfiNumber} "${title}" has a ${confirmed ? 'confirmed' : 'potential'} cost impact of ${amount.toLocaleString('en-ZA')}: please assess it`,
+      });
+    }
   }
 
   private async notifyBallInCourt(projectId: string, rfiId: string, title: string, memberId: string | null | undefined) {
@@ -138,6 +155,9 @@ export class RfisService {
     });
 
     if (reassigned) await this.notifyBallInCourt(projectId, id, dto.title ?? existing.title, nextBallInCourtId);
+    const costNow = dto.costImpactConfirmed ?? dto.costImpactPotential;
+    const costChanged = (dto.costImpactConfirmed !== undefined && dto.costImpactConfirmed !== existing.costImpactConfirmed) || (dto.costImpactPotential !== undefined && dto.costImpactPotential !== existing.costImpactPotential);
+    if (costNow && costChanged) await this.notifyQs(projectId, id, existing.rfiNumber, dto.title ?? existing.title, costNow, dto.costImpactConfirmed != null);
 
     return this.getOne(projectId, id);
   }

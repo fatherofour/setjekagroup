@@ -45,6 +45,24 @@ interface PortalProject {
     documents: { id: string; key: string; title: string; version: number; submittedAt: string | null; submittedBy: string | null; note: string | null; dueAt: string | null }[];
     variations: { id: string; number: string; title: string; description: string | null; reason: string; value: number; timeImpactDays: number | null; raisedBy: string; submittedAt: string | null; dueAt: string | null }[];
     stageGate: { id: string; fromStage: string; toStage: string; comment: string | null; requestedBy: string; requestedAt: string; dueAt: string | null } | null;
+    certificates?: {
+      id: string;
+      certificateNumber: string | null;
+      contract: string;
+      contractor: string;
+      currency: string;
+      valuationDate: string;
+      grossValuation: number;
+      retention: number;
+      previouslyCertified: number;
+      netDue: number;
+      vat: number;
+      amountDue: number;
+      isFinal: boolean;
+      certifiedBy: string | null;
+      certifiedAt: string | null;
+      dueAt: string | null;
+    }[];
     drawings: {
       id: string;
       documentId: string;
@@ -176,7 +194,8 @@ export default function ClientProjectPage() {
 
   const { project, programme, commercial, approvals } = data;
   const stageIdx = PROJECT_STAGES.findIndex((s) => s.value === project.stage);
-  const waiting = approvals.documents.length + approvals.variations.length + approvals.drawings.length + (approvals.stageGate ? 1 : 0);
+  const certificates = approvals.certificates ?? [];
+  const waiting = approvals.documents.length + approvals.variations.length + approvals.drawings.length + certificates.length + (approvals.stageGate ? 1 : 0);
   const completion = project.endDate ?? programme?.finish ?? null;
   const upcomingMeetings = data.meetings.filter((m) => m.status === 'SCHEDULED');
   const pastMeetings = data.meetings.filter((m) => m.minutesIssuedAt);
@@ -239,7 +258,7 @@ export default function ClientProjectPage() {
       </div>
 
       {waiting > 0 && (
-        <section className={`${card} ring-2 ring-amber-300 dark:ring-amber-800`}>
+        <section id="approvals" className={`${card} scroll-mt-20 ring-2 ring-amber-300 dark:ring-amber-800`}>
           <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-slate-100">
             <Stamp size={18} className="text-amber-600" />
             Waiting for your decision ({waiting})
@@ -270,6 +289,34 @@ export default function ClientProjectPage() {
                 </p>
               </Decision>
             )}
+            {certificates.map((v) => (
+              <Decision
+                key={v.id}
+                label={`Payment certificate ${v.certificateNumber ?? ''}${v.isFinal ? ' (final)' : ''}`}
+                dueAt={v.dueAt}
+                onDecide={() =>
+                  setDeciding({
+                    title: `Payment certificate ${v.certificateNumber}: ${v.contractor}`,
+                    context: `${formatRate(v.amountDue, v.currency)} due, including VAT`,
+                    endpoint: `/projects/${id}/qs/valuations/${v.id}/decide`,
+                    method: 'POST',
+                    subjectId: v.id,
+                    dueAt: v.dueAt,
+                  })
+                }
+              >
+                <p className="font-medium">
+                  {v.contractor} · {v.contract}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">{formatRate(v.amountDue, v.currency)}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Work valued to date {formatRate(v.grossValuation, v.currency)}, less retention {formatRate(v.retention, v.currency)} and {formatRate(v.previouslyCertified, v.currency)} certified before, plus VAT {formatRate(v.vat, v.currency)}.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Prepared by the quantity surveyor, reviewed by the architect and issued by {v.certifiedBy ?? 'Setjeka'}. Approving releases payment to the contractor.
+                </p>
+              </Decision>
+            ))}
             {approvals.variations.map((v) => (
               <Decision
                 key={v.id}

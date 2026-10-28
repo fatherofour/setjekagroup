@@ -27,6 +27,7 @@ interface Variation {
   timeImpactDays: number | null;
   costCode: { id: string; code: string; name: string } | null;
   rfi: { id: string; rfiNumber: string; title: string } | null;
+  contract: { id: string; title: string; contractor: { name: string } } | null;
   raisedBy: { fullName: string };
   assessedBy: { fullName: string } | null;
   decidedBy: { fullName: string } | null;
@@ -61,16 +62,17 @@ const value = (v: Variation) => v.assessedValue ?? v.estimatedValue;
 /** Register COM "Variation/change order": raised and assessed by Setjeka
  * (the QS prices it), decided by the client alone. An approved variation
  * draws the contingency down. */
-export function VariationsPanel({ projectId, currency, isClient, onChanged }: { projectId: string; currency: string; isClient: boolean; onChanged: () => void }) {
+export function VariationsPanel({ projectId, currency, isClient, onChanged, internal = true }: { projectId: string; currency: string; isClient: boolean; onChanged: () => void; internal?: boolean }) {
   const { authedFetch } = useAuth();
   const [deciding, setDeciding] = useState<Variation | null>(null);
   const [signed, setSigned] = useState(0);
   const [rows, setRows] = useState<Variation[] | null>(null);
   const [codes, setCodes] = useState<CostCode[]>([]);
   const [rfis, setRfis] = useState<{ id: string; rfiNumber: string; title: string }[]>([]);
+  const [contracts, setContracts] = useState<{ id: string; title: string; contractor: { name: string } }[]>([]);
   const [open, setOpen] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', reason: 'CLIENT_INSTRUCTION' as Reason, estimatedValue: '', timeImpactDays: '', costCodeId: '', rfiId: '' });
+  const [form, setForm] = useState({ title: '', description: '', reason: 'CLIENT_INSTRUCTION' as Reason, estimatedValue: '', timeImpactDays: '', costCodeId: '', rfiId: '', contractId: '' });
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const base = `/projects/${projectId}/commercial/variations`;
@@ -85,6 +87,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
     if (!isClient) {
       authedFetch<CostCode[]>('/cost-codes').then(setCodes).catch(() => {});
       authedFetch<{ id: string; rfiNumber: string; title: string }[]>(`/projects/${projectId}/rfis`).then(setRfis).catch(() => {});
+      authedFetch<{ id: string; title: string; contractor: { name: string } }[]>(`/projects/${projectId}/qs/contracts`).then(setContracts).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, isClient]);
@@ -113,11 +116,12 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
           timeImpactDays: form.timeImpactDays ? Number(form.timeImpactDays) : undefined,
           costCodeId: form.costCodeId || undefined,
           rfiId: form.rfiId || undefined,
+          contractId: form.contractId || undefined,
         },
       }),
     );
     setCreating(false);
-    setForm({ title: '', description: '', reason: 'CLIENT_INSTRUCTION', estimatedValue: '', timeImpactDays: '', costCodeId: '', rfiId: '' });
+    setForm({ title: '', description: '', reason: 'CLIENT_INSTRUCTION', estimatedValue: '', timeImpactDays: '', costCodeId: '', rfiId: '', contractId: '' });
   }
 
   const input = (id: string, key: string) => inputs[`${id}:${key}`] ?? '';
@@ -139,7 +143,9 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
             <p className="mt-1 max-w-2xl text-xs text-slate-500 dark:text-slate-400">
               {isClient
                 ? 'Changes to the works that need your decision. Approving one adds it to the budget, funded from the contingency. Only you can approve or reject.'
-                : 'Raise a variation, have the QS assess its value, then send it to the client. Only the client can approve or reject it; once approved it draws on the contingency.'}
+                : internal
+                  ? 'Raise a variation, have the QS assess its value, then send it to the client. Only the client can approve or reject it; once approved it draws on the contingency.'
+                  : 'Raise a variation or price one Setjeka raised: record your assessed value before Setjeka sends it to the client. Link it to its contract so it comes into the valuations and the final account.'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               {pending.length} awaiting the client · approved so far {formatRate(approvedTotal, currency)}
@@ -184,6 +190,12 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                 Arising from RFI
               </label>
               <Select id="vo-rfi" value={form.rfiId} onChange={(v) => setForm({ ...form, rfiId: v, reason: v ? 'RFI' : form.reason })} options={[{ value: '', label: '—' }, ...rfis.map((r) => ({ value: r.id, label: `${r.rfiNumber} ${r.title}` }))]} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="vo-contract">
+                Contract
+              </label>
+              <Select id="vo-contract" value={form.contractId} onChange={(v) => setForm({ ...form, contractId: v })} options={[{ value: '', label: 'Not yet' }, ...contracts.map((c) => ({ value: c.id, label: `${c.title} · ${c.contractor.name}` }))]} className={inputClass} />
             </div>
             <div>
               <label className={labelClass} htmlFor="vo-days">
@@ -232,6 +244,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                   <p className="text-xs text-slate-500">
                     {REASON_LABEL[v.reason]} · {costCodeLabel(v.costCode)}
                     {v.rfi && ` · ${v.rfi.rfiNumber}`}
+                    {v.contract && ` · ${v.contract.title} (${v.contract.contractor.name})`}
                     {v.timeImpactDays != null && ` · ${v.timeImpactDays} day${Math.abs(v.timeImpactDays) === 1 ? '' : 's'} time impact`}
                     {' · '}estimated {formatRate(v.estimatedValue)}
                     {v.assessedValue != null && `, assessed ${formatRate(v.assessedValue)}${v.assessedBy ? ` by ${v.assessedBy.fullName}` : ''}`}
@@ -255,19 +268,23 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                       <button type="button" disabled={input(v.id, 'assess') === ''} onClick={() => run(() => authedFetch(`${base}/${v.id}/assess`, { method: 'POST', body: { assessedValue: Number(input(v.id, 'assess')) } }))} className={secondaryButton}>
                         Record assessment
                       </button>
-                      <div>
-                        <label className={labelClass} htmlFor={`due-${v.id}`}>
-                          Client to respond by
-                        </label>
-                        <input id={`due-${v.id}`} type="date" min={todayInput()} className={inputClass} value={input(v.id, 'due') || defaultDueDate()} onChange={(e) => setInput(v.id, 'due', e.target.value)} />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => run(() => authedFetch(`${base}/${v.id}/submit`, { method: 'POST', body: { responseDueAt: input(v.id, 'due') || defaultDueDate() } }))}
-                        className={primaryButton}
-                      >
-                        Send to the client
-                      </button>
+                      {internal && (
+                        <>
+                          <div>
+                            <label className={labelClass} htmlFor={`due-${v.id}`}>
+                              Client to respond by
+                            </label>
+                            <input id={`due-${v.id}`} type="date" min={todayInput()} className={inputClass} value={input(v.id, 'due') || defaultDueDate()} onChange={(e) => setInput(v.id, 'due', e.target.value)} />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => run(() => authedFetch(`${base}/${v.id}/submit`, { method: 'POST', body: { responseDueAt: input(v.id, 'due') || defaultDueDate() } }))}
+                            className={primaryButton}
+                          >
+                            Send to the client
+                          </button>
+                        </>
+                      )}
                       <button type="button" onClick={() => confirm(`Delete draft ${v.number}?`) && run(() => authedFetch(`${base}/${v.id}`, { method: 'DELETE' }))} className={secondaryButton}>
                         Delete
                       </button>
@@ -276,9 +293,25 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                   {!isClient && v.status === 'SUBMITTED' && (
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="flex-1 text-xs text-slate-500">Waiting for the client&apos;s decision. Setjeka cannot approve on the client&apos;s behalf.</p>
-                      <button type="button" onClick={() => run(() => authedFetch(`${base}/${v.id}/withdraw`, { method: 'POST', body: {} }))} className={secondaryButton}>
-                        Withdraw
-                      </button>
+                      {internal && (
+                        <button type="button" onClick={() => run(() => authedFetch(`${base}/${v.id}/withdraw`, { method: 'POST', body: {} }))} className={secondaryButton}>
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!isClient && contracts.length > 0 && v.status !== 'WITHDRAWN' && (
+                    <div className="w-72">
+                      <label className={labelClass} htmlFor={`contract-${v.id}`}>
+                        Contract it varies
+                      </label>
+                      <Select
+                        id={`contract-${v.id}`}
+                        value={v.contract?.id ?? ''}
+                        onChange={(c) => run(() => authedFetch(`${base}/${v.id}`, { method: 'PATCH', body: { contractId: c || null } }))}
+                        options={[{ value: '', label: 'Not linked' }, ...contracts.map((c) => ({ value: c.id, label: `${c.title} · ${c.contractor.name}` }))]}
+                        className={inputClass}
+                      />
                     </div>
                   )}
                   {isClient && v.status === 'SUBMITTED' && (

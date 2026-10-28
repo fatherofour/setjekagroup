@@ -28,7 +28,7 @@ interface Budget {
 /** Register COM "Project budget": the approved budget by cost code, with
  * contingency held separately (Meeting 002, 2.5). Locked once approved;
  * after that it only moves through variations. */
-export function BudgetPanel({ projectId, onChanged }: { projectId: string; onChanged: () => void }) {
+export function BudgetPanel({ projectId, onChanged, internal = true }: { projectId: string; onChanged: () => void; internal?: boolean }) {
   const { authedFetch } = useAuth();
   const [data, setData] = useState<Budget | null>(null);
   const [codes, setCodes] = useState<CostCode[]>([]);
@@ -88,15 +88,19 @@ export function BudgetPanel({ projectId, onChanged }: { projectId: string; onCha
                 <>
                   {' '}
                   From estimate{' '}
-                  <Link href={`/estimates/${data.budget.sourceEstimate.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-                    {data.budget.sourceEstimate.reference}
-                  </Link>
+                  {internal ? (
+                    <Link href={`/estimates/${data.budget.sourceEstimate.id}`} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                      {data.budget.sourceEstimate.reference}
+                    </Link>
+                  ) : (
+                    data.budget.sourceEstimate.reference
+                  )}
                   .
                 </>
               )}
             </p>
           </div>
-          {locked ? (
+          {!internal ? null : locked ? (
             <button type="button" onClick={() => confirm('Unlock the budget for editing?') && run(() => authedFetch<Budget>(`${base}/unlock`, { method: 'POST' }))} className={secondaryButton}>
               <Unlock size={14} />
               Unlock

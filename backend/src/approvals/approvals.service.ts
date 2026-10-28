@@ -6,7 +6,7 @@ import { isExecutive } from '../auth/executive.js';
 import type { PermissionModule } from '../generated/prisma/enums.js';
 
 export interface ApprovalItem {
-  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION';
+  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
   id: string;
   title: string;
   context: string;
@@ -111,6 +111,24 @@ export class ApprovalsService {
           projectId: v.projectId,
         });
       }
+      // Payment certificates issued by Setjeka, for the client to approve.
+      const certificates = await this.prisma.valuation.findMany({
+        where: { status: 'CERTIFIED', project: { members: { some: { userId, role: 'CLIENT' } } } },
+        include: { project: { select: { id: true, name: true, projectCode: true } }, contract: { select: { currency: true, contractor: { select: { name: true } } } }, certifiedBy: { select: { fullName: true } } },
+      });
+      for (const v of certificates) {
+        items.push({
+          kind: 'PAYMENT_CERTIFICATE',
+          id: v.id,
+          title: `Payment certificate ${v.certificateNumber}: ${v.contract.contractor.name} (${v.contract.currency} ${v.amountDue.toLocaleString('en-ZA')})`,
+          context: projectLabel(v.project),
+          href: `/projects/${v.projectId}?tab=commercial&ctab=contracts`,
+          requestedBy: v.certifiedBy?.fullName ?? null,
+          requestedAt: v.certifiedAt,
+          dueAt: v.responseDueAt,
+          projectId: v.projectId,
+        });
+      }
       // Drawings and documents sent for the client's approval and signature.
       const docs = await this.prisma.documentApprovalRequest.findMany({
         where: { status: 'PENDING', project: { members: { some: { userId, role: 'CLIENT' } } } },
@@ -131,6 +149,28 @@ export class ApprovalsService {
           requestedAt: r.createdAt,
           dueAt: r.responseDueAt,
           projectId: r.projectId,
+        });
+      }
+    }
+
+    // Valuations from the QS waiting for Setjeka's Project Manager to issue
+    // the certificate (the user's decision, 28 Oct 2026).
+    if (internal) {
+      const valuations = await this.prisma.valuation.findMany({
+        where: { status: 'SUBMITTED', preparedById: { not: userId }, project: { members: { some: { userId, role: { in: ['PROJECT_MANAGER', 'DEVELOPMENT_MANAGER'] } } } } },
+        include: { project: { select: { id: true, name: true, projectCode: true } }, contract: { select: { title: true, currency: true } }, preparedBy: { select: { fullName: true } } },
+      });
+      for (const v of valuations) {
+        items.push({
+          kind: 'VALUATION',
+          id: v.id,
+          title: `Certify valuation ${v.number}: ${v.contract.title} (${v.contract.currency} ${v.amountDue.toLocaleString('en-ZA')})`,
+          context: projectLabel(v.project),
+          href: `/projects/${v.projectId}?tab=commercial&ctab=contracts`,
+          requestedBy: v.preparedBy.fullName,
+          requestedAt: v.submittedAt,
+          dueAt: null,
+          projectId: v.projectId,
         });
       }
     }

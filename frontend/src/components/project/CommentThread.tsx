@@ -25,7 +25,10 @@ type CommentEntityType =
   | 'INSPECTION'
   | 'CONSENT'
   | 'PUNCH_ITEM'
-  | 'CLASH';
+  | 'CLASH'
+  | 'COST_PLAN'
+  | 'PROJECT_CONTRACT'
+  | 'VALUATION';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

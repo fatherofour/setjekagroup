@@ -25,6 +25,7 @@ const PERSON = { select: { fullName: true } } as const;
 const VARIATION_INCLUDE = {
   costCode: CODE,
   rfi: { select: { id: true, rfiNumber: true, title: true } },
+  contract: { select: { id: true, title: true, contractor: { select: { name: true } } } },
   raisedBy: PERSON,
   assessedBy: PERSON,
   decidedBy: PERSON,
@@ -54,6 +55,14 @@ export class CommercialService {
     private readonly costs: CostDatabaseService,
     private readonly signoff: SignoffService,
   ) {}
+
+  /** Setjeka's own steps. The QS (an outside firm since 28 Oct 2026) prices
+   * budgets and variations but doesn't lock the budget, send to the client
+   * or pass supplier invoices for payment. */
+  private async assertSetjeka(userId: string, what: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+    if (u?.role !== 'ADMIN' && u?.accountType !== 'INTERNAL') throw new ForbiddenException(`Only Setjeka ${what}`);
+  }
 
   private async project(projectId: string) {
     const p = await this.prisma.project.findUnique({ where: { id: projectId }, select: { id: true, name: true, currency: true, contingencyPct: true } });
@@ -127,6 +136,7 @@ export class CommercialService {
   }
 
   async lockBudget(projectId: string, userId: string, lock: boolean) {
+    await this.assertSetjeka(userId, lock ? 'locks the budget' : 'unlocks the budget');
     await this.project(projectId);
     if (lock && !(await this.prisma.budgetLine.count({ where: { projectId } }))) throw new BadRequestException('Add budget lines before locking the budget');
     await this.budgetRow(projectId);
@@ -152,8 +162,9 @@ export class CommercialService {
     return `VO-${String(max + 1).padStart(3, '0')}`;
   }
 
-  private async checkLinks(projectId: string, dto: { rfiId?: string | null; costCodeId?: string | null }) {
+  private async checkLinks(projectId: string, dto: { rfiId?: string | null; costCodeId?: string | null; contractId?: string | null }) {
     if (dto.rfiId && !(await this.prisma.rfi.findFirst({ where: { id: dto.rfiId, projectId } }))) throw new BadRequestException('RFI not found on this project');
+    if (dto.contractId && !(await this.prisma.projectContract.findFirst({ where: { id: dto.contractId, projectId } }))) throw new BadRequestException('Contract not found on this project');
     if (dto.costCodeId) await this.assertCode(dto.costCodeId);
   }
 
@@ -177,7 +188,10 @@ export class CommercialService {
 
   async updateVariation(projectId: string, id: string, dto: UpdateVariationDto) {
     const v = await this.variation(projectId, id);
-    if (v.status !== 'DRAFT') throw new BadRequestException('Only a draft variation can be edited. Withdraw it and raise a new one.');
+    // Which contract it belongs to can be set at any time, so the QS can
+    // carry it into that contract's valuations and final account.
+    const onlyContract = Object.keys(dto).every((k) => k === 'contractId');
+    if (v.status !== 'DRAFT' && !onlyContract) throw new BadRequestException('Only a draft variation can be edited. Withdraw it and raise a new one.');
     await this.checkLinks(projectId, dto);
     await this.prisma.variation.update({ where: { id }, data: dto });
     return this.variation(projectId, id);
@@ -209,6 +223,7 @@ export class CommercialService {
   }
 
   async submitVariation(projectId: string, id: string, userId: string, comment?: string, responseDueAt?: string) {
+    await this.assertSetjeka(userId, 'sends a variation to the client');
     const due = responseDue(responseDueAt);
     const v = await this.transition(projectId, id, userId, ['DRAFT'], 'SUBMITTED', comment, { submittedAt: new Date(), responseDueAt: due });
     const project = await this.project(projectId);
@@ -351,6 +366,7 @@ export class CommercialService {
   }
 
   async approveInvoice(projectId: string, id: string, userId: string) {
+    await this.assertSetjeka(userId, 'approves supplier invoices');
     const inv = await this.invoice(projectId, id);
     if (inv.status !== 'RECEIVED') throw new BadRequestException('Only a received invoice can be approved');
     if (inv.recordedById === userId) throw new ForbiddenException('Someone other than the person who recorded the invoice must approve it');
@@ -358,7 +374,8 @@ export class CommercialService {
     return this.invoice(projectId, id);
   }
 
-  async payInvoice(projectId: string, id: string, dto: PayInvoiceDto) {
+  async payInvoice(projectId: string, id: string, userId: string, dto: PayInvoiceDto) {
+    await this.assertSetjeka(userId, 'records invoice payments');
     const inv = await this.invoice(projectId, id);
     if (inv.status !== 'APPROVED') throw new BadRequestException('Approve the invoice before marking it paid');
     await this.prisma.supplierInvoice.update({
@@ -368,7 +385,8 @@ export class CommercialService {
     return this.invoice(projectId, id);
   }
 
-  async rejectInvoice(projectId: string, id: string, dto: RejectInvoiceDto) {
+  async rejectInvoice(projectId: string, id: string, userId: string, dto: RejectInvoiceDto) {
+    await this.assertSetjeka(userId, 'rejects supplier invoices');
     const inv = await this.invoice(projectId, id);
     if (inv.status === 'PAID') throw new BadRequestException('A paid invoice cannot be rejected');
     await this.prisma.supplierInvoice.update({ where: { id }, data: { status: 'REJECTED', rejectionReason: dto.reason.trim() } });

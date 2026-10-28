@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { cardClass } from '@/lib/stage0';
 import { dueLabel, dueTone } from '@/lib/signoff';
 
-type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION';
+type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
 
 interface ApprovalItem {
   kind: Kind;
@@ -29,6 +29,8 @@ const KIND_LABEL: Record<Kind, string> = {
   STAGE0_PAYMENT: 'Stage 0 payment',
   VARIATION: 'Variation',
   DOCUMENT_REVISION: 'Drawing / document',
+  PAYMENT_CERTIFICATE: 'Payment certificate',
+  VALUATION: 'Valuation to certify',
 };
 
 const KIND_TONE: Record<Kind, string> = {
@@ -38,6 +40,8 @@ const KIND_TONE: Record<Kind, string> = {
   STAGE0_PAYMENT: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   VARIATION: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
   DOCUMENT_REVISION: 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+  PAYMENT_CERTIFICATE: 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+  VALUATION: 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
 };
 
 /** Register COL "Approval center" / CLI "Client approvals": everything
@@ -56,7 +60,7 @@ export default function ApprovalsPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Approvals</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Everything waiting for your decision, soonest deadline first: investment decisions and Stage 0 payments, Stage 1 documents, variations, drawings and stage-gate requests.</p>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Everything waiting for your decision, soonest deadline first: investment decisions and Stage 0 payments, Stage 1 documents, variations, payment certificates, drawings and stage-gate requests.</p>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
 

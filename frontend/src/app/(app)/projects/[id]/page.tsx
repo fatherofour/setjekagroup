@@ -128,8 +128,9 @@ export default function ProjectDetailPage() {
       .catch(() => {});
   }, [authedFetch, id, isExternal, user]);
   const clientByRole = mine?.projectId === id && mine.roles.includes('CLIENT');
-  // Budgets, variations and fees: Setjeka staff and the client only.
-  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId) || clientByRole;
+  const qsByRole = mine?.projectId === id && mine.roles.includes('QUANTITY_SURVEYOR');
+  // Budgets, variations and fees: Setjeka staff, the QS and the client.
+  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId) || clientByRole || qsByRole;
   const isClient = isExternal && (Boolean(user?.clientId) || clientByRole);
   // Until an outside party's role here is known, client-hidden screens wait.
   const roleKnown = !isExternal || Boolean(user?.clientId) || mine?.projectId === id;
@@ -492,7 +493,7 @@ export default function ProjectDetailPage() {
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}
       {tab === 'registers' && <RegistersPanel key={searchParams.get('register') ?? 'registers'} projectId={project.id} initial={searchParams.get('register') ?? undefined} />}
       {tab === 'photos' && <SitePhotosPanel projectId={project.id} />}
-      {tab === 'commercial' && seesCommercial && <ProjectCommercial projectId={project.id} currency={project.currency} />}
+      {tab === 'commercial' && seesCommercial && <ProjectCommercial projectId={project.id} currency={project.currency} isClient={isClient} internal={!isExternal || user?.role === 'ADMIN'} />}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
       {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}
     </div>

@@ -1,4 +1,4 @@
-import type { CommunicationKind, ConsentEventKind, InspectionKind, IssuePurpose, ProjectMemberRole, ProjectStage, ReportKind } from '../generated/prisma/enums.js';
+import type { CommunicationKind, ConsentEventKind, CostPlanKind, InspectionKind, IssuePurpose, ProjectMemberRole, ProjectStage, ReportKind } from '../generated/prisma/enums.js';
 
 /** PROCSA Stages 2 to 6 for the Development Manager and the Project Manager
  * (the user's direction, 25 Oct 2026: make sure both roles' responsibilities
@@ -43,6 +43,13 @@ export type DeliveryEvidence =
   | { kind: 'transmittalsByRole' }
   | { kind: 'registerReviewed'; register: string; category?: string[] }
   | { kind: 'punchItems'; closed?: boolean }
+  // The QS's own work (2026-10-28).
+  | { kind: 'costPlans'; kinds?: CostPlanKind[]; minRevision?: number; byRole?: boolean }
+  | { kind: 'transmittalsReceived' }
+  | { kind: 'variationsAssessed'; byRole?: boolean }
+  | { kind: 'tenders'; status: string[] }
+  | { kind: 'contracts' }
+  | { kind: 'valuations'; status: string[]; final?: boolean; byRole?: boolean }
   | { kind: 'any'; of: DeliveryEvidence[] }
   | { kind: 'all'; of: DeliveryEvidence[] }
   | { kind: 'manual' };
@@ -64,7 +71,7 @@ export interface DeliveryItem {
 }
 
 export interface DeliveryRole {
-  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT';
+  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR';
   label: string;
   memberRoles: ProjectMemberRole[];
   items: DeliveryItem[];
@@ -381,9 +388,70 @@ const ARCHITECT_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
   ],
 };
 
+// PROCSA Quantity Surveyor, Stages 2 to 6 (the user, 28 Oct 2026: the QS
+// does their work in the platform). Text as in the client's PROCSA
+// Responsibility Matrix. Most items tick from the QS's own records: bills
+// and estimates issued, variations assessed, valuations, final accounts.
+const QS_ROLES: ProjectMemberRole[] = ['QUANTITY_SURVEYOR'];
+const BILLS = tab('commercial', 'Bills & cost plans');
+const CONTRACTS = tab('commercial', 'Contracts & valuations');
+const QS_LIAISE: DeliveryEvidence = { kind: 'any', of: [{ kind: 'transmittalsByRole' }, { kind: 'communications', kinds: ['CORRESPONDENCE'], byRole: true }, { kind: 'costPlans', byRole: true }] };
+const VIABILITY: DeliveryEvidence = { kind: 'any', of: [{ kind: 'document', match: /viability|feasibility/i }, { kind: 'register', register: 'finance' }] };
+const RECEIVED: DeliveryEvidence = { kind: 'transmittalsReceived' };
+const QS_CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'];
+
+const QS_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
+  CONCEPT: [
+    { code: '2.1', text: 'Agree the documentation programme with the principal consultant and other consultants', evidence: { kind: 'docProgramme' }, tickedBy: 'Drawings planned on the documentation programme', go: DRAWINGS },
+    { code: '2.2', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '2.3', text: 'Review and evaluate design concepts and advise on viability in conjunction with the other consultants', evidence: { kind: 'any', of: [{ kind: 'costPlans', kinds: ['PRELIMINARY', 'ELEMENTAL'], byRole: true }, { kind: 'communications', kinds: ['CORRESPONDENCE'], byRole: true }] }, tickedBy: 'A preliminary or elemental estimate issued, or written advice from the QS', go: BILLS },
+    { code: '2.4', text: 'Receive relevant data and cost estimates from the other consultants', evidence: RECEIVED, tickedBy: 'Information sent to the QS on a transmittal', go: tab('documents', 'Transmittals') },
+    { code: '2.5', text: 'Prepare preliminary and elemental or equivalent estimates of construction cost', evidence: { kind: 'costPlans', kinds: ['PRELIMINARY', 'ELEMENTAL'], byRole: true }, tickedBy: 'A preliminary or elemental estimate issued', go: BILLS },
+    { code: '2.6', text: 'Assist the client in preparing a financial viability report', evidence: VIABILITY, tickedBy: 'A viability report on file, or a finance facility being prepared', go: tab('documents', 'Documents') },
+    { code: '2.7', text: 'Audit space allocation against the initial brief', evidence: { kind: 'register', register: 'area-schedule' }, tickedBy: 'Spaces and brief areas on the area schedule', go: reg('area-schedule', 'Area schedule') },
+    { code: '2.8', text: 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants', evidence: QS_LIAISE, tickedBy: 'A transmittal, letter or bill from the QS', go: tab('instructions', 'Instructions') },
+  ],
+  DESIGN: [
+    { code: '3.1', text: 'Review the documentation programme with the principal consultant and other consultants', evidence: { kind: 'docProgramme' }, tickedBy: 'Drawings planned on the documentation programme', go: DRAWINGS },
+    { code: '3.2', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '3.3', text: 'Review and evaluate design and outline specifications and exercise cost control in conjunction with the other consultants', evidence: { kind: 'costPlans', minRevision: 2, byRole: true }, tickedBy: 'A cost plan re-issued as the design developed', go: BILLS },
+    { code: '3.4', text: 'Receive relevant data and cost estimates from the other consultants', evidence: RECEIVED, tickedBy: 'Information sent to the QS on a transmittal', go: tab('documents', 'Transmittals') },
+    { code: '3.5', text: 'Prepare detailed estimates of construction cost', evidence: { kind: 'costPlans', kinds: ['DETAILED'], byRole: true }, tickedBy: 'A detailed estimate issued', go: BILLS },
+    { code: '3.6', text: 'Assist the client in reviewing the financial viability report', evidence: VIABILITY, tickedBy: 'A viability report on file, or a finance facility being prepared', go: tab('documents', 'Documents') },
+    { code: '3.7', text: 'Comment on space and accommodation allowances and prepare an area schedule', evidence: { kind: 'register', register: 'area-schedule' }, tickedBy: 'Spaces on the area schedule', go: reg('area-schedule', 'Area schedule') },
+    { code: '3.8', text: 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants', evidence: QS_LIAISE, tickedBy: 'A transmittal, letter or bill from the QS', go: tab('instructions', 'Instructions') },
+  ],
+  DOCUMENTATION_PROCUREMENT: [
+    { code: '4.1', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '4.2', text: 'Assist the principal consultant in the formulation of the procurement strategy for contractors, subcontractors and suppliers', evidence: { kind: 'procurementPolicy' }, tickedBy: 'The procurement policy (delivery strategy) on file', go: tab('inception', 'Procurement policy') },
+    { code: '4.3', text: 'Review working drawings for compliance with the approved budget of construction cost and/or financial viability', evidence: { kind: 'costPlans', kinds: ['PRE_TENDER'], byRole: true }, tickedBy: 'A pre-tender estimate issued', go: BILLS },
+    { code: '4.4', text: 'Prepare documentation for both principal and subcontract procurement', evidence: { kind: 'costPlans', kinds: ['TENDER_BOQ'], byRole: true }, tickedBy: 'A bill of quantities for tender issued', go: BILLS },
+    { code: '4.5', text: 'Assist the principal consultant with calling of tenders and / or negotiation of prices', evidence: { kind: 'tenders', status: ['ISSUED', 'CLOSED', 'AWARDED'] }, tickedBy: 'A tender on the bill of quantities issued', go: tab('procurement', 'Procurement') },
+    { code: '4.6', text: 'Assist with financial evaluation of tenders', evidence: { kind: 'tenders', status: ['CLOSED', 'AWARDED'] }, tickedBy: 'Tenders on the bill closed or awarded, with the comparison on the bill', go: BILLS },
+    { code: '4.7', text: 'Assist with the preparation of contract documentation for signature', evidence: { kind: 'contracts' }, tickedBy: 'A contract set up with its sum and retention terms', go: CONTRACTS },
+  ],
+  CONSTRUCTION: [
+    { code: '5.1', text: 'Attend the site handover', evidence: { kind: 'register', register: 'certificates', category: ['SITE_HANDOVER'] }, tickedBy: 'The site handover recorded', go: reg('certificates', 'Handover and completion') },
+    { code: '5.2', text: 'Prepare schedules of predicted cash flow', evidence: { kind: 'register', register: 'cash-flow' }, tickedBy: 'A cash flow forecast on the register', go: reg('cash-flow', 'Cash flow') },
+    { code: '5.3', text: 'Prepare pro-active estimates for proposed variations for client decision-making', evidence: { kind: 'variationsAssessed', byRole: true }, tickedBy: 'A variation assessed by the QS', go: tab('commercial', 'Variations') },
+    { code: '5.4', text: 'Attend regular site, technical and progress meetings', evidence: { kind: 'meetingsAttended', types: ['SITE'] }, tickedBy: 'Marked present at a site meeting', go: MEET },
+    { code: '5.5', text: 'Adjudicate and resolve financial claims by the contractor(s)', evidence: { kind: 'register', register: 'claims', status: ['RECOMMENDED', 'AGREED', 'REJECTED'] }, tickedBy: 'A claim recommended or settled', go: reg('claims', 'Contractual claims') },
+    { code: '5.6', text: 'Assist in the resolution of contractual claims by the contractor(s)', evidence: { kind: 'register', register: 'claims' }, tickedBy: 'Claims on the register', go: reg('claims', 'Contractual claims') },
+    { code: '5.7', text: 'Establish and maintain a financial control system', evidence: { kind: 'all', of: [{ kind: 'budgetLocked' }, { kind: 'contracts' }] }, tickedBy: 'The budget locked and contracts set up, so the cost report tracks them', go: tab('commercial', 'Cost report') },
+    { code: '5.8', text: 'Prepare valuations for payment certificates to be issued by the principal agent', evidence: { kind: 'valuations', status: ['SUBMITTED', ...QS_CERTIFIED, 'REJECTED'], byRole: true }, tickedBy: 'A valuation submitted by the QS', go: CONTRACTS },
+    { code: '5.9', text: 'Prepare final account(s) for the works on a progressive basis', evidence: { kind: 'register', register: 'final-accounts' }, tickedBy: 'A final account in preparation', go: CONTRACTS },
+  ],
+  CLOSEOUT: [
+    { code: '6.1', text: 'Prepare valuations for payment certificates to be issued by the principal agent', evidence: { kind: 'valuations', status: QS_CERTIFIED, final: true, byRole: true }, tickedBy: 'The final valuation certified', go: CONTRACTS },
+    { code: '6.2', text: 'Conclude final account(s)', evidence: { kind: 'register', register: 'final-accounts', status: ['AGREED'] }, tickedBy: 'A final account agreed', go: CONTRACTS },
+  ],
+};
+
 for (const s of DELIVERY_STAGES) {
   const items = ARCHITECT_ITEMS[s.stage];
   if (items) s.roles.push({ key: 'ARCHITECT', label: 'Architect', memberRoles: ARCH_ROLES, items });
+  const qs = QS_ITEMS[s.stage];
+  if (qs) s.roles.push({ key: 'QUANTITY_SURVEYOR', label: 'Quantity Surveyor', memberRoles: QS_ROLES, items: qs });
 }
 
 export function findDeliveryItem(stage: string, roleKey: string, code: string) {

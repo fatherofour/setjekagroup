@@ -46,6 +46,11 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     memberTransmittals,
     registerReviews,
     punchItems,
+    costPlans,
+    recipients,
+    tenders,
+    contracts,
+    valuations,
   ] = await Promise.all([
     prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
@@ -65,7 +70,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.purchaseOrder.count({ where: { projectId, status: { in: ['APPROVED', 'ISSUED'] } } }),
     prisma.projectBudget.findUnique({ where: { projectId }, select: { lockedAt: true } }),
     prisma.estimate.count({ where: { projectId, status: 'FINAL' } }),
-    prisma.variation.findMany({ where: { projectId, status: { not: 'WITHDRAWN' } }, select: { status: true } }),
+    prisma.variation.findMany({ where: { projectId, status: { not: 'WITHDRAWN' } }, select: { status: true, assessedById: true } }),
     prisma.procurementPolicy.findUnique({ where: { projectId }, select: { deliveryStrategy: true } }),
     prisma.scheduleActivity.findMany({ where: { projectId }, select: { name: true, contractorId: true, percentComplete: true } }),
     prisma.scheduleBaseline.count({ where: { projectId } }),
@@ -83,6 +88,11 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.transmittal.findMany({ where: { projectId, status: 'ISSUED' }, select: { fromMemberId: true } }),
     prisma.approvalRecord.findMany({ where: { projectId, subject: 'REGISTER_ENTRY' }, select: { subjectId: true, signerId: true } }),
     prisma.punchItem.findMany({ where: { projectId }, select: { status: true, raisedById: true, closedById: true } }),
+    prisma.costPlan.findMany({ where: { projectId, revision: { gt: 0 } }, select: { kind: true, revision: true, preparedById: true } }),
+    prisma.transmittalRecipient.findMany({ where: { transmittal: { projectId, status: 'ISSUED' } }, select: { memberId: true } }),
+    prisma.rfq.findMany({ where: { projectId, costPlanId: { not: null } }, select: { status: true } }),
+    prisma.projectContract.count({ where: { projectId } }),
+    prisma.valuation.findMany({ where: { projectId }, select: { status: true, isFinal: true, preparedById: true } }),
   ]);
   return {
     entries,
@@ -118,6 +128,11 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     memberTransmittals,
     registerReviews,
     punchItems,
+    costPlans,
+    recipients,
+    tenders,
+    contracts,
+    valuations,
   };
 }
 
@@ -272,6 +287,29 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
       });
       return rows.length ? `${plural(rows.length, 'review')} signed` : null;
     }
+    case 'costPlans': {
+      const rows = f.costPlans.filter((p) => (!e.kinds || e.kinds.includes(p.kind)) && p.revision >= (e.minRevision ?? 1) && (!e.byRole || mine(p.preparedById)));
+      const again = (e.minRevision ?? 1) > 1;
+      return rows.length ? plural(rows.length, again ? 'cost plan re-issued' : 'bill or estimate issued', again ? 'cost plans re-issued' : 'bills or estimates issued') : null;
+    }
+    case 'transmittalsReceived': {
+      const n = f.recipients.filter((r) => !who || who.memberIds.has(r.memberId)).length;
+      return n ? `${plural(n, 'transmittal')} received` : null;
+    }
+    case 'variationsAssessed': {
+      const n = f.variations.filter((v) => v.assessedById && (!e.byRole || mine(v.assessedById))).length;
+      return n ? `${plural(n, 'variation')} assessed` : null;
+    }
+    case 'tenders': {
+      const n = f.tenders.filter((t) => e.status.includes(t.status)).length;
+      return n ? `${plural(n, 'tender')} on the bill of quantities` : null;
+    }
+    case 'contracts':
+      return f.contracts ? `${plural(f.contracts, 'contract')} set up` : null;
+    case 'valuations': {
+      const n = f.valuations.filter((v) => e.status.includes(v.status) && (!e.final || v.isFinal) && (!e.byRole || mine(v.preparedById))).length;
+      return n ? `${plural(n, e.final ? 'final valuation' : 'valuation')} ${e.status.includes('SUBMITTED') ? 'prepared' : 'certified'}` : null;
+    }
     case 'any': {
       for (const x of e.of) {
         const hit = evidenceFor(f, x, who);
@@ -339,7 +377,7 @@ export class ProcsaService {
     const holders = (key: string) => members.filter((m) => memberRolesOf(key).includes(m.role));
     const people = (key: string) => holders(key).map((m) => m.user?.fullName ?? m.externalName ?? '—');
     const whoFor = (key: string): RoleHolders | null =>
-      key === 'ARCHITECT' ? { memberIds: new Set(holders(key).map((m) => m.id)), userIds: new Set(holders(key).flatMap((m) => (m.userId ? [m.userId] : []))) } : null;
+      key === 'ARCHITECT' || key === 'QUANTITY_SURVEYOR' ? { memberIds: new Set(holders(key).map((m) => m.id)), userIds: new Set(holders(key).flatMap((m) => (m.userId ? [m.userId] : []))) } : null;
     const summarise = (items: TrackerItem[]) => ({ done: items.filter((i) => i.done).length, total: items.length });
 
     // Stage 0, from the opportunity the project came from.
@@ -424,7 +462,7 @@ export class ProcsaService {
     await this.projects.findOneForOwner(projectId, userId);
     const me = await this.viewer(projectId, userId);
     const role = DELIVERY_STAGES.flatMap((s) => s.roles).find((r) => r.key === roleKey);
-    const ownItem = roleKey === 'ARCHITECT' && Boolean(role?.memberRoles.some((r) => me.roles.includes(r)));
+    const ownItem = (roleKey === 'ARCHITECT' || roleKey === 'QUANTITY_SURVEYOR') && Boolean(role?.memberRoles.some((r) => me.roles.includes(r)));
     if (!me.internal && !ownItem) throw new ForbiddenException('Only Setjeka staff, or the role-holder for their own items, sign off PROCSA responsibilities');
     const item = findDeliveryItem(stage, roleKey, code);
     if (!item) throw new NotFoundException('Unknown PROCSA responsibility');

@@ -895,6 +895,20 @@ that step gets skipped.
   (any internal account gets the Setjeka guide); what has been seen is stored
   on the user (`guideState`), not in the browser; the header help button
   opens the journey; Setjeka still keeps distribution lists and the team.
+- **28 Oct 2026 — the quantity surveyor, Stages 2–6 (document.md §2.25).**
+  The user's two decisions: Setjeka's Project Manager issues payment
+  certificates (scope-of-work decision 4; "most likely", confirm with the
+  client), and the QS does their real work in the platform rather than
+  monitoring only (this supersedes Meeting 002's "monitoring only" for the
+  QS). Built: bills and cost plans (Excel/CSV import, revisions, tender on
+  the bill, comparison), contracts from the award, valuations with
+  retention through architect review → PM certificate → client approval →
+  paid, final accounts, S-curve cash flow, RFI cost alerts, and the QS PROCSA
+  list. Choices made here: the QS moved from full access to the consultant
+  permissions plus commercial and procurement editing (an outside QS could
+  previously edit the team and award); Setjeka's own estimates and cost
+  database stay internal; the client approves certificates from the
+  project's Commercial tab or the portal.
 
 ## Local dev environment
 

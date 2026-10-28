@@ -23,6 +23,9 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   CONSENT: 'Authority approval',
   PUNCH_ITEM: 'Punch item',
   CLASH: 'Clash',
+  COST_PLAN: 'Bill / cost plan',
+  PROJECT_CONTRACT: 'Contract',
+  VALUATION: 'Valuation',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -95,6 +98,15 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'CLASH':
         put(type, (await prisma.clash.findMany({ where, select: { id: true, aName: true, bName: true, aType: true, bType: true } })).map((r) => ({ id: r.id, label: `${r.aName ?? r.aType} / ${r.bName ?? r.bType}` })));
+        break;
+      case 'COST_PLAN':
+        put(type, (await prisma.costPlan.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'PROJECT_CONTRACT':
+        put(type, (await prisma.projectContract.findMany({ where, select: { id: true, title: true, contractor: { select: { name: true } } } })).map((r) => ({ id: r.id, label: `${r.title} · ${r.contractor.name}` })));
+        break;
+      case 'VALUATION':
+        put(type, (await prisma.valuation.findMany({ where, select: { id: true, number: true, contract: { select: { title: true } } } })).map((r) => ({ id: r.id, label: `No. ${r.number} · ${r.contract.title}` })));
         break;
       case 'OPPORTUNITY':
         put(type, (await prisma.opportunity.findMany({ where, select: { id: true, name: true } })).map((r) => ({ id: r.id, label: r.name })));
