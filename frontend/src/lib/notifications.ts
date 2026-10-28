@@ -1,7 +1,7 @@
-import { AtSign, Camera, CalendarClock, Clock, ListChecks, Stamp, type LucideIcon } from 'lucide-react';
+import { AtSign, Clock, ListChecks, Stamp, type LucideIcon } from 'lucide-react';
 
 // Keep in step with backend notifications/categories.ts.
-export type AlertCategory = 'APPROVALS' | 'ACTIONS' | 'ASSIGNMENTS' | 'DEADLINES' | 'MEETINGS' | 'SITE';
+export type AlertCategory = 'APPROVALS' | 'ACTIONS' | 'ASSIGNMENTS' | 'DEADLINES';
 
 export interface AppNotification {
   id: string;
@@ -30,27 +30,15 @@ export const ALERT_CATEGORY: Record<AlertCategory, { label: string; description:
   },
   ASSIGNMENTS: {
     label: 'Assignments',
-    description: 'Tasks and issues given to you, and risks escalated to you.',
+    description: 'Tasks and issues given to you, risks escalated to you, and meeting invitations.',
     icon: ListChecks,
     tone: 'bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300',
   },
   DEADLINES: {
     label: 'Due soon',
-    description: 'Daily reminders for your work due in the next two days.',
+    description: 'Daily reminders for your work and milestones due in the next three days.',
     icon: Clock,
     tone: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
-  },
-  MEETINGS: {
-    label: 'Meetings',
-    description: 'Meetings you are invited to.',
-    icon: CalendarClock,
-    tone: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-  },
-  SITE: {
-    label: 'Site photos',
-    description: 'New photos on your issues and tasks, and photos shared with you.',
-    icon: Camera,
-    tone: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   },
 };
 

@@ -8,6 +8,9 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { costCodeLabel, formatRate, type CostCode } from '@/lib/commercial';
 import { CommentThread } from '@/components/project/CommentThread';
+import { DecisionDialog } from '@/components/signoff/DecisionDialog';
+import { SignedCopies } from '@/components/signoff/SignedCopies';
+import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 
 type Status = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 type Reason = 'CLIENT_INSTRUCTION' | 'DESIGN_CHANGE' | 'SITE_CONDITION' | 'RFI' | 'OMISSION' | 'OTHER';
@@ -28,6 +31,8 @@ interface Variation {
   assessedBy: { fullName: string } | null;
   decidedBy: { fullName: string } | null;
   decisionComment: string | null;
+  decisionOutcome: ApprovalOutcome | null;
+  responseDueAt: string | null;
   submittedAt: string | null;
   decidedAt: string | null;
   createdAt: string;
@@ -58,6 +63,8 @@ const value = (v: Variation) => v.assessedValue ?? v.estimatedValue;
  * draws the contingency down. */
 export function VariationsPanel({ projectId, currency, isClient, onChanged }: { projectId: string; currency: string; isClient: boolean; onChanged: () => void }) {
   const { authedFetch } = useAuth();
+  const [deciding, setDeciding] = useState<Variation | null>(null);
+  const [signed, setSigned] = useState(0);
   const [rows, setRows] = useState<Variation[] | null>(null);
   const [codes, setCodes] = useState<CostCode[]>([]);
   const [rfis, setRfis] = useState<{ id: string; rfiNumber: string; title: string }[]>([]);
@@ -213,7 +220,12 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                 <span className="font-mono text-xs text-slate-500">{v.number}</span>
                 <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100">{v.title}</span>
                 <span className={`text-sm tabular-nums ${value(v) < 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'}`}>{formatRate(value(v), currency)}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[v.status]}`}>{STATUS_LABEL[v.status]}</span>
+                {v.status === 'SUBMITTED' &&
+                  (() => {
+                    const due = dueLabel(v.responseDueAt);
+                    return due && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${dueTone(due)}`}>{due.text}</span>;
+                  })()}
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[v.status]}`}>{v.decisionOutcome ? OUTCOME_LABEL[v.decisionOutcome] : STATUS_LABEL[v.status]}</span>
               </button>
               {open === v.id && (
                 <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
@@ -230,6 +242,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                       {v.decidedBy?.fullName}: {v.decisionComment}
                     </p>
                   )}
+                  {(v.status === 'APPROVED' || v.status === 'REJECTED') && <SignedCopies projectId={projectId} subjectId={v.id} refresh={signed} />}
 
                   {!isClient && v.status === 'DRAFT' && (
                     <div className="flex flex-wrap items-end gap-2">
@@ -242,7 +255,17 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                       <button type="button" disabled={input(v.id, 'assess') === ''} onClick={() => run(() => authedFetch(`${base}/${v.id}/assess`, { method: 'POST', body: { assessedValue: Number(input(v.id, 'assess')) } }))} className={secondaryButton}>
                         Record assessment
                       </button>
-                      <button type="button" onClick={() => run(() => authedFetch(`${base}/${v.id}/submit`, { method: 'POST', body: {} }))} className={primaryButton}>
+                      <div>
+                        <label className={labelClass} htmlFor={`due-${v.id}`}>
+                          Client to respond by
+                        </label>
+                        <input id={`due-${v.id}`} type="date" min={todayInput()} className={inputClass} value={input(v.id, 'due') || defaultDueDate()} onChange={(e) => setInput(v.id, 'due', e.target.value)} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => run(() => authedFetch(`${base}/${v.id}/submit`, { method: 'POST', body: { responseDueAt: input(v.id, 'due') || defaultDueDate() } }))}
+                        className={primaryButton}
+                      >
                         Send to the client
                       </button>
                       <button type="button" onClick={() => confirm(`Delete draft ${v.number}?`) && run(() => authedFetch(`${base}/${v.id}`, { method: 'DELETE' }))} className={secondaryButton}>
@@ -260,12 +283,8 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
                   )}
                   {isClient && v.status === 'SUBMITTED' && (
                     <div className="flex flex-wrap items-center gap-2">
-                      <input aria-label="Decision comment" className={`${inputClass} min-w-[220px] flex-1`} placeholder="Comment (required to reject)" value={input(v.id, 'comment')} onChange={(e) => setInput(v.id, 'comment', e.target.value)} />
-                      <button type="button" onClick={() => run(() => authedFetch(`${base}/${v.id}/decide`, { method: 'POST', body: { approve: true, comment: input(v.id, 'comment') || undefined } }))} className={primaryButton}>
-                        Approve {formatRate(value(v), currency)}
-                      </button>
-                      <button type="button" disabled={!input(v.id, 'comment').trim()} onClick={() => run(() => authedFetch(`${base}/${v.id}/decide`, { method: 'POST', body: { approve: false, comment: input(v.id, 'comment') } }))} className={secondaryButton}>
-                        Reject
+                      <button type="button" onClick={() => setDeciding(v)} className={primaryButton}>
+                        Decide and sign
                       </button>
                     </div>
                   )}
@@ -284,6 +303,22 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged }: { 
             </li>
           ))}
         </ul>
+      )}
+
+      {deciding && (
+        <DecisionDialog
+          projectId={projectId}
+          title={`Variation ${deciding.number}: ${deciding.title}`}
+          context={`${formatRate(value(deciding), currency)}${deciding.timeImpactDays ? ` · ${deciding.timeImpactDays} days time impact` : ''}`}
+          dueAt={deciding.responseDueAt}
+          endpoint={`${base}/${deciding.id}/decide`}
+          subjectId={deciding.id}
+          onClose={() => setDeciding(null)}
+          onDecided={() => {
+            setSigned((n) => n + 1);
+            run(async () => undefined);
+          }}
+        />
       )}
     </div>
   );

@@ -6,6 +6,19 @@ import { PermissionsService } from '../permissions/permissions.service.js';
 import { computeViability } from './viability.js';
 import { InceptionStateService } from './inception-state.service.js';
 import { INCEPTION_DELIVERABLES, type DeliverableKey } from './procsa.js';
+import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js';
+import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue, type DecisionDto } from '../signoff/dto/decision.dto.js';
+import { snapshotFacts } from '../signoff/facts.js';
+
+// Fees stay off the client's copy of the professional team sign-off.
+const FEE_FIELDS = /^(contractValue|currency|feeBasis|feePercent|feePct|feeValue|fee.*)$/;
+function withoutFees(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutFees);
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([k]) => !FEE_FIELDS.test(k)).map(([k, v]) => [k, withoutFees(v)]));
+  }
+  return value;
+}
 
 // The approval snapshot stays server-side: the PROFESSIONAL_TEAM one holds
 // every firm's fee, and consultants and the client can read this list.
@@ -24,6 +37,7 @@ export class DeliverablesService {
     private readonly state: InceptionStateService,
     private readonly notifications: NotificationsService,
     private readonly permissions: PermissionsService,
+    private readonly signoff: SignoffService,
   ) {}
 
   private assertKey(key: string): asserts key is DeliverableKey {
@@ -60,12 +74,15 @@ export class DeliverablesService {
         decidedBy: row?.decidedBy ?? null,
         decidedAt: row?.decidedAt ?? null,
         decisionComment: row?.decisionComment ?? null,
+        decisionOutcome: row?.decisionOutcome ?? null,
+        responseDueAt: row?.responseDueAt ?? null,
+        id: row?.id ?? null,
         events: row?.events ?? [],
       };
     });
   }
 
-  async submit(projectId: string, key: string, userId: string, comment?: string) {
+  async submit(projectId: string, key: string, userId: string, comment?: string, responseDueAt?: string) {
     this.assertKey(key);
     const state = await this.state.load(projectId);
     if (!this.state.ready(state, key)) {
@@ -79,7 +96,16 @@ export class DeliverablesService {
     await this.prisma.$transaction([
       this.prisma.stageDeliverable.update({
         where: { id: row.id },
-        data: { status: 'SUBMITTED', submittedById: userId, submittedAt: new Date(), decidedById: null, decidedAt: null, decisionComment: null },
+        data: {
+          status: 'SUBMITTED',
+          submittedById: userId,
+          submittedAt: new Date(),
+          responseDueAt: responseDue(responseDueAt),
+          decidedById: null,
+          decidedAt: null,
+          decisionComment: null,
+          decisionOutcome: null,
+        },
       }),
       this.prisma.stageDeliverableEvent.create({ data: { deliverableId: row.id, type: 'SUBMITTED', version: row.version, actorId: userId, comment } }),
     ]);
@@ -90,7 +116,7 @@ export class DeliverablesService {
   /** Meeting 3 hard rule: only the client approves. Checked here, not just
    * in the permission matrix, so neither Setjeka staff nor an admin can
    * approve a Stage 1 document on the client's behalf. */
-  async decide(projectId: string, key: string, userId: string, approve: boolean, comment?: string) {
+  async decide(projectId: string, key: string, userId: string, dto: DecisionDto, meta: RequestMeta = {}) {
     this.assertKey(key);
     const [user, asClient] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { accountType: true } }),
@@ -99,13 +125,28 @@ export class DeliverablesService {
     if (!asClient || user?.accountType !== 'EXTERNAL') throw new ForbiddenException('Only the client can approve Stage 1 documents or ask for a revision');
     const row = await this.row(projectId, key);
     if (row.status !== 'SUBMITTED') throw new BadRequestException('Only a submitted document can be decided');
-    if (!approve && !comment?.trim()) throw new BadRequestException('Say what needs to change when requesting a revision');
+    const { outcome, comment } = resolveOutcome(dto);
+    const approve = isApproval(outcome);
 
-    const snapshot = approve ? await this.snapshot(projectId, key) : undefined;
+    const snapshot = await this.snapshot(projectId, key);
+    const meta0 = INCEPTION_DELIVERABLES.find((d) => d.key === key)!;
+    await this.signoff.sign({
+      projectId,
+      subject: 'STAGE_DELIVERABLE',
+      subjectId: row.id,
+      title: `${meta0.title} (v${row.version})`,
+      kind: 'PROCSA Stage 1 document',
+      outcome,
+      comment,
+      signature: dto.signature,
+      signerId: userId,
+      meta,
+      facts: snapshotFacts(key === 'PROFESSIONAL_TEAM' ? withoutFees(snapshot) : snapshot),
+    });
     await this.prisma.$transaction([
       this.prisma.stageDeliverable.update({
         where: { id: row.id },
-        data: { status: approve ? 'APPROVED' : 'REVISION_REQUESTED', decidedById: userId, decidedAt: new Date(), decisionComment: comment },
+        data: { status: approve ? 'APPROVED' : 'REVISION_REQUESTED', decisionOutcome: outcome, decidedById: userId, decidedAt: new Date(), decisionComment: comment },
       }),
       this.prisma.stageDeliverableEvent.create({
         data: {
@@ -114,7 +155,7 @@ export class DeliverablesService {
           version: row.version,
           actorId: userId,
           comment,
-          snapshot: snapshot as Prisma.InputJsonValue | undefined,
+          snapshot: approve ? (snapshot as Prisma.InputJsonValue | undefined) : undefined,
         },
       }),
     ]);
@@ -126,7 +167,7 @@ export class DeliverablesService {
       type: 'DELIVERABLE_DECIDED',
       entityType: 'STAGE_DELIVERABLE',
       entityId: row.id,
-      message: approve ? `${title} (v${row.version}) was approved` : `${title} needs revision: ${comment}`,
+      message: `${title} (v${row.version}): ${OUTCOME_LABEL[outcome].toLowerCase()} by the client${comment ? ` - ${comment}` : ''}`,
     });
     return this.list(projectId);
   }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Gavel } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
-import { cardClass, formatMoney, inputClass, isExecutive, primaryButton, secondaryButton } from '@/lib/stage0';
+import { acquisitionLabel, cardClass, formatMoney, inputClass, isExecutive, primaryButton, secondaryButton } from '@/lib/stage0';
 
 interface Decision {
   id: string;
@@ -157,7 +157,7 @@ function SnapshotSummary({ snapshot }: { snapshot: NonNullable<Decision['snapsho
       )}
       <div>
         <dt className="text-slate-400">Site</dt>
-        <dd className="text-slate-700 dark:text-slate-200">{snapshot.site ? `${snapshot.site.name} · ${snapshot.site.acquisitionStatus.replace(/_/g, ' ').toLowerCase()}` : 'None selected'}</dd>
+        <dd className="text-slate-700 dark:text-slate-200">{snapshot.site ? `${snapshot.site.name} · ${acquisitionLabel(snapshot.site.acquisitionStatus)}` : 'None selected'}</dd>
       </div>
       <div>
         <dt className="text-slate-400">Land rights</dt>

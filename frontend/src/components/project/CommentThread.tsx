@@ -20,7 +20,12 @@ type CommentEntityType =
   | 'VARIATION'
   | 'PROJECT'
   | 'OPPORTUNITY'
-  | 'SITE_PHOTO';
+  | 'SITE_PHOTO'
+  | 'COMMUNICATION'
+  | 'INSPECTION'
+  | 'CONSENT'
+  | 'PUNCH_ITEM'
+  | 'CLASH';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

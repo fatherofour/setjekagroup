@@ -26,6 +26,8 @@ COPY --from=build /app/prisma7.config.ts ./prisma7.config.ts
 # generated Prisma client from its source path — dist/ alone isn't enough
 # for that one script to resolve.
 COPY --from=build /app/src/generated ./src/generated
+# The Setjeka logo for generated reports.
+COPY --from=build /app/assets ./assets
 
 EXPOSE 4000
 

@@ -803,8 +803,114 @@ that step gets skipped.
     the new volume on the first redeploy.
   - **Project-specific sign-in address (scope §4.9)** was explained to the
     user, not built.
+- **App Review with the client (17 Oct 2026)**, with the user's
+  corrections (25 Oct). Notes:
+  `04 Delivery/Meeting Notes/Setjeka_App_Review_2026-10-17.docx`.
+  - **Weather:** a daily site-weather record for the life of each
+    project.
+  - **Due soon:** three days ahead, for actions and for milestones and
+    stage deliverables alike. The user said treating "milestones are not
+    actions" as a separate decision was a mistake.
+  - **Approval responses:** Approved, Approved with comments, Rejected,
+    Rejected with comments.
+  - **E-signature:** the approver draws a signature on screen or uploads
+    an image of it, and the system stamps it onto the document with their
+    name and the date. Plain acceptance stays as an option. The ECT Act
+    form is still open.
+  - **Response deadline:** a time limit for the client to respond, with
+    reminders. Email is still blocked on the sending domain.
+  - **Land the client already owns:** it must still be registered on the
+    platform as the site.
+  - **Stage 0 owners:** both the Development Manager and the Project
+    Manager.
+  - **Alert settings:** no Meetings or Site photos categories, and no
+    alert when photos are uploaded. The modules themselves stay.
+  - **Dummy project:** not needed, per the user.
+  - **Next builds:** a PROCSA audit of the DM and PM responsibilities from
+    Stage 0 to 6/7, then reporting (Excel, PDF, PowerPoint).
+  - **Built 25 Oct (uncommitted), `document.md` §2.17–2.20:** all of the
+    above; a PROCSA tracker for DM and PM responsibilities across Stages 0–6
+    with 12 delivery registers; and reports: a PowerPoint progress report
+    in Setjeka's own layout, a PDF summary with no tables, an internal
+    Excel workbook, and a close-out PDF. Setjeka chooses which reports the
+    client sees. Report dates and bare-date deadlines are read as South
+    African calendar days. New volumes `SIGNOFF_DIR` and `REPORTS_DIR` in
+    `docker-compose.prod.yml`.
+- **The Architect role (26 Oct 2026)**, `document.md` §2.21 (uncommitted).
+  The user's decisions:
+  - **Instructions.** The client reaches the architect only through
+    Setjeka's PM and DM, on the platform. The architect drafts contract
+    instructions; Setjeka issues them.
+  - **Drawing numbers.** Read from the architect's own title block. This
+    answers open items 8.11 and 9.1.
+  - **Inspection checklists.** Built now.
+
+  Built:
+  - an architect PROCSA tracker for Stages 2–6 (55 items in all);
+  - a drawing register that reads title blocks, with a documentation
+    programme;
+  - authority approvals followed round by round;
+  - instructions and letters routed through Setjeka;
+  - inspections with checklists.
+
+  Note threads on private records are now restricted to the people party
+  to them.
+
+  Next, agreed: architect review steps on the registers, a finishes and
+  area schedule, markup, and a BIM viewer.
+- **The Architect role, completed (26 Oct 2026)**, `document.md` §2.22
+  (uncommitted). The user: "complete what is left out for the architect".
+  Built:
+  - signed architect reviews on payment certificates, completion
+    certificates and handover documents, which stamp the certificate PDF;
+  - the architect keeps the defects lists and handover documents;
+  - finishes and area schedules;
+  - drawing markup, with pins that become issues and a marked-up PDF;
+  - an IFC model viewer (web-ifc + three.js) with federation, properties,
+    measuring, and issues and links kept by GlobalId.
+
+  Every architect item in PROCSA Stages 1–6 now has a home on the
+  platform.
+
+- **26–27 Oct 2026 — donor features rebuilt (document.md §2.23).** The user
+  chose, from OpenConstructionERP: file versions (restore), transmittals
+  (PDF slip + distribution lists), full-text search in drawings (PDF text +
+  OCR of scans), file tags, a recycle bin **for admins only**, the full BIM
+  hub, federation and coordination hub, smart views, BIM requirements
+  (IDS/Excel) and the rough cost estimate — plus the gaps: clash detection,
+  BCF 2.1, drawing index check, stamps + scale calibration + measuring, a
+  DWG/DXF viewer, and punch items pinned to drawings. All rebuilt natively.
+  Choices made here: clashes are bounding-box (no mesh intersection); ROM
+  rates are an indicative seed table for the QS to own; viewpoints are now
+  stored in model coordinates (needed for BCF); the punch list and BIM hub
+  are hidden from clients.
+- **27 Oct 2026 — architect end to end + in-app guide (document.md §2.24).**
+  The user asked for an end-to-end run for the architect, then a guide that
+  tells each role what to do on each screen the first time they open it, and
+  the same for the whole app end to end. The run (Stage 2→6, every party
+  signed in as themselves) found that transmittal/RFI/submittal/PO numbers
+  clashed across projects (now unique per project) and that architects could
+  not issue their own transmittals (the sender now can). Choices made here:
+  the guide speaks to a persona worked out from the account and project roles
+  (any internal account gets the Setjeka guide); what has been seen is stored
+  on the user (`guideState`), not in the browser; the header help button
+  opens the journey; Setjeka still keeps distribution lists and the team.
 
 ## Local dev environment
+
+- **After `prisma generate`, delete `backend/tsconfig.build.tsbuildinfo`
+  and `backend/dist/tsconfig.tsbuildinfo` before restarting the dev
+  server.** Otherwise its incremental type-check keeps the old Prisma types
+  and reports false errors (seen 26 Oct 2026). A fresh `tsc --noEmit`
+  shows the truth.
+- **Restart the dev backend by killing every `nest.js` process, not just
+  whatever holds port 4000** (`Get-CimInstance Win32_Process` filtered on
+  `setjeka-erpackend`). Killing only the port left old `nest --watch`
+  parents alive; six piled up, kept recompiling with stale Prisma types
+  (the "23 errors") and restarted the app under running requests (27 Oct
+  2026).
+- `tsconfig.build.json` excludes `uploads/` and `dist/` from the watcher;
+  before that, every upload restarted the dev server.
 
 - Backend: NestJS dev server on port 4000 (`npm run start:dev` in
   `backend/`), Postgres database `setjeka_erp` on the machine's native

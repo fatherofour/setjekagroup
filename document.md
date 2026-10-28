@@ -1933,13 +1933,13 @@ reaches everyone from the client to the contractors.
   | Setjeka only | Decides what the client sees, one photo at a time or by selecting several |
 
 - **Client portal.** The project page has a **Site photos** section showing only shared photos, with read-only details and notes. Unshared photos return 404 for a client, including their files.
-- **Alerts.**
+- **Alerts** *(removed on 2026-10-25, §2.17 — uploads no longer send alerts)*.
   - **Linked to an issue or task:** a photo alerts that record's owner, or the task's assignee. Repeat uploads fold into one unread alert.
   - **Shared with the client:** the client gets one "New site photos from <project>" alert per batch, which opens the portal's photos section.
 - **Storage.** Files go under `PHOTO_UPLOAD_DIR` (default `./uploads/site-photos`), up to 25 MB each, in .jpg, .png, .webp or .heic. HEIC previews only in Safari; other browsers offer the download.
 
 **In-app notifications & alerts** (no email)
-- **Categories** (`notifications/categories.ts`, mirrored in `lib/notifications.ts`): Approvals, Notes & actions, Assignments, Due soon, Meetings, Site photos.
+- **Categories** (`notifications/categories.ts`, mirrored in `lib/notifications.ts`): Approvals, Notes & actions, Assignments, Due soon. *(Meetings and Site photos were removed on 2026-10-25, §2.17.)*
 - **Notifications page** (`/notifications`, under Overview):
   - filter by kind, by project and to unread only;
   - entries grouped Today / Yesterday / This week / Earlier;
@@ -1982,6 +1982,510 @@ reaches everyone from the client to the contractors.
   - the chat launcher sat on top of the photo viewer's Post button;
   - the filter dropdowns were unstyled.
 
+
+### 2.17 App Review fixes — due soon, site weather, land the client already owns
+
+Built on 2026-10-25 from the 17 Oct App Review (Meeting notes `Setjeka_App_Review_2026-10-17`) and the user's corrections of 25 Oct.
+
+- **Due soon covers milestones too.** The earlier "milestones are not actions" split was a mistake. Due-soon reminders now look **three days ahead** (`DUE_SOON_WINDOW_DAYS = 3`) across actions, programme milestones and stage deliverables.
+  - A milestone reminder goes to the project's Development Manager and Project Manager; before a project exists (Stage 0) it goes to the opportunity owner.
+- **Alert settings trimmed.** The categories are now Approvals, Notes & actions, Assignments and Due soon. **Meetings** and **Site photos** are gone from the settings; a scheduled meeting counts as an assignment. **No alert is sent when site photos are uploaded.** Migration `20261025100100_alert_categories_trim` removes the two old categories from everyone's muted list.
+- **Site weather history.** `SiteWeatherDay` keeps one row per project per day: conditions, high/low, rain and wind.
+  - A recorder runs every 3 hours for every project with coordinates. Turn it off with `SITE_WEATHER_RECORDING=off`.
+  - The last 14 days come from Open-Meteo's forecast API, older days from its archive API; the forecast API returns older past days partly empty. Days the archive hasn't caught up on are skipped and filled on a later run.
+  - `GET /projects/:id/weather?from=&to=`; `POST /projects/:id/weather/refresh` (Setjeka only).
+  - Shown on the project Overview as **Site weather history**, and as a sheet in the Excel report.
+- **Land the client already owns.** Stage 0 site register: **Client already owns the land** (`LandAcquisitionStatus.CLIENT_OWNED`). The site **is still registered** — address, erf, extent, zoning and so on — but the price fields are hidden. Saving it marks the site as the selected site and ticks the *Site secured* milestone. `CLIENT_OWNED` counts as secured wherever the app checks for that.
+- **Stage 0 owners.** The Development Manager and the Project Manager both own Stage 0.
+- **No dummy project.** None was created; the user asked for none.
+- Migration `20261025100000_weather_and_owned_land`.
+
+### 2.18 Approvals — four responses, response deadlines and e-signature
+
+- **Four responses** everywhere the client decides — stage deliverables, variations, stage transitions and document revisions:
+
+  | Response | Comment |
+  |---|---|
+  | Approved | optional |
+  | Approved with comments | required |
+  | Rejected | optional |
+  | Rejected with comments | required |
+
+  Stored as `decisionOutcome` (`ApprovalOutcome`). The old `approve: true/false` still works for older callers.
+- **Response deadline.** Whoever submits sets the date the client must respond by (`responseDueAt`). A bare date means the end of that South African day; a past date is refused.
+  - The Approvals page sorts by deadline and shows overdue items first.
+  - Reminders `APPROVAL_DUE` (within 3 days) and `APPROVAL_OVERDUE` go to the client and can't be muted.
+- **Signing the decision.** The approver chooses one of three ways:
+  1. **Accept** — tick to confirm, no signature (`SignatureMethod.ACCEPTANCE`);
+  2. **Type** the name, drawn in a handwriting font (`TYPED`);
+  3. **Draw** on screen, or **upload** an image of the signature (`DRAWN` / `UPLOADED`).
+
+  A signature can be saved under **My signature** (`/account/signature`, `UserSignature`) and reused.
+- **Signed copies.** Each decision writes an `ApprovalRecord`: who, outcome, comment, method, signature image, IP address and browser, a SHA-256 of the signed file, and a snapshot of the facts decided (`facts.ts`).
+  - For a PDF, the system stamps the signature and the decision on the top right of page 1 and adds a certificate page (`pdf.ts`, pdf-lib).
+  - For anything else, it produces a certificate on its own.
+  - The signed copies are listed under the record and in `GET /projects/:id/approval-records`, and stored under `SIGNOFF_DIR` (a named volume in production).
+- **Documents can go to the client for approval** (`DocumentApprovalRequest`). From a document's detail panel, Setjeka sends a revision to the client with a deadline, and can withdraw it. Only an external user with the project's CLIENT role decides. The decision is recorded against that exact revision.
+- **Who sees what.** Contractors and consultants see the records only for document revisions and stage transitions, never for variations or fee deliverables.
+- **API:**
+  - `GET|PUT|DELETE /me/signature`;
+  - `GET /projects/:id/approval-records?subject=&subjectId=`, `GET …/approval-records/:id/signed`;
+  - `POST /projects/:id/documents/:documentId/revisions/:revisionId/client-approval`; `GET /projects/:id/document-approvals`, `POST …/document-approvals/:id/withdraw`, `POST …/document-approvals/:id/decide`.
+- The Express JSON body limit is raised to 2 MB in `main.ts` so a signature image fits.
+- **Still open:** whether the ECT Act calls for an *advanced* electronic signature for any of these. The user has not yet decided that.
+- Migration `20261025110000_signoff_and_deadlines`. It backfills the outcome on existing decisions.
+
+### 2.19 PROCSA tracker and delivery registers — Stages 0 to 6
+
+The user asked us to cover the Development Manager and Project Manager responsibilities in PROCSA from Stage 0 to close-out.
+
+- **PROCSA tracker** (project tab **PROCSA**, nav *PROCSA tracker*). Lists every DM and PM responsibility, stage by stage, with its PROCSA reference.
+  - **Stage 0** comes from the opportunity (§2.12a) and **Stage 1** from Inception (§2.13).
+  - **Stages 2–6** are defined in `delivery/procsa-delivery.ts`:
+
+    | Stage | DM items | PM items |
+    |---|---|---|
+    | 2 Concept & Viability | 5 | 8 |
+    | 3 Design Development | 15 | 8 |
+    | 4 Documentation & Procurement | 13 | 7 |
+    | 5 Construction | 14 | 18 |
+    | 6 Close-out | 10 | 8 |
+
+  - **Items tick themselves** where the evidence is on the platform: a stage deliverable approved, a register entry recorded, a report generated, a programme baselined, and so on (`ProcsaService.evidenceFor`). Each item shows what ticked it.
+  - Items with no record behind them are ticked by hand, with a note and the person and date kept (`setCheck`).
+- **Delivery registers** (project tab **Registers**). Twelve registers share one table, `ProjectRegisterEntry`, with generic columns; each register's fields are defined in `delivery/registers.ts`:
+  - project procedures; project finance; cash flow; sales and leasing; authority service agreements; insurances;
+  - payment certificates; contractual claims; handover and completion certificates; defects; handover documents; final accounts.
+
+  Setjeka staff edit them. Contractors can see the last six only, the ones marked `contractorsSee`. An entry can link a document from Document Control.
+- **API:** `GET /projects/:id/procsa`, `PUT /projects/:id/procsa/:stage/:roleKey/:code`; `GET /delivery/registers` (definitions); `GET /projects/:id/delivery-registers`, `GET|POST …/delivery-registers/:key`, `PATCH|DELETE …/delivery-registers/:key/:id`.
+- Migration `20261025120000_delivery_registers_reports`.
+
+### 2.20 Reports — PowerPoint, PDF summary, Excel, close-out
+
+Meeting 3 §2.9. Project tab **Reports** (also in the nav). Setjeka staff generate reports and choose which ones the client sees.
+
+| Report | Format | Default period | Content |
+|---|---|---|---|
+| Progress report | PowerPoint | last 7 days | Ten slides in Setjeka's own report layout (cream/green/gold, Georgia headings): cover, executive summary, status detail, programme, cost report with chart, variations, critical risks, decisions, photo record, priority actions. Fully editable before it goes out. |
+| Project summary | PDF | last 7 days | Figures and plain sentences, no tables: headline figures, status cards, this period, looking ahead, risks, client decisions, PROCSA progress, priority actions. |
+| Programme and registers | Excel | last 30 days | 13 sheets: summary, programme, milestones, cost report, variations, risks, issues, RFIs, submittals, documents, site weather, and the delivery registers. Internal only — never shared with the client. |
+| Close-out report | PDF | whole project | Completion certificates, handover documents, defects, final accounts and claims, cost outcome, variations, PROCSA. Satisfies PM 6.8 and DM 6.9. |
+
+- **Status colours.** Programme, commercial, decisions and risks each get a green/amber/red status with a plain label, e.g. *Behind programme*, *Client decision required* (`report-text.ts`).
+- **Client-facing reports leave out internal-only detail**, using the same rules as the portal. Only photos already shared with the client appear.
+- **Dates.** Report periods are South African calendar days and are printed in Africa/Johannesburg time, whatever the server's zone.
+- **Storage.** Files are kept under `REPORTS_DIR` (a named volume in production), recorded in `ProjectReport`. The client portal has a **Reports** section listing only the shared ones.
+- **API:** `GET|POST /projects/:id/reports`, `GET …/reports/:id/file`, `PATCH …/reports/:id` (`clientVisible`), `DELETE …/reports/:id`.
+- **Libraries:** `pptxgenjs`, `pdf-lib`, `exceljs`. The logo is `backend/assets/logo.png`, which the Dockerfile copies.
+
+**Verified (2.17–2.20)**
+- **API:** fixes 17 checks; approvals and signatures 33; PROCSA and registers 29; reports 20. All pass.
+- **Browser (Playwright):**
+  - fixes, 5 checks;
+  - sign-off, 14 checks, including drawing on the signature pad and the client deciding a document in the portal;
+  - PROCSA tracker and registers, 5 checks;
+  - the Reports tab: generate, download, share, delete, and a 390 px phone with no sideways scroll.
+- **Reports checked visually.** Every slide was rendered through PowerPoint, and both PDFs page by page. Fixed on the way:
+  - the dark logo was invisible on the green cover;
+  - table headers wrapped;
+  - the cost-code column was right-aligned;
+  - the PDF figure labels overflowed;
+  - the period end showed the next day for South Africa, and the same slip in approval deadlines.
+
+
+### 2.21 The Architect role — PROCSA Stages 2–6
+
+Built on 2026-10-26. The user asked what to build for the architect, from PROCSA, the meeting notes, the requirements register and OpenConstructionERP, and decided:
+
+- **The instruction chain.** The client reaches the architect only through Setjeka's PM and DM, and all of it is on the platform.
+- **Drawing numbers.** Taken from the architect's own drawing sheet. This answers open items 8.11 and 9.1 ("extract").
+- **Inspection checklists.** Register QHSE rows 66–67 are built now.
+
+Migrations `20261026100000_architect_role` and `…100100_architect_role_data` (permission defaults and six starter checklists).
+
+**PROCSA tracker: the Architect, Stages 2–6** (`delivery/procsa-delivery.ts`, `procsa.service.ts`)
+- All 47 architect items (12 + 8 + 9 + 14 + 4), plus the 8 at Stage 1 from §2.13a, so 55 in total.
+- **Items tick from the architect's own records**, not just from anything on the project. The new evidence kinds are:
+
+  | Evidence | What counts |
+  |---|---|
+  | `drawings` | Revisions with a given purpose of issue, uploaded by the architect |
+  | `communications` | Contract instructions drafted by the architect |
+  | `inspections` | Inspections the architect carried out |
+  | `meetingsAttended` | Meetings where the architect is marked present |
+  | `transmittalsByRole` | Transmittals sent from the architect |
+  | `consentRounds` | Submissions to an authority, matched by type (e.g. SDP, building plans) |
+  | `docProgramme` | Drawings planned on the documentation programme |
+  | `drawingRegister` | Numbered drawings issued on a transmittal |
+
+- **Who sees what.** Outside parties see only their own role's list. The client sees none.
+- **Sign-off by hand.** Setjeka signs off any item. The architect signs off their own items, with a note.
+
+**Drawing register and documentation programme** (`drawings/`, project tab **Drawings**)
+- **Upload drawings** takes several sheets at once. For each PDF, `title-block.ts` (pdfjs-dist) reads page 1:
+  - It finds the labels (Drawing No., Rev, Title, Scale, Date, Status / Issued for) and their values, whether beside or beneath the label.
+  - Labels nearer the bottom right win, so a revision table elsewhere on the sheet doesn't.
+  - With no labelled number, it takes the most number-like token in the title-block corner.
+  - With no text at all (a scan), it falls back to the file name.
+  - The uploader checks and corrects each row before anything is saved. The register shows whether the number was read from the sheet, taken from the file name, or entered by hand.
+- **Revisions attach to the base drawing.** A number already on the register adds a revision, matched case- and separator-blind (`drawingKey`); the same revision twice is refused. The drawing is stored as an ordinary project document (`documentType` "Drawing"), so transmittals, client approval and the portal work as before.
+- **Purpose of issue** on each revision (`IssuePurpose`), as Meeting 3 asked: for information, comment, co-ordination, client approval, authority submission, procurement, construction, as built.
+- **Register view.** Search, a filter by purpose, revision history with transmittals and the client's decision, and **Export to Excel**.
+- **Documentation programme** (`PlannedDrawing`). Each planned drawing has a stage, a purpose and a date. It is matched to the register by number and shows *Planned*, *Due this week*, *Late*, *Issued* or *Issued late*.
+- **API:**
+  - `GET /projects/:id/drawings`, `GET …/drawings/export`;
+  - `POST …/drawings/read` (reads only, keeps nothing), `POST …/drawings` (upload);
+  - `PATCH …/drawings/:documentId`, `PATCH …/drawings/:documentId/revisions/:revisionId`;
+  - `GET|POST /projects/:id/drawing-programme`, `PUT|DELETE …/drawing-programme/:id`.
+
+**Authority approvals** (`authorities/`, project tab **Authorities**)
+- This follows through the Stage 1 schedule of consents (`ConsentApproval`) with each round (`ConsentEvent`): submitted, comments received, resubmitted, approved, refused, note. Each round can carry the document sent or received and the authority's reference.
+- The status moves on its own, including the new `RETURNED_WITH_COMMENTS`. The panel shows the number of submissions, days with the authority, and whether the expected decision date has passed.
+- **Stage 1 sign-off.** Recording a round never reopens the Stage 1 *Consents schedule* sign-off. Adding or editing a consent reopens it only while the project is still at Inception or earlier.
+- There's a list of SA approval types, and notes on each approval.
+- **API:** `GET|POST /projects/:id/authorities`, `PATCH …/:id`, `POST …/:id/events`.
+
+**Instructions and letters** (`communications/`, project tab **Instructions**, portal section **Requests and letters**)
+
+| Kind | From → to | Rule |
+|---|---|---|
+| Client request `CR-` | Client → Setjeka | Always goes to the project's DM and PM; the client can't choose |
+| Setjeka instruction `SI-` | Setjeka → consultant or contractor | Can *pass on* a client request or letter |
+| Contract instruction `CI-` | Architect (or an engineer) drafts → contractor | Waits as *Waiting for Setjeka to issue*; Setjeka issues it |
+| Letter `LT-` | Anyone | Outside parties' letters go to Setjeka only |
+
+- **Receipts.** Each recipient confirms receipt and replies on the record, and the author and issuer are told.
+- **Variations.** An issued instruction marked "may cost money" can become a draft variation for the client.
+- **What the client sees** of a request passed on: its number, when, and to whom. The client never sees the content.
+- **Privacy.** Contractors don't see variation links. The note thread on each instruction or letter is private to its parties: notes can't be addressed to, nor @mentions reach, anyone outside it. The same `canSee` check now also covers inspections (not the client) and unshared site photos (not the client), which were open before.
+- **Alerts:** `COMMUNICATION_RECEIVED` (in Approvals, so it can't be muted), `COMMUNICATION_AWAITING_ISSUE`, `COMMUNICATION_ANSWERED`.
+- **API:**
+  - `GET /projects/:id/communications`, `GET …/communications-address-book`, `GET …/communications/:id`;
+  - `POST …/communications`, `PATCH …/:id`;
+  - `POST …/:id/send`, `…/issue`, `…/acknowledge`, `…/respond`, `…/close`, `…/cancel`, `…/variation`.
+
+**Inspections and checklists** (`inspections/`, project tab **Inspections**)
+- **Kinds:** quality, architect's site inspection, test witnessed, mock-up, practical completion, defects verification.
+- **The flow:**
+  - The contractor requests an inspection.
+  - Setjeka or a consultant schedules the inspector, who is alerted.
+  - The inspector marks each item Pass, Fail or N/A, with a note, which works on a phone.
+  - Completing it needs every item marked, and a failed item rules out "Conforms".
+  - The requester and the DM/PM are told the outcome.
+- **Findings.** A failed item becomes an issue with one click, linked both ways. Photos can be taken against the inspection (`SitePhoto.inspectionId`).
+- **Checklists.** Company-wide checklists by work type (`InspectionTemplate`). Setjeka edits them on the panel, and editing one never changes an inspection already recorded. Six starters: concrete pre-pour, masonry, waterproofing, roofing, architect's site inspection, practical completion walk-through.
+- **API:** `GET|POST /projects/:id/inspections`, `GET|PATCH …/:id`, `POST …/:id/schedule|complete|cancel|issues`; `GET|POST /inspection-templates`, `PUT /inspection-templates/:id`.
+
+**Permissions.** Two new modules:
+- `COMMUNICATIONS`: approve means issue, Setjeka roles only; nothing is deleted.
+- `INSPECTIONS`: consultants create and edit, contractors only request, the client has nothing.
+
+They're set in the data migration, matched in `seed.ts`, and shown on the Permissions screen. Commercial and Site photos were missing from that screen and have been added too.
+
+**Also fixed.** The site-photo date filter now reads bare dates as South African days.
+
+**Navigation.** A new **Design & site** group: Drawings, Authorities, Instructions, Inspections.
+
+**Verified**
+- **Title-block reader, 14 checks** on generated A1 sheets: labelled cells with a decoy revision table, inline labels, OpenConstructionERP's fixture, and a scanned sheet falling back to the file name.
+- **API, 77 checks:**
+  - routing (the client can't reach the architect, and the architect's letters go to Setjeka);
+  - drafted contract instructions waiting for Setjeka, then issue, receipt, reply, variation and close;
+  - thread privacy, including note addressees and @mentions;
+  - inspection request, scheduling, checklist rules, issues and photos;
+  - drawing read, upload, revisions, duplicate and renumber refusals, programme status and Excel export;
+  - authority rounds and their order;
+  - the PROCSA items that tick themselves, scoping to the caller's role, and sign-off rights.
+- **Browser (Playwright), 15 checks:**
+  - **Architect:** reads and uploads a drawing, drafts a contract instruction, completes an inspection on a 390 px phone and raises the failed item as an issue, records an authority submission, and sees their own PROCSA list.
+  - **Setjeka:** issues the instruction, schedules the inspection, and passes on the client's request.
+  - **Contractor:** requests an inspection.
+  - **Client:** raises a request in the portal on a phone in dark mode.
+  - No sideways scroll and no console errors.
+- **Fixed after the screenshots:** the dropdowns had no borders, and "pass on" was offered on contract instructions.
+
+**Later**: all four followed the same day; see §2.22.
+
+
+### 2.22 The Architect role, completed — reviews, schedules, markup, models
+
+Built on 2026-10-26, after §2.21. The user: "complete what is left out for the architect".
+
+Migrations:
+- `20261026110000_architect_reviews`: `ApprovalSubject.REGISTER_ENTRY`, plus two notification types.
+- `20261026120000_markup_and_models`: `DrawingMarkup` and `ModelObjectLink`.
+
+**The architect's signed reviews** (Architect 5.7, 5.12, 6.2–6.4; `delivery/registers.ts`, `delivery-registers.service.ts`)
+- **Register definitions** gain three settings:
+  - `review`: who reviews, which categories, and the PROCSA reference;
+  - `editableBy`: outside roles that add and edit entries;
+  - `totals`: columns to total.
+- **Who reviews what:**
+
+  | Register | Reviewed by the architect | Architect can also |
+  |---|---|---|
+  | Payment certificates | Every valuation | — |
+  | Handover and completion | Practical, works and final completion, and occupation (not the site handover) | — |
+  | Handover documents | O&M manuals, warranties, guarantees, certificates, as-builts | Add and edit |
+  | Defects | — | Issue the practical completion list and verify defects (Setjeka alone deletes) |
+
+- **The review itself.** The architect signs a review with the same dialog the client uses (§2.18): four responses, comments, and a drawn, typed, uploaded or plain-acceptance signature.
+  - It is recorded as an `ApprovalRecord` with subject `REGISTER_ENTRY`.
+  - The linked certificate PDF is stamped and given a sign-off page; with no file, a certificate is produced.
+- **Alerts both ways.** When Setjeka adds an entry for review, the architect is told (`REGISTER_REVIEW_REQUESTED`, in Approvals). When the architect reviews it, the PM, the DM and whoever added the entry are told (`REGISTER_REVIEWED`).
+- **Setjeka can't review in the architect's place**, and nor can the contractor. Consultants and contractors can see the review records.
+- **API:** `POST /projects/:id/delivery-registers/:key/:entryId/review`. The register summary now returns `canEdit`, `canDelete` and `canReview` per register, and the entries carry `reviewable` and `reviews`.
+
+**Finishes schedule and area schedule** (two new delivery registers)
+- **Finishes schedule** (Architect 2.8, 4.2, 4.9).
+  - Fields: room or area, element, finish or product, supplier, specification clause, sample status (to be submitted, submitted, approved, rejected) and the data sheet.
+  - Kept by the architect; contractors can read it.
+- **Area schedule** (Architect 2.6, QS 2.7 / 3.7).
+  - Fields: space, use, level, units, designed area and brief area, in m², and the stage it was measured at.
+  - A totals row; a column nobody has filled in totals to a dash.
+  - Kept by the architect and the QS; contractors don't see it.
+  - Uses a new decimal field type with a unit.
+- **PROCSA.** 2.6, 2.8 and 4.9 now tick from these schedules. 5.7, 5.12 and 6.2 now need the architect's signed review (`registerReviewed`), where before any entry in the register counted.
+
+**Drawing markup** (register DOC row 51, FIELD row 65; `markups/`, `components/design/MarkupViewer.tsx`)
+- **Opening it.** **Mark up** on any PDF or image drawing in the register, current or older revision, opens a full-screen viewer.
+  - pdf.js draws the page, served from `/vendor/pdf.worker.min.mjs`.
+  - Tools: redline, revision cloud, box, arrow, note and pin, in five colours.
+  - Zoom, page through, and pan by dragging. It works on a phone.
+- **Storage.** Markups are kept apart from the file, as the register requires. Coordinates are fractions of the unrotated page, so they hold at any zoom and in the export.
+- **Who sees and edits.**
+  - Notes and pins are numbered in the order they were made.
+  - Anyone on the team can mark one *dealt with*; only its author, or Setjeka, edits or deletes it.
+  - The client doesn't see markups.
+- **Pins become issues.** A pin, meaning a site observation, becomes an issue with one click, with the drawing, revision and page in its description.
+- **With markups.** This downloads the drawing with every markup drawn on, plus a closing page listing the numbered notes and pins with who made them, any issue raised, and whether each was dealt with (pdf-lib, `GET …/marked-up`).
+- **API:** `GET|POST /projects/:id/documents/:docId/revisions/:revId/markups`, `GET …/marked-up`; `PATCH|DELETE /projects/:id/markups/:id`, `POST …/markups/:id/issue`.
+
+**Models** (register BIM rows 55–61; `models/`, project tab **Models**, `components/design/ModelsPanel.tsx`)
+- **Upload.** IFC only, up to 200 MB (nginx gives the route 210 MB). A model is stored as a project document of type "Model", and a new upload can be added as its next revision. Export from Revit, ArchiCAD and similar as IFC.
+- **The viewer.** web-ifc (WASM, served from `/vendor/web-ifc.wasm`) reads the file in the browser, and three.js draws it.
+  - Several models open together in one scene (federation), sharing one origin kept in double precision, so far-off site coordinates don't shake.
+  - Orbit, pan and zoom; Escape closes it.
+- **Objects.** Click an object to see its IFC type, name, GlobalId, property sets and quantities. Hide it, or show only it.
+- **Measure.** Pick two points on the model to get the distance in metres (BIM row 60).
+- **Issues and links.**
+  - Raise an issue on an object (BIM row 59). It keeps the object's GlobalId and the camera view.
+  - Link an object to a drawing or document, an RFI, a submittal or an inspection (BIM row 61).
+  - The side panel lists the issues and links. Clicking one flies back to its view and selects the object, found by GlobalId so it survives a new revision of the model.
+- **The client** sees only models Setjeka has shared (register CLI row 85: "BIM where permitted"), read-only and without the issues and links.
+- **API:**
+  - `GET|POST /projects/:id/models`;
+  - `GET|POST /projects/:id/models/:docId/links`, `DELETE …/links/:linkId`;
+  - `POST /projects/:id/models/:docId/issues`.
+
+**Upload limits.** Drawings now take up to 50 MB (nginx gives `/drawings` and `/drawings/read` 60 MB), because A1 sets run past the 20 MB document limit.
+
+**Build.** `scripts/copy-vendor.mjs` runs on `postinstall` and copies the pdf.js worker and the web-ifc WASM into `public/vendor` (git-ignored). The frontend Dockerfile copies `scripts/` before `npm ci` so this works in the image.
+
+**Layout fix.** The viewers render into the page body through a portal. Inside the app shell, "full screen" was measured against the scrolling main area, so the header and chat button sat over them.
+
+**Verified**
+- **API, 59 checks:**
+  - **Reviews:** who reviews and who keeps each register; the architect signs, the certificate PDF is stamped plus a sign-off page; Setjeka and the contractor can't review; the site handover is not one for review.
+  - **Defects:** the architect issues and verifies defects but can't delete them.
+  - **Schedules:** finishes and area schedules, with decimal areas; the QS keeps the area schedule only; the contractor reads finishes but not areas.
+  - **Markup:** all six tools; geometry and pin-note checks; the client is refused; only a markup's author edits it; anyone marks it dealt with; a pin raises an issue once; the marked-up PDF has the sheet plus a notes page.
+  - **Models:** IFC only; revisions attach; a model issue keeps its view and the owner is alerted; links to drawings, with other projects' records refused; the client sees only shared models, without links; removing links.
+  - **PROCSA:** 5.7, 5.12, 6.2, 6.1, 2.6, 2.8, 4.9 and 5.13 tick themselves.
+- **Browser (Playwright), 12 checks**, as the architect:
+  - signs a payment valuation review with a typed signature;
+  - builds an area schedule with totals;
+  - draws a cloud, places a pin, raises it as an issue, and downloads the marked-up drawing;
+  - opens the real sample IFC, selects a wall and sees its property sets, raises a model issue, and measures a distance;
+  - opens the markup viewer on a 390 px phone.
+
+  No console errors.
+- **Fixed after looking at the screenshots:**
+  - the viewers sat under the app header (now a portal);
+  - the measuring dots were oversized;
+  - the colour swatches ran off a phone;
+  - an empty column totalled "0";
+  - review dates printed as 2026/10/20.
+
+
+### 2.23 Features brought over from OpenConstructionERP — files, BIM hub, coordination, rough estimates
+
+Built on 2026-10-26/27. The user picked these from the donor app's architect features: "File versions, Transmittals, Full text search in drawings, File tags, Recycle bin for only the admins. The full BIM hub, the full federation and coordination hub, Smart views, BIM requirements, the rough cost estimate", together with the biggest gaps listed against the donor (clash detection, BCF, drawing index reconciliation, stamps and scale calibration, a DWG viewer, punch items pinned to drawings, distribution lists). Each was rebuilt here; no donor code is used.
+
+Migrations:
+- `20261026130000_files_bim_rom`:
+  - Files: `ProjectDocument.deletedAt`/`deletedById`, `DocumentTag`, `DocumentTagLink`, `DocumentPageText`, `DocumentRevision.textStatus`, `DistributionList`, `DistributionListMember`.
+  - Drawings: `DrawingCalibration`; `MarkupKind` gains `STAMP`, `MEASURE` and `AREA`.
+  - Punch list: `PunchItem` (`PunchStatus`); `SitePhoto.punchItemId`.
+  - BIM: `BimProcessing`, `BimElement`, `BimFederation`, `ClashTest`, `Clash` (`ClashStatus`), `SmartView`, `BimRequirementSet`, `BimRequirementCheck`; `ProjectIssue.bcfGuid`.
+  - Rough estimates: `RomRate`, `RomRegionFactor`, `RomEstimate`.
+  - Notes and alerts: `CommentEntityType` `PUNCH_ITEM` and `CLASH`; notifications `PUNCH_ITEM_ASSIGNED`, `PUNCH_ITEM_READY`, `PUNCH_ITEM_DECIDED`, `TEXT_EXTRACTED`.
+- `20261026130100_rom_rates_data`: indicative 2026 rates (ZAR per m² GFA, excl. VAT, fees and land) for 10 building types × economy/standard/prestige, and nine provincial factors (Gauteng 1.00). These are a starting point for Setjeka's QS, who edits them on the Rough estimates page.
+
+New backend libraries: `tesseract.js` 7 with `@tesseract.js-data/eng`, `@napi-rs/canvas`, `jszip`, `fast-xml-parser`, `dxf-parser`, `@mlightcad/libredwg-web` (through typed shims), `web-ifc` (Node entry).
+
+**Files** (`files/`)
+- **Full-text search.** `TextIndexService` polls every 20 s for revisions not yet read (`textStatus` null, five at a time):
+  - a PDF's own text is read page by page with pdf.js;
+  - a page with no text is a scan, so its largest embedded image is OCR'd with tesseract (about 2 s a page). Rendering pages onto `@napi-rs/canvas` crashed pdf.js, hence the image route.
+  - Statuses: `SKIPPED`, `PROCESSING`, `DONE`, `NONE`, `FAILED`. `FULLTEXT_INDEXING=off` stops indexing; `FULLTEXT_OCR=off` keeps text but skips OCR.
+  - Search (`GET /projects/:id/documents/search?q=`, and `GET /documents/search` across every project the user is on) uses Postgres `websearch_to_tsquery` with `ts_headline` snippets, an `ILIKE` fallback, and name and drawing-number matches. A client sees only client-visible documents.
+- **Tags**: per-project coloured tags on documents and drawings, filterable in Documents and searchable in the drawing register.
+- **Version restore**: an older revision is copied in as a new revision (its purpose and title block go with it); the older one stays on the record.
+- **Recycle bin, administrators only.** Deleting a document is now a soft delete: it leaves every list, search and picker, and its drawing number is freed. Administration → Recycle bin restores it (refused if the number has since been reused) or deletes it for good with its files.
+- **Distribution lists** (internal staff): named groups of project members. A transmittal takes lists as well as people, and every transmittal now has a PDF slip (letterhead, recipients, items, "received by" lines) at `GET /projects/:id/transmittals/:id/pdf`.
+
+**Drawings and markup** (`drawings/`, `markups/`)
+- **Drawing index check** (`POST /projects/:id/drawings/index-check`): the architect's index sheet, as a PDF, Excel, CSV or pasted list, is reconciled against the register. Numbers are matched however they are spaced or punctuated. The result lists what is missing, what is extra, and where revisions differ.
+- **DWG and DXF.** `cad-svg.ts` draws them on the server as SVG, one group per layer (`GET …/revisions/:id/drawing.svg`, cached beside the file). DWG is read with libredwg, DXF with dxf-parser. CAD sheets can now be marked up, with layers switched on and off, and exported marked up.
+- **Stamps** (seven fixed wordings), **scale calibration** (one line of known length per page), and **length and area measurements**. The scale is held per page, so lengths are right whatever the sheet's proportions, and the measurements print on the marked-up export.
+
+**Punch list** (`punch/`, Architect 5.13 and 6.1)
+- Items numbered `PL-001` onwards, pinned on a drawing revision (page and position) or unpinned, and given to a team member.
+- Their flow: open → ready for inspection (said by whoever it is given to) → closed by an inspector, or sent back with a note → reopened by an inspector.
+  - Inspectors are internal staff or the architect, engineer, QA, PM, DM or site manager. The client cannot see the punch list.
+- Site photos can be attached to an item. There is a notes thread, alerts at each step, and a PDF (each drawing with numbered pins, then the list).
+- PROCSA 5.13 and 6.1 count punch items as evidence.
+
+**BIM hub** (`bim/`)
+- **Reading the models.** `BimService` polls for IFC revisions not yet read and extracts every element with geometry (`bim-extract.ts`, web-ifc in Node):
+  - its GlobalId, class, name, type, storey, materials, bounding box, and its own and its type's property and quantity sets, flattened as `Set.Name`;
+  - a hash of all that, so revisions can be compared.
+
+  The sample model gives 215 elements in about 2 s. `BIM_PROCESSING=off` stops it.
+- **Element browser** with class and storey facets, text search, an Excel export and quantity totals by class.
+- **Revision compare**: elements added, removed and changed, and what changed (name, type, storey, geometry, properties).
+- **Federations**: saved sets of models that open together.
+- **Coordination hub**: models and their read status, open clashes, open model issues, federations, smart views, requirement scores, and BCF.
+- **Rules** (`rules.ts`), shared by clash tests, smart views and requirements: models, IFC classes and storeys, plus conditions on a field, `property:Set.Name` or `quantity:Set.Name` (is, is not, contains, has a value, more than, one of, pattern…).
+- **Clash detection**: two selections tested by bounding box (sort and sweep), with a tolerance (default 10 mm).
+  - A clash is keyed by its sorted element pair, so re-running keeps its status. Clashes no longer found are resolved by themselves, and a resolved clash found again becomes active.
+  - Each clash has a status (new, active, resolved, approved) and a notes thread. One issue can be raised per clash, linked to both elements.
+  - **Show** opens the viewer with the pair coloured red and blue, everything else ghosted, and the camera on them.
+- **Smart views**: named rule lists (colour, see-through, hide, show only), worked out on the server and applied in the viewer with a legend. They can be chosen from the viewer's toolbar.
+- **BIM requirements**:
+  - imported from a buildingSMART IDS file (0.9 and 1.0: entity, property, attribute and material facets, with simple values, enumerations, patterns and bounds), from Excel or CSV (columns Requirement, IFC type, Property, Rule, Value), or written here;
+  - checked against a model revision, with a score, results per requirement, and the failing elements and why.
+
+  IFC2X3 "standard case" classes count as their parent (a rule on IFCWALL covers IFCWALLSTANDARDCASE). Facets that cannot be checked are reported as left out.
+- **BCF 2.1** (`bcf.service.ts`).
+  - **Export:** the model issues as a `.bcfzip` (topic, notes, the linked elements and the camera; the viewer is Y-up, BCF is Z-up).
+  - **Import:** topics become issues linked to the same elements by GlobalId. A topic seen before (same GUID) is updated rather than duplicated.
+- **Viewpoints** are now stored in the model's own coordinates: the viewer adds back the display origin when saving.
+- **Who sees it:** the hub, clashes, smart views and requirements are for the project team; a client gets 403. Reading uses the documents permission, and raising issues the issues permission.
+
+**Rough estimates** (`rom/`, internal staff)
+- Gross floor area × the rate for building type and quality × the provincial factor, then escalation, contingency and VAT (15%), split into an elemental breakdown (preliminaries, substructure, frame, envelope and so on; separate splits for industrial, parking and healthcare).
+- Saved against a project (Commercial → Rough estimate) or an opportunity (Business case). Each saved estimate records the rate and factor it used.
+- Commercial → Rough estimates is the calculator plus the editable rate table.
+
+**Frontend**
+- New project tabs: **Punch list** and **BIM hub** (Coordination, Elements & quantities, Clash detection, Smart views, BIM requirements). Both are hidden from clients.
+- New pages: `/search` (the search box also offers "Search inside documents") and `/rough-estimates`. Administration gains **Recycle bin**.
+- Documents gain Search inside, tag chips and filter, and "Restore as current". Transmittals gain several documents per transmittal, lists, distribution-list management and the slip.
+- Drawings gain an **Index check** view, tag chips, and markup for DWG/DXF.
+- The markup viewer gains stamp, set-the-scale, measure-length and measure-area tools, and CAD layers.
+- Components: `components/files/` (Tags, DocumentSearch), `components/bim/` (BimHubPanel, ElementsView, ClashView, SmartViewsView, RequirementsView, SelectionEditor), `components/design/PunchPanel.tsx`, `PlanView.tsx`, `IndexCheck.tsx`, `components/estimates/RomPanel.tsx`; `lib/files.ts`, `lib/bim.ts`. `ModelViewer` is exported with `focus` and `initialView`.
+
+**Dev note.** `tsconfig.build.json` now has `watchOptions.excludeDirectories` (`uploads`, `dist`). Without it, every uploaded file made `start:dev` recompile and restart the server, which killed requests and the background OCR and model reading.
+
+**Tests**
+- **API, files and drawings: 38 checks.**
+  - Search: text found in the PDF and by OCR in the scan; cross-project search; short queries refused.
+  - Tags, with duplicates refused.
+  - Restore: as rev C, keeping the purpose; reused numbers refused.
+  - Distribution lists, then a transmittal to a list, and its PDF slip.
+  - Index check: missing, mismatched and extra drawings.
+  - DWG rendered as SVG with layers.
+  - Calibration, then measure, area and stamp; unknown stamp wording refused; marked-up export, including for CAD.
+  - Punch list: pin required, ready, send back (note required), close, PDF, no deleting closed items.
+  - Recycle bin: soft delete, gone from list and search, number reusable, restore refused while reused, restore.
+- **API, BIM and ROM: 44 checks.**
+  - Two models read (215 elements, 4 storeys); element browser, filter, search, quantities, Excel.
+  - Revision B finds the one renamed wall.
+  - Federations, with duplicate names refused.
+  - Clash runs: 54 clashes; a re-run is stable; an approved clash stays approved; an issue is raised once; an empty selection is explained.
+  - Smart views and selection preview.
+  - IDS and CSV import and checks; a bad file refused.
+  - Hub totals.
+  - BCF: export with a Z-up camera; re-import updates rather than duplicates; a foreign topic links to its element and reports the unmatched one.
+  - ROM: arithmetic, save, scope required, unknown type refused.
+- **Browser (Playwright), 28 checks, no console errors.**
+  - Search with the OCR badge and highlights; tag chips and editor; a transmittal to a distribution list and its slip.
+  - Recycle bin restore; the cross-project search page.
+  - Index check; markup measurements (a 10 m scale line gives 20.00 m and 70.64 m²); CAD layers.
+  - Punch pins and "ready".
+  - Hub; elements; revision compare; a clash shown in the 3D viewer; a smart view with its legend; the requirements score.
+  - ROM on its page and on a project.
+  - The 390 px phone layout, with no sideways scroll.
+- **Fixed after testing:** the index parser took a data row for a header and missed spaced numbers and trailing revisions; the element browser now opens on the most recently revised model.
+- A demo project, **"TMP UI walk - Riverside offices"**, was left in the local database for review. It has drawings (PDF, scan, DWG), markups, punch items, two models, a clash test, a smart view, requirements and a ROM estimate.
+
+### 2.24 The architect end to end, and the in-app guide
+
+Built on 2026-10-27. The user asked whether the architect was covered end to end, then: "Let's have that [the end-to-end run] and then an in app guide that guides each role per module they open for the first time … then the same thing for the entire app end to end".
+
+**The end-to-end run.** One project goes from Stage 2 to Stage 6. Each step is done by the person who would really do it, signed in as themselves. The cast:
+
+- the architect, the client, the contractor, a structural engineer and a QS, each with a real login;
+- Setjeka acting as PM.
+
+Stage changes are requested by Setjeka and approved by the client. Stage 1 is the DM/PM's own flow, walked through in §2.17, so the run sets the project to Concept directly when the Stage 1 pack isn't complete.
+
+At every stage, the run checks that the architect's PROCSA items tick themselves from the architect's own work: 12, 8, 9 (4.7 signed off by hand with a note), 14 and 4. Then a browser pass signs in as each person and opens every page and project tab they can reach, recording any refused or failed API call and any error text on the page.
+
+**Found and fixed**
+- **Record numbers clashed across projects.** Transmittal, RFI, submittal and purchase-order numbers were counted per project (TR-2026-0001 on each) but had to be unique across all projects. So the first transmittal, RFI, submittal or order on any project after the first failed with a server error. They are now unique per project (migration `20261027090000_numbers_per_project`).
+- **The architect could not issue their own transmittals.** Issuing needed Setjeka's approve permission. Now whoever approves transmittals issues any of them, and the person a transmittal is from issues their own.
+  - The form never set "from", so an outside party's transmittal is now recorded as from them.
+  - Outside parties cannot send a transmittal as someone else.
+  - This also makes PROCSA 2.9 and 5.10 tick from transmittals sent in the app.
+- **PROCSA 4.9, 5.6 and 5.9 ticked from anyone's work.** On the architect's list they now count only submittals the architect reviewed and RFIs given to the architect. The DM/PM items that use the same evidence are unchanged.
+- **Clients added to the team were offered internal tabs.** A client who is on the project team without a client-organisation login was treated as a consultant. They were offered Inspections, Punch list and the BIM hub, and got "You do not have VIEW permission". The project page now also checks the person's role on the project.
+- **Registers and Team asked outside parties' browsers for the company contractor directory** and were refused.
+  - Registers now offers the contractors on the project, so the architect's defects register can name the contractor.
+  - Team hides adding and removing people from outside parties. Setjeka keeps the team.
+
+**By design, confirmed by the run**
+- Only Setjeka sends a document to the client for approval. The architect sends it to Setjeka.
+- Only Setjeka makes distribution lists. The architect sends to them.
+
+**The in-app guide** (`components/guide/Guide.tsx`, `lib/guide.ts`, `guide/guide.module.ts`)
+- **Who it speaks to.** Each signed-in person gets a persona: Setjeka (any internal account, whatever their project role), architect, engineer, QS, contractor, client, consultant (any other project role), or supplier (a vendor login with no project). `GET /me/guide` works it out from the account and the person's roles across their projects.
+- **Welcome tour, on first sign-in.** Eight steps, worded for the persona, each pointing at part of the app shell (`data-guide` attributes):
+  1. welcome;
+  2. the menu (on a phone, the menu button);
+  3. the project picker;
+  4. search;
+  5. alerts;
+  6. the guide;
+  7. the account and signature;
+  8. where to start.
+
+  "Let's start" opens the persona's first screen. For the architect, that's their PROCSA list on the current project. Esc, Skip and the arrow keys work.
+- **Screen tips, on each screen's first visit.** A card in the bottom right: two to four steps on what *this person* does on *this screen*, for example the architect's drawing register (title-block reading, purpose of issue, programme and index check, markup) versus the contractor's (build from "For construction"). It covers every project tab, the schedule, the portal pages and the top-level pages. "Got it" marks the screen seen, and "Don't show tips on new screens" turns tips off.
+- **The journey: the whole app, end to end.** The header's help button, previously unwired, opens a panel. It lists the persona's journey in the order they'll work:
+  - for the architect: getting started, then Stage 2 to Stage 6 with what to do at each;
+  - for Setjeka: from opportunities through Stage 1, design, construction and close-out.
+
+  Each entry opens that screen on the current project. A screen is ticked once its tips have been seen, with a progress bar. The panel also offers tips for this screen, the welcome tour again, tips on or off, and "start again".
+- **Remembered per person, not per browser.** `User.guideState` (`{ seen, off }`), from migration `20261027100000_user_guide_state`, is read with `GET /me/guide` and written with `PUT /me/guide` (`seen`, `off`, `reset`). A tour or tip seen on a laptop doesn't come back on a phone.
+
+**Verified**
+- **API journey, Stage 2 to 6:** 58 checks. Each stage moves forward on the client's approval. The architect's PROCSA items tick themselves at every stage. Boundaries hold: the client can't open the BIM hub or punch list, Setjeka can't sign a review for the architect, and the architect can't open rough estimates or the recycle bin, can't send straight to the client, and can't make distribution lists. Each person gets the right guide.
+- **Every screen as each person** (architect, client, contractor, engineer, QS): no refused calls and no error text on any screen they are offered. A client typing a hidden tab's address no longer loads it before their role is known.
+- **The guide in the browser:** 18 checks:
+  - the architect's tour, start screen, drawings tip, journey and on-demand tips, and turning tips off;
+  - a second device that remembers;
+  - the client's tour and tip on a phone in dark mode, with the internal tabs hidden;
+  - the contractor's punch-list tip.
+
+  No console errors.
+- **Fixed after the screenshots:**
+  - the tour's spotlight didn't dim the page, so it now uses four panels around the target;
+  - on a phone the menu step points at the menu button;
+  - two buttons were both labelled "Skip the tour".
 
 ---
 

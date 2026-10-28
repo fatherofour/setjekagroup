@@ -6,12 +6,14 @@ import { useAuth } from '@/lib/auth-context';
 import { UsersPanel } from '@/components/administration/UsersPanel';
 import { PermissionsMatrixPanel } from '@/components/administration/PermissionsMatrixPanel';
 import { AuditLogPanel } from '@/components/administration/AuditLogPanel';
+import { RecycleBinPanel } from '@/components/administration/RecycleBinPanel';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
 const ADMIN_TABS: TabItem[] = [
   { value: 'users', label: 'Users' },
   { value: 'permissions', label: 'Permissions' },
   { value: 'audit-log', label: 'Audit Log' },
+  { value: 'recycle-bin', label: 'Recycle bin' },
 ];
 
 export default function AdministrationPage() {
@@ -39,7 +41,7 @@ export default function AdministrationPage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Administration</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Manage user accounts, the per-role permission matrix, and the audit trail.
+          Manage user accounts, the per-role permission matrix, the audit trail and deleted documents.
         </p>
       </div>
 
@@ -48,6 +50,7 @@ export default function AdministrationPage() {
       {tab === 'users' && <UsersPanel />}
       {tab === 'permissions' && <PermissionsMatrixPanel />}
       {tab === 'audit-log' && <AuditLogPanel />}
+      {tab === 'recycle-bin' && <RecycleBinPanel />}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Calculator, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Tabs } from '@/components/ui/Tabs';
+import { RomPanel } from '@/components/estimates/RomPanel';
 import { cardClass, secondaryButton } from '@/lib/stage0';
 import { formatRate } from '@/lib/commercial';
 import { CostReportPanel } from './CostReportPanel';
@@ -89,6 +90,7 @@ export function ProjectCommercial({ projectId, currency }: { projectId: string; 
         { value: 'variations', label: 'Variations' },
         { value: 'invoices', label: 'Supplier invoices' },
         { value: 'estimates', label: 'Estimates' },
+        { value: 'rom', label: 'Rough estimate' },
       ];
 
   return (
@@ -99,6 +101,7 @@ export function ProjectCommercial({ projectId, currency }: { projectId: string; 
       {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} onChanged={changed} />}
       {tab === 'invoices' && <InvoicesPanel projectId={projectId} readOnly={isClient} onChanged={changed} />}
       {tab === 'estimates' && <ProjectEstimates projectId={projectId} />}
+      {tab === 'rom' && <RomPanel projectId={projectId} />}
     </div>
   );
 }

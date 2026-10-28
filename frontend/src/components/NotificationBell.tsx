@@ -114,7 +114,7 @@ export function NotificationBell() {
   const recent = notifications?.slice(0, 12) ?? null;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} data-guide="notifications">
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 sm:h-8 sm:w-8 dark:text-slate-400 dark:hover:bg-slate-800"

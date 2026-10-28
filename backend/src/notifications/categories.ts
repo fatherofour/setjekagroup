@@ -2,9 +2,12 @@ import type { NotificationType } from '../generated/prisma/enums.js';
 
 /** How alerts are grouped on the Notifications page and in each person's
  * alert settings. Keep in step with frontend lib/notifications.ts. */
-export type AlertCategory = 'APPROVALS' | 'ACTIONS' | 'ASSIGNMENTS' | 'DEADLINES' | 'MEETINGS' | 'SITE';
+// Meetings and site photos were taken out of the alert settings at the App
+// Review (17 Oct 2026): meeting invitations count as assignments, and site
+// photo uploads raise no alert at all.
+export type AlertCategory = 'APPROVALS' | 'ACTIONS' | 'ASSIGNMENTS' | 'DEADLINES';
 
-export const ALERT_CATEGORIES: AlertCategory[] = ['APPROVALS', 'ACTIONS', 'ASSIGNMENTS', 'DEADLINES', 'MEETINGS', 'SITE'];
+export const ALERT_CATEGORIES: AlertCategory[] = ['APPROVALS', 'ACTIONS', 'ASSIGNMENTS', 'DEADLINES'];
 
 // Decisions waiting on someone (the client's sign-offs above all) must
 // always reach them, so this category can't be switched off.
@@ -19,6 +22,26 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   VARIATION_DECIDED: 'APPROVALS',
   SUBMITTAL_STATUS_CHANGED: 'APPROVALS',
   RFI_BALL_IN_COURT: 'APPROVALS',
+  APPROVAL_DUE: 'APPROVALS',
+  APPROVAL_OVERDUE: 'APPROVALS',
+  DOCUMENT_APPROVAL_REQUESTED: 'APPROVALS',
+  DOCUMENT_APPROVAL_DECIDED: 'APPROVALS',
+  // Instructions and letters must reach the person they're addressed to,
+  // like a decision does; a draft waiting for Setjeka to issue is its action.
+  COMMUNICATION_RECEIVED: 'APPROVALS',
+  COMMUNICATION_AWAITING_ISSUE: 'ACTIONS',
+  COMMUNICATION_ANSWERED: 'ACTIONS',
+  INSPECTION_REQUESTED: 'ASSIGNMENTS',
+  INSPECTION_SCHEDULED: 'ASSIGNMENTS',
+  INSPECTION_COMPLETED: 'ACTIONS',
+  // A review the architect owes is their decision to make.
+  REGISTER_REVIEW_REQUESTED: 'APPROVALS',
+  REGISTER_REVIEWED: 'ACTIONS',
+  PUNCH_ITEM_ASSIGNED: 'ASSIGNMENTS',
+  // The contractor says it's fixed: the architect's to inspect.
+  PUNCH_ITEM_READY: 'APPROVALS',
+  PUNCH_ITEM_DECIDED: 'ACTIONS',
+  TEXT_EXTRACTED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',
@@ -27,9 +50,10 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   ISSUE_ASSIGNED: 'ASSIGNMENTS',
   RISK_ESCALATED: 'ASSIGNMENTS',
   DUE_SOON: 'DEADLINES',
-  MEETING_SCHEDULED: 'MEETINGS',
-  PHOTO_ADDED: 'SITE',
-  PHOTOS_SHARED: 'SITE',
+  MEETING_SCHEDULED: 'ASSIGNMENTS',
+  // No longer raised; kept so any older alerts still have a home.
+  PHOTO_ADDED: 'ASSIGNMENTS',
+  PHOTOS_SHARED: 'ASSIGNMENTS',
 };
 
 export function categoryOf(type: NotificationType): AlertCategory {

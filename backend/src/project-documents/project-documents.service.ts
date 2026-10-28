@@ -12,6 +12,7 @@ const DOCUMENT_INCLUDE = {
   projectNode: { select: { id: true, name: true, type: true } },
   scheduleActivity: { select: { id: true, name: true } },
   createdBy: { select: { id: true, fullName: true } },
+  tags: { include: { tag: true } },
   revisions: {
     orderBy: { uploadedAt: 'desc' as const },
     include: {
@@ -41,7 +42,7 @@ export class ProjectDocumentsService {
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const client = await this.clientOnly(projectId, ownerId);
-    return this.prisma.projectDocument.findMany({ where: { projectId, ...(client ? { clientVisible: true } : {}) }, include: DOCUMENT_INCLUDE, orderBy: { createdAt: 'desc' } });
+    return this.prisma.projectDocument.findMany({ where: { deletedAt: null, projectId, ...(client ? { clientVisible: true } : {}) }, include: DOCUMENT_INCLUDE, orderBy: { createdAt: 'desc' } });
   }
 
   private async assertFolderInProject(folderId: string, projectId: string) {
@@ -93,7 +94,7 @@ export class ProjectDocumentsService {
   }
 
   async getOne(projectId: string, id: string) {
-    const document = await this.prisma.projectDocument.findFirst({ where: { id, projectId }, include: DOCUMENT_INCLUDE });
+    const document = await this.prisma.projectDocument.findFirst({ where: { deletedAt: null, id, projectId }, include: DOCUMENT_INCLUDE });
     if (!document) throw new NotFoundException('Document not found');
     return document;
   }
@@ -121,10 +122,13 @@ export class ProjectDocumentsService {
     return this.getOne(projectId, id);
   }
 
+  /** Deleting puts the document in the recycle bin: its row and files stay
+   * until an admin restores or purges it. Its drawing number is freed so the
+   * number can be issued again. */
   async remove(projectId: string, ownerId: string, id: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     await this.getOne(projectId, id);
-    await this.prisma.projectDocument.delete({ where: { id } });
+    await this.prisma.projectDocument.update({ where: { id }, data: { deletedAt: new Date(), deletedById: ownerId, drawingKey: null } });
   }
 
   // Revisions are immutable — a new upload always adds a row, never
@@ -151,7 +155,7 @@ export class ProjectDocumentsService {
 
   private async findOwnedRevision(projectId: string, ownerId: string, documentId: string, revisionId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    const revision = await this.prisma.documentRevision.findFirst({ where: { id: revisionId, documentId, document: { projectId } } });
+    const revision = await this.prisma.documentRevision.findFirst({ where: { id: revisionId, documentId, document: { projectId, deletedAt: null } } });
     if (!revision) throw new NotFoundException('Revision not found');
     return revision;
   }

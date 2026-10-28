@@ -24,6 +24,21 @@ import { ProjectDashboardModule } from './project-dashboard/project-dashboard.mo
 import { DocumentFoldersModule } from './document-folders/document-folders.module.js';
 import { ProjectDocumentsModule } from './project-documents/project-documents.module.js';
 import { SitePhotosModule } from './site-photos/site-photos.module.js';
+import { SiteWeatherModule } from './site-weather/site-weather.module.js';
+import { SignoffModule } from './signoff/signoff.module.js';
+import { DeliveryModule } from './delivery/delivery.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { CommunicationsModule } from './communications/communications.module.js';
+import { InspectionsModule } from './inspections/inspections.module.js';
+import { DrawingsModule } from './drawings/drawings.module.js';
+import { AuthoritiesModule } from './authorities/authorities.module.js';
+import { MarkupsModule } from './markups/markups.module.js';
+import { ModelsModule } from './models/models.module.js';
+import { FilesModule } from './files/files.module.js';
+import { PunchModule } from './punch/punch.module.js';
+import { BimModule } from './bim/bim.module.js';
+import { RomModule } from './rom/rom.module.js';
+import { GuideModule } from './guide/guide.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -71,6 +86,21 @@ import { CommercialModule } from './commercial/commercial.module.js';
     DocumentFoldersModule,
     ProjectDocumentsModule,
     SitePhotosModule,
+    SiteWeatherModule,
+    SignoffModule,
+    DeliveryModule,
+    ReportsModule,
+    CommunicationsModule,
+    InspectionsModule,
+    DrawingsModule,
+    AuthoritiesModule,
+    MarkupsModule,
+    ModelsModule,
+    FilesModule,
+    PunchModule,
+    BimModule,
+    RomModule,
+    GuideModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

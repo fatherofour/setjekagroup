@@ -3,9 +3,15 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationType, CommentEntityType } from '../generated/prisma/enums.js';
 import type { Notification } from '../generated/prisma/client.js';
 import { recordLink } from './links.js';
+import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
 import { ALERT_CATEGORIES, UNMUTABLE, categoryOf, typesIn, type AlertCategory } from './categories.js';
 
-const DUE_SOON_WINDOW_DAYS = 2;
+// App Review, 17 Oct 2026: alert three days ahead.
+const DUE_SOON_WINDOW_DAYS = 3;
+// Reminders computed at read time; reading one stores a read row of the
+// same type for the day.
+const REMINDER_TYPES = ['DUE_SOON', 'APPROVAL_DUE', 'APPROVAL_OVERDUE'] as const;
+const shortDate = (d: Date) => d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' });
 
 export interface NotificationFilter {
   category?: AlertCategory;
@@ -130,6 +136,28 @@ export class NotificationsService {
       for (const s of dueSubmittals) push('submittal', 'SUBMITTAL', s.id, pid(s.reviewerId), `Submittal "${s.title}" is due soon`, s.dueDate!);
     }
 
+    // Milestones and stage deliverables (App Review, 17 Oct 2026): on a
+    // project, the Development Manager and Project Manager are reminded; on
+    // an opportunity (Stage 0), its owner.
+    const ownerRoles = member.length
+      ? await this.prisma.projectMember.findMany({ where: { userId, role: { in: ['DEVELOPMENT_MANAGER', 'PROJECT_MANAGER'] } }, select: { projectId: true } })
+      : [];
+    const milestones = await this.prisma.developmentMilestone.findMany({
+      where: {
+        actualDate: null,
+        targetDate: { lte: dueWindow, not: null },
+        OR: [
+          ...(ownerRoles.length ? [{ projectId: { in: ownerRoles.map((r) => r.projectId) } }] : []),
+          { projectId: null, opportunity: { ownerId: userId, stage: { not: 'CONVERTED' as const } } },
+        ],
+      },
+    });
+    for (const m of milestones) {
+      const link = m.projectId ? `/projects/${m.projectId}?tab=overview` : m.opportunityId ? `/opportunities/${m.opportunityId}?tab=milestones` : '/my-day';
+      const overdue = m.targetDate! < new Date();
+      push('milestone', m.projectId ? 'PROJECT' : 'OPPORTUNITY', m.id, m.projectId, `Milestone "${m.name}" ${overdue ? 'is overdue' : 'is due soon'}`, m.targetDate!, link);
+    }
+
     // Note actions addressed to this user and due soon (Meeting 3 §2.4).
     // Keyed by the note's own id (not the record it sits on) so two actions
     // on one record are reminded - and dismissed - separately.
@@ -140,6 +168,48 @@ export class NotificationsService {
       const body = a.body.length > 80 ? `${a.body.slice(0, 77)}…` : a.body;
       push('action', a.entityType, a.id, a.projectId, `Action due soon: "${body}"`, a.dueDate!, recordLink(a.entityType, a));
     }
+    return out;
+  }
+
+  /** Decisions with a response date (App Review, 17 Oct 2026). The client
+   * is reminded from three days before the date; whoever sent the item is
+   * told once it's overdue. Approvals alerts can't be switched off. */
+  private async approvalReminders(userId: string, persisted: Notification[]): Promise<Notification[]> {
+    const today = new Date().toDateString();
+    const alreadyToday = new Set(
+      persisted.filter((n) => (n.type === 'APPROVAL_DUE' || n.type === 'APPROVAL_OVERDUE') && n.createdAt.toDateString() === today).map((n) => `${n.type}:${n.entityId}`),
+    );
+    const now = new Date();
+    const window = new Date(now.getTime() + DUE_SOON_WINDOW_DAYS * 86_400_000);
+    const out: Notification[] = [];
+    const push = (type: 'APPROVAL_DUE' | 'APPROVAL_OVERDUE', entityType: CommentEntityType, entityId: string, projectId: string, message: string, due: Date, link: string) => {
+      if (alreadyToday.has(`${type}:${entityId}`)) return;
+      out.push({ id: `synthetic-${type === 'APPROVAL_DUE' ? 'appdue' : 'appover'}-${entityId}`, userId, projectId, type, entityType, entityId, link, message, isRead: false, createdAt: due });
+    };
+    const asClient = { project: { members: { some: { userId, role: 'CLIENT' as const } } } };
+    const dueSoon = { responseDueAt: { lte: window, not: null } };
+    const overdue = { responseDueAt: { lt: now, not: null } };
+    const [dels, vars, gates, docs, myDels, myVars, myGates, myDocs] = await Promise.all([
+      this.prisma.stageDeliverable.findMany({ where: { status: 'SUBMITTED', ...dueSoon, ...asClient } }),
+      this.prisma.variation.findMany({ where: { status: 'SUBMITTED', ...dueSoon, ...asClient } }),
+      this.prisma.stageTransition.findMany({ where: { status: 'PENDING', ...dueSoon, ...asClient } }),
+      this.prisma.documentApprovalRequest.findMany({ where: { status: 'PENDING', ...dueSoon, ...asClient }, include: { revision: { select: { revisionNumber: true, document: { select: { name: true } } } } } }),
+      this.prisma.stageDeliverable.findMany({ where: { status: 'SUBMITTED', submittedById: userId, ...overdue } }),
+      this.prisma.variation.findMany({ where: { status: 'SUBMITTED', raisedById: userId, ...overdue } }),
+      this.prisma.stageTransition.findMany({ where: { status: 'PENDING', requestedById: userId, ...overdue } }),
+      this.prisma.documentApprovalRequest.findMany({ where: { status: 'PENDING', requestedById: userId, ...overdue }, include: { revision: { select: { revisionNumber: true, document: { select: { name: true } } } } } }),
+    ]);
+    const delTitle = (key: string, version: number) => `${INCEPTION_DELIVERABLES.find((d) => d.key === key)?.title ?? key} (v${version})`;
+    const yourDecision = (due: Date) => (due < now ? `was due ${shortDate(due)}` : `is due by ${shortDate(due)}`);
+    for (const d of dels) push('APPROVAL_DUE', 'STAGE_DELIVERABLE', d.id, d.projectId, `Your decision on ${delTitle(d.key, d.version)} ${yourDecision(d.responseDueAt!)}`, d.responseDueAt!, `/projects/${d.projectId}?tab=inception`);
+    for (const v of vars) push('APPROVAL_DUE', 'VARIATION', v.id, v.projectId, `Your decision on variation ${v.number} ${yourDecision(v.responseDueAt!)}`, v.responseDueAt!, `/projects/${v.projectId}?tab=commercial`);
+    for (const t of gates) push('APPROVAL_DUE', 'STAGE_TRANSITION', t.id, t.projectId, `Your decision on moving to ${t.toStage} ${yourDecision(t.responseDueAt!)}`, t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
+    for (const r of docs) push('APPROVAL_DUE', 'DOCUMENT_REVISION', r.revisionId, r.projectId, `Your approval of ${r.revision.document.name} (Rev ${r.revision.revisionNumber}) ${yourDecision(r.responseDueAt!)}`, r.responseDueAt!, `/projects/${r.projectId}?tab=documents`);
+    const late = (what: string, due: Date) => `The client hasn't responded to ${what} (due ${shortDate(due)})`;
+    for (const d of myDels) push('APPROVAL_OVERDUE', 'STAGE_DELIVERABLE', d.id, d.projectId, late(delTitle(d.key, d.version), d.responseDueAt!), d.responseDueAt!, `/projects/${d.projectId}?tab=inception`);
+    for (const v of myVars) push('APPROVAL_OVERDUE', 'VARIATION', v.id, v.projectId, late(`variation ${v.number}`, v.responseDueAt!), v.responseDueAt!, `/projects/${v.projectId}?tab=commercial`);
+    for (const t of myGates) push('APPROVAL_OVERDUE', 'STAGE_TRANSITION', t.id, t.projectId, late(`the move to ${t.toStage}`, t.responseDueAt!), t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
+    for (const r of myDocs) push('APPROVAL_OVERDUE', 'DOCUMENT_REVISION', r.revisionId, r.projectId, late(`${r.revision.document.name} (Rev ${r.revision.revisionNumber})`, r.responseDueAt!), r.responseDueAt!, `/projects/${r.projectId}?tab=documents`);
     return out;
   }
 
@@ -162,13 +232,18 @@ export class NotificationsService {
         take: 200,
       }),
       this.prisma.notification.findMany({
-        where: { userId, type: 'DUE_SOON', createdAt: { gte: new Date(new Date().toDateString()) } },
+        where: { userId, type: { in: [...REMINDER_TYPES] }, createdAt: { gte: new Date(new Date().toDateString()) } },
       }),
     ]);
 
+    const wantsApprovals = !filter.category || filter.category === 'APPROVALS';
     const wantsDeadlines = !filter.category || filter.category === 'DEADLINES';
     const deadlinesMuted = user?.mutedAlertCategories.includes('DEADLINES');
-    let synthetic = wantsDeadlines && !deadlinesMuted ? await this.dueSoon(userId, dismissedToday) : [];
+    let synthetic = [
+      ...(wantsDeadlines && !deadlinesMuted ? await this.dueSoon(userId, dismissedToday) : []),
+      ...(wantsApprovals ? await this.approvalReminders(userId, dismissedToday) : []),
+    ];
+    if (filter.unread) synthetic = synthetic.filter((n) => !n.isRead);
     if (filter.projectId) synthetic = synthetic.filter((n) => n.projectId === filter.projectId);
 
     const all = [...synthetic, ...persisted].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -184,16 +259,16 @@ export class NotificationsService {
    * showing as new until tomorrow's reminder. */
   private async dismissSynthetic(userId: string, ids: string[] | 'all') {
     const dismissedToday = await this.prisma.notification.findMany({
-      where: { userId, type: 'DUE_SOON', createdAt: { gte: new Date(new Date().toDateString()) } },
+      where: { userId, type: { in: [...REMINDER_TYPES] }, createdAt: { gte: new Date(new Date().toDateString()) } },
     });
-    const pending = (await this.dueSoon(userId, dismissedToday)).filter((n) => ids === 'all' || ids.includes(n.id));
+    const pending = [...(await this.dueSoon(userId, dismissedToday)), ...(await this.approvalReminders(userId, dismissedToday))].filter((n) => ids === 'all' || ids.includes(n.id));
     if (pending.length === 0) return;
     await this.prisma.notification.createMany({
       data: pending.map((n) => ({
         userId,
         projectId: n.projectId,
         link: n.link,
-        type: 'DUE_SOON' as const,
+        type: n.type,
         entityType: n.entityType,
         entityId: n.entityId,
         message: n.message,

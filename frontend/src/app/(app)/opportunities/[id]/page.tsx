@@ -21,6 +21,7 @@ import { MilestonesPanel } from '@/components/opportunities/MilestonesPanel';
 import { EvidenceFiles } from '@/components/opportunities/EvidenceFiles';
 import { ViabilitySection } from '@/components/inception/ViabilitySection';
 import { RegisterPanel } from '@/components/inception/RegisterPanel';
+import { RomPanel } from '@/components/estimates/RomPanel';
 import {
   OPPORTUNITY_STAGE_LABEL,
   OPPORTUNITY_STAGE_TONE,
@@ -493,6 +494,11 @@ export default function OpportunityDetailPage() {
           prefillNote={prefill?.note}
           onChange={load}
         />
+      )}
+      {tab === 'business' && (
+        <div className="mt-4">
+          <RomPanel opportunityId={opportunity.id} />
+        </div>
       )}
       {tab === 'business' && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">

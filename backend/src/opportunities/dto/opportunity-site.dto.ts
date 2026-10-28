@@ -1,10 +1,16 @@
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsNumber, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 import { Currency, LandAcquisitionStatus, OpportunitySiteStatus } from '../../generated/prisma/enums.js';
 
 export class CreateOpportunitySiteDto {
   @IsString()
   @MinLength(1)
   name!: string;
+
+  /** The client already owns this land: it is registered as the selected
+   * site and counts as secured straight away. */
+  @IsOptional()
+  @IsBoolean()
+  clientOwned?: boolean;
 
   @IsOptional()
   @IsString()

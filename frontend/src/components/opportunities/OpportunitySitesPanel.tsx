@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { CheckCircle2, MapPin, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Home, MapPin, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
@@ -14,6 +14,8 @@ import {
   labelClass,
   primaryButton,
   secondaryButton,
+  ACQUISITION_LABEL,
+  type AcquisitionStatus,
   type SiteStatus,
 } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
@@ -38,17 +40,7 @@ interface Site {
   transferDate: string | null;
 }
 
-type AcquisitionStatus = 'NOT_STARTED' | 'NEGOTIATING' | 'OFFER_MADE' | 'AGREEMENT_SIGNED' | 'TRANSFERRED' | 'LEASED' | 'WITHDRAWN';
-
-const ACQUISITION: { value: AcquisitionStatus; label: string }[] = [
-  { value: 'NOT_STARTED', label: 'Not started' },
-  { value: 'NEGOTIATING', label: 'Negotiating' },
-  { value: 'OFFER_MADE', label: 'Offer made' },
-  { value: 'AGREEMENT_SIGNED', label: 'Sale / lease agreement signed' },
-  { value: 'TRANSFERRED', label: 'Transferred' },
-  { value: 'LEASED', label: 'Leased' },
-  { value: 'WITHDRAWN', label: 'Withdrawn' },
-];
+const ACQUISITION = (Object.keys(ACQUISITION_LABEL) as AcquisitionStatus[]).map((value) => ({ value, label: ACQUISITION_LABEL[value] }));
 
 /** PROCSA 0.5 "Manage procurement of land rights": securing the chosen site
  * itself — from negotiation to signed agreement and transfer. */
@@ -93,25 +85,58 @@ function AcquisitionEditor({ opportunityId, site, readOnly, onSaved }: { opportu
           <label className={labelClass} htmlFor={`acq-${site.id}`}>
             Status
           </label>
-          <Select id={`acq-${site.id}`} disabled={readOnly} value={f.acquisitionStatus} onChange={(v) => setF({ ...f, acquisitionStatus: v as AcquisitionStatus })} className={inputClass} options={ACQUISITION} />
+          <Select
+            id={`acq-${site.id}`}
+            disabled={readOnly}
+            value={f.acquisitionStatus}
+            onChange={(v) => setF({ ...f, acquisitionStatus: v as AcquisitionStatus })}
+            className={inputClass}
+            options={ACQUISITION}
+          />
         </div>
-        <div>
-          <label className={labelClass} htmlFor={`price-${site.id}`}>
-            Agreed price ({site.currency ?? 'ZAR'})
-          </label>
-          <input id={`price-${site.id}`} disabled={readOnly} type="number" min={0} className={inputClass} value={f.agreedPrice} onChange={(e) => setF({ ...f, agreedPrice: e.target.value })} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor={`agr-${site.id}`}>
-            Agreement signed
-          </label>
-          <input id={`agr-${site.id}`} disabled={readOnly} type="date" className={inputClass} value={f.agreementDate} onChange={(e) => setF({ ...f, agreementDate: e.target.value })} />
-        </div>
+        {f.acquisitionStatus !== 'CLIENT_OWNED' && (
+          <>
+            <div>
+              <label className={labelClass} htmlFor={`price-${site.id}`}>
+                Agreed price ({site.currency ?? 'ZAR'})
+              </label>
+              <input
+                id={`price-${site.id}`}
+                disabled={readOnly}
+                type="number"
+                min={0}
+                className={inputClass}
+                value={f.agreedPrice}
+                onChange={(e) => setF({ ...f, agreedPrice: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor={`agr-${site.id}`}>
+                Agreement signed
+              </label>
+              <input
+                id={`agr-${site.id}`}
+                disabled={readOnly}
+                type="date"
+                className={inputClass}
+                value={f.agreementDate}
+                onChange={(e) => setF({ ...f, agreementDate: e.target.value })}
+              />
+            </div>
+          </>
+        )}
         <div>
           <label className={labelClass} htmlFor={`trf-${site.id}`}>
-            Transfer / registration
+            {f.acquisitionStatus === 'CLIENT_OWNED' ? 'Title registered (if known)' : 'Transfer / registration'}
           </label>
-          <input id={`trf-${site.id}`} disabled={readOnly} type="date" className={inputClass} value={f.transferDate} onChange={(e) => setF({ ...f, transferDate: e.target.value })} />
+          <input
+            id={`trf-${site.id}`}
+            disabled={readOnly}
+            type="date"
+            className={inputClass}
+            value={f.transferDate}
+            onChange={(e) => setF({ ...f, transferDate: e.target.value })}
+          />
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -126,7 +151,7 @@ function AcquisitionEditor({ opportunityId, site, readOnly, onSaved }: { opportu
   );
 }
 
-const EMPTY = { name: '', address: '', erfNumber: '', sizeSqm: '', zoning: '', ownership: '', askingPrice: '', latitude: '', longitude: '', notes: '' };
+const EMPTY = { clientOwned: false, name: '', address: '', erfNumber: '', sizeSqm: '', zoning: '', ownership: '', askingPrice: '', latitude: '', longitude: '', notes: '' };
 
 const num = (v: string) => (v.trim() === '' ? undefined : Number(v));
 
@@ -179,13 +204,14 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
         authedFetch(`/opportunities/${opportunityId}/sites`, {
           method: 'POST',
           body: {
+            clientOwned: form.clientOwned || undefined,
             name: form.name.trim(),
             address: form.address.trim() || undefined,
             erfNumber: form.erfNumber.trim() || undefined,
             sizeSqm: num(form.sizeSqm),
             zoning: form.zoning.trim() || undefined,
             ownership: form.ownership.trim() || undefined,
-            askingPrice: num(form.askingPrice),
+            askingPrice: form.clientOwned ? undefined : num(form.askingPrice),
             latitude: num(form.latitude),
             longitude: num(form.longitude),
             notes: form.notes.trim() || undefined,
@@ -211,14 +237,38 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
             <span className="font-normal text-slate-400">· PROCSA 0.4</span>
           </h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Log every site considered and select one. The selected site becomes the project&apos;s location when it moves to Inception.
+            Log every site considered and select one, or register the land the client already owns. The selected site becomes the project&apos;s location when it moves to
+            Inception.
           </p>
         </div>
         {!readOnly && (
-          <button type="button" onClick={() => setShowForm((v) => !v)} className={secondaryButton}>
-            <Plus size={14} />
-            Add site
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ ...EMPTY, clientOwned: true });
+                setShowForm(true);
+              }}
+              className={secondaryButton}
+            >
+              <Home size={14} />
+              Client already owns the land
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (showForm && !form.clientOwned) setShowForm(false);
+                else {
+                  setForm(EMPTY);
+                  setShowForm(true);
+                }
+              }}
+              className={secondaryButton}
+            >
+              <Plus size={14} />
+              Add site
+            </button>
+          </div>
         )}
       </div>
 
@@ -232,6 +282,15 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
 
       {showForm && (
         <form onSubmit={add} className="mt-3 space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-600" checked={form.clientOwned} onChange={(e) => setForm({ ...form, clientOwned: e.target.checked })} />
+            <span>
+              The client already owns this land
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                It&apos;s registered as the selected site and counts as secured. Add its details so it carries into the project.
+              </span>
+            </span>
+          </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className={labelClass} htmlFor="site-name">
@@ -267,14 +326,22 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
               <label className={labelClass} htmlFor="site-owner">
                 Ownership
               </label>
-              <input id="site-owner" className={inputClass} placeholder="Owner / seller" value={form.ownership} onChange={(e) => setForm({ ...form, ownership: e.target.value })} />
+              <input
+                id="site-owner"
+                className={inputClass}
+                placeholder={form.clientOwned ? 'The client (default)' : 'Owner / seller'}
+                value={form.ownership}
+                onChange={(e) => setForm({ ...form, ownership: e.target.value })}
+              />
             </div>
-            <div>
-              <label className={labelClass} htmlFor="site-price">
-                Asking price
-              </label>
-              <input id="site-price" type="number" min={0} className={inputClass} value={form.askingPrice} onChange={(e) => setForm({ ...form, askingPrice: e.target.value })} />
-            </div>
+            {!form.clientOwned && (
+              <div>
+                <label className={labelClass} htmlFor="site-price">
+                  Asking price
+                </label>
+                <input id="site-price" type="number" min={0} className={inputClass} value={form.askingPrice} onChange={(e) => setForm({ ...form, askingPrice: e.target.value })} />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelClass} htmlFor="site-lat">
@@ -297,7 +364,7 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
             </div>
           </div>
           <button type="submit" disabled={saving || !form.name.trim()} className={primaryButton}>
-            {saving ? 'Adding…' : 'Add site'}
+            {saving ? 'Adding…' : form.clientOwned ? 'Register the client’s land' : 'Add site'}
           </button>
         </form>
       )}
@@ -327,7 +394,9 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
                           <Select
                             aria-label={`Status of ${s.name}`}
                             value={s.status}
-                            onChange={(v) => run(() => authedFetch(`/opportunities/${opportunityId}/sites/${s.id}`, { method: 'PATCH', body: { status: v } }), 'Failed to update site.')}
+                            onChange={(v) =>
+                              run(() => authedFetch(`/opportunities/${opportunityId}/sites/${s.id}`, { method: 'PATCH', body: { status: v } }), 'Failed to update site.')
+                            }
                             className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                             options={(['CANDIDATE', 'SHORTLISTED', 'REJECTED'] as SiteStatus[]).map((v) => ({ value: v, label: SITE_STATUS_LABEL[v] }))}
                           />
@@ -344,7 +413,9 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
                     <button
                       type="button"
                       aria-label={`Delete ${s.name}`}
-                      onClick={() => confirm(`Delete site ${s.name}?`) && run(() => authedFetch(`/opportunities/${opportunityId}/sites/${s.id}`, { method: 'DELETE' }), 'Failed to delete site.')}
+                      onClick={() =>
+                        confirm(`Delete site ${s.name}?`) && run(() => authedFetch(`/opportunities/${opportunityId}/sites/${s.id}`, { method: 'DELETE' }), 'Failed to delete site.')
+                      }
                       className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
                     >
                       <Trash2 size={14} />

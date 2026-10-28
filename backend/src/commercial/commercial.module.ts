@@ -1,3 +1,4 @@
+import { SignoffModule } from '../signoff/signoff.module.js';
 import { Module } from '@nestjs/common';
 import { PermissionsModule } from '../permissions/permissions.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
@@ -6,7 +7,7 @@ import { CommercialController } from './commercial.controller.js';
 import { CommercialService } from './commercial.service.js';
 
 @Module({
-  imports: [PermissionsModule, NotificationsModule, CostDatabaseModule],
+  imports: [PermissionsModule, NotificationsModule, CostDatabaseModule, SignoffModule],
   controllers: [CommercialController],
   providers: [CommercialService],
   exports: [CommercialService],

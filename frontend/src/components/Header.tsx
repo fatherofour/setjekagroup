@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HelpCircle, Menu } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
@@ -11,6 +12,7 @@ import { StageBadge } from './StageBadge';
 import { SearchPalette } from './SearchPalette';
 import { NotificationBell } from './NotificationBell';
 import { getPageTitle } from './pageTitles';
+import { openGuide } from './guide/Guide';
 
 function UserMenu() {
   const { user, logout } = useAuth();
@@ -29,7 +31,7 @@ function UserMenu() {
   const initial = user.fullName.trim().charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase();
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} data-guide="account">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white"
@@ -44,6 +46,13 @@ function UserMenu() {
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
           </div>
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
+          <Link
+            href="/account/signature"
+            onClick={() => setOpen(false)}
+            className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            My signature
+          </Link>
           <button
             onClick={logout}
             className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -66,6 +75,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex min-w-0 shrink items-center gap-2">
         <button
           onClick={onMenuClick}
+          data-guide="menu-button"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
           aria-label="Open menu"
           type="button"
@@ -88,8 +98,11 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex shrink-0 items-center gap-1">
         <NotificationBell />
         <button
-          className="hidden h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:flex"
-          aria-label="Help"
+          onClick={openGuide}
+          data-guide="guide"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:h-8 sm:w-8"
+          aria-label="Guide and help"
+          title="Guide and help"
           type="button"
         >
           <HelpCircle size={16} strokeWidth={1.75} />

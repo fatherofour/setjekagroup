@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { CostDatabaseService } from '../cost-database/cost-database.service.js';
 import { round } from '../cost-database/pricing.js';
+import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js';
+import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue } from '../signoff/dto/decision.dto.js';
 import type {
   AssessVariationDto,
   BudgetLineDto,
@@ -50,6 +52,7 @@ export class CommercialService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly costs: CostDatabaseService,
+    private readonly signoff: SignoffService,
   ) {}
 
   private async project(projectId: string) {
@@ -205,8 +208,9 @@ export class CommercialService {
     return v;
   }
 
-  async submitVariation(projectId: string, id: string, userId: string, comment?: string) {
-    const v = await this.transition(projectId, id, userId, ['DRAFT'], 'SUBMITTED', comment, { submittedAt: new Date() });
+  async submitVariation(projectId: string, id: string, userId: string, comment?: string, responseDueAt?: string) {
+    const due = responseDue(responseDueAt);
+    const v = await this.transition(projectId, id, userId, ['DRAFT'], 'SUBMITTED', comment, { submittedAt: new Date(), responseDueAt: due });
     const project = await this.project(projectId);
     const clients = await this.prisma.projectMember.findMany({ where: { projectId, role: 'CLIENT', userId: { not: null } }, select: { userId: true } });
     for (const c of clients) {
@@ -230,15 +234,40 @@ export class CommercialService {
   /** Meeting 3 hard rule: only the client decides. Checked here directly,
    * not just through the permission matrix, so neither an admin nor a
    * changed matrix can let Setjeka approve on the client's behalf. */
-  async decideVariation(projectId: string, id: string, userId: string, dto: DecideVariationDto) {
+  async decideVariation(projectId: string, id: string, userId: string, dto: DecideVariationDto, meta: RequestMeta = {}) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { accountType: true } });
     const asClient = await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } });
     if (!asClient || user?.accountType !== 'EXTERNAL') throw new ForbiddenException('Only the client can approve or reject a variation');
-    if (!dto.approve && !dto.comment?.trim()) throw new BadRequestException('Say why the variation is rejected');
-    const v = await this.transition(projectId, id, userId, ['SUBMITTED'], dto.approve ? 'APPROVED' : 'REJECTED', dto.comment, {
+    const { outcome, comment } = resolveOutcome(dto);
+    const approve = isApproval(outcome);
+    const current = await this.variation(projectId, id);
+    if (current.status !== 'SUBMITTED') throw new BadRequestException(`A ${current.status.toLowerCase()} variation can't be decided`);
+    const project = await this.project(projectId);
+    await this.signoff.sign({
+      projectId,
+      subject: 'VARIATION',
+      subjectId: id,
+      title: `Variation ${current.number}: ${current.title}`,
+      kind: 'Variation order',
+      outcome,
+      comment,
+      signature: dto.signature,
+      signerId: userId,
+      meta,
+      facts: [
+        ['Number', current.number],
+        ['Title', current.title],
+        ['Reason', current.reason.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())],
+        ['Value', `${project.currency} ${variationValue(current).toLocaleString('en-ZA')}${current.assessedValue != null ? ' (QS assessed)' : ''}`],
+        ['Time impact', current.timeImpactDays != null ? `${current.timeImpactDays} days` : 'None stated'],
+        ['Description', current.description ?? ''],
+      ],
+    });
+    const v = await this.transition(projectId, id, userId, ['SUBMITTED'], approve ? 'APPROVED' : 'REJECTED', comment, {
       decidedById: userId,
       decidedAt: new Date(),
-      decisionComment: dto.comment,
+      decisionComment: comment,
+      decisionOutcome: outcome,
     });
     await this.notifications.notify({
       userId: v.raisedById,
@@ -246,7 +275,7 @@ export class CommercialService {
       type: 'VARIATION_DECIDED',
       entityType: 'VARIATION',
       entityId: id,
-      message: `Variation ${v.number} "${v.title}" was ${dto.approve ? 'approved' : 'rejected'} by the client${dto.comment ? `: ${dto.comment}` : ''}`,
+      message: `Variation ${v.number} "${v.title}": ${OUTCOME_LABEL[outcome].toLowerCase()} by the client${comment ? ` - ${comment}` : ''}`,
     });
     return this.variation(projectId, id);
   }

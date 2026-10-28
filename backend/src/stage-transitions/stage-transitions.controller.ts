@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { requestMeta } from '../signoff/signoff.controller.js';
 import { StageTransitionsService } from './stage-transitions.service.js';
 import { RequestTransitionDto } from './dto/request-transition.dto.js';
 import { DecideTransitionDto } from './dto/decide-transition.dto.js';
@@ -32,7 +34,8 @@ export class StageTransitionsController {
     @Param('id') id: string,
     @Body() dto: DecideTransitionDto,
     @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
   ) {
-    return this.stageTransitionsService.decide(projectId, user.sub, id, dto);
+    return this.stageTransitionsService.decide(projectId, user.sub, id, dto, requestMeta(req));
   }
 }

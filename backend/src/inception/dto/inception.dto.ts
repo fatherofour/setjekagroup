@@ -1,3 +1,4 @@
+import { DecisionDto } from '../../signoff/dto/decision.dto.js';
 import { IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 import { AdviceTopic, AgreementStatus, ContractForm, DeliveryStrategy, TenderMethod } from '../../generated/prisma/enums.js';
 
@@ -51,12 +52,11 @@ export class MyAppointmentDto {
 
 export class DeliverableActionDto {
   @IsOptional() @IsString() comment?: string;
+  /** When the client is asked to respond by (App Review, 17 Oct 2026). */
+  @IsOptional() @IsDateString() responseDueAt?: string;
 }
 
-export class DecideDeliverableDto {
-  @IsBoolean() approve!: boolean;
-  @IsOptional() @IsString() comment?: string;
-}
+export class DecideDeliverableDto extends DecisionDto {}
 
 export class ResponsibilityCheckDto {
   @IsOptional() @IsString() note?: string;

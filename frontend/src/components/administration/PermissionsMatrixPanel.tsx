@@ -21,7 +21,11 @@ type PermissionModule =
   | 'STAGE_GATE'
   | 'PROCUREMENT'
   | 'PROJECT_DEFINITION'
-  | 'MEETINGS';
+  | 'MEETINGS'
+  | 'COMMERCIAL'
+  | 'SITE_PHOTOS'
+  | 'COMMUNICATIONS'
+  | 'INSPECTIONS';
 
 type PermissionAction = 'VIEW' | 'CREATE' | 'EDIT' | 'DELETE' | 'APPROVE' | 'COMMENT';
 
@@ -48,6 +52,10 @@ const MODULE_OPTIONS: { value: PermissionModule; label: string }[] = [
   { value: 'PROCUREMENT', label: 'Procurement (RFQs, POs)' },
   { value: 'PROJECT_DEFINITION', label: 'Inception documents (brief, viability, policy…)' },
   { value: 'MEETINGS', label: 'Meetings' },
+  { value: 'COMMERCIAL', label: 'Commercial (budget, variations, invoices)' },
+  { value: 'SITE_PHOTOS', label: 'Site photos' },
+  { value: 'COMMUNICATIONS', label: 'Instructions & letters (approve = issue)' },
+  { value: 'INSPECTIONS', label: 'Inspections & checklists' },
 ];
 
 const ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];

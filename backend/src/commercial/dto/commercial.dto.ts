@@ -1,3 +1,4 @@
+import { DecisionDto } from '../../signoff/dto/decision.dto.js';
 import { IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { VariationReason } from '../../generated/prisma/enums.js';
 
@@ -49,12 +50,11 @@ export class AssessVariationDto {
 
 export class VariationActionDto {
   @IsOptional() @IsString() comment?: string;
+  /** When the client is asked to respond by (App Review, 17 Oct 2026). */
+  @IsOptional() @IsDateString() responseDueAt?: string;
 }
 
-export class DecideVariationDto {
-  @IsBoolean() approve!: boolean;
-  @IsOptional() @IsString() comment?: string;
-}
+export class DecideVariationDto extends DecisionDto {}
 
 export class CreateInvoiceDto {
   @IsUUID() purchaseOrderId!: string;

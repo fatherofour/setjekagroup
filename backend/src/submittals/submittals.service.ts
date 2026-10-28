@@ -44,7 +44,7 @@ export class SubmittalsService {
   }
 
   private async assertDocumentInProject(documentId: string, projectId: string) {
-    const found = await this.prisma.projectDocument.findFirst({ where: { id: documentId, projectId } });
+    const found = await this.prisma.projectDocument.findFirst({ where: { deletedAt: null, id: documentId, projectId } });
     if (!found) throw new BadRequestException('Document not found in this project');
   }
 

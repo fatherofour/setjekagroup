@@ -37,22 +37,43 @@ import { InceptionWorkspace } from '@/components/inception/InceptionWorkspace';
 import { ProjectCommercial } from '@/components/commercial/ProjectCommercial';
 import { ActionRegister } from '@/components/project/ActionRegister';
 import { SitePhotosPanel } from '@/components/photos/SitePhotosPanel';
+import { SiteWeatherHistory } from '@/components/project/SiteWeatherHistory';
+import { ProcsaTracker } from '@/components/delivery/ProcsaTracker';
+import { RegistersPanel } from '@/components/delivery/RegistersPanel';
+import { ReportsPanel } from '@/components/reports/ReportsPanel';
+import { DrawingsPanel } from '@/components/design/DrawingsPanel';
+import { AuthoritiesPanel } from '@/components/design/AuthoritiesPanel';
+import { InstructionsPanel } from '@/components/design/InstructionsPanel';
+import { InspectionsPanel } from '@/components/design/InspectionsPanel';
+import { ModelsPanel } from '@/components/design/ModelsPanel';
+import { PunchPanel } from '@/components/design/PunchPanel';
+import { BimHubPanel } from '@/components/bim/BimHubPanel';
 import { Select } from '@/components/ui/Select';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 
 const WORKSPACE_TABS: TabItem[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'inception', label: 'Inception (Stage 1)' },
+  { value: 'procsa', label: 'PROCSA' },
   { value: 'meetings', label: 'Meetings' },
   { value: 'actions', label: 'Actions' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'issues', label: 'Issues' },
   { value: 'risks', label: 'Risks' },
   { value: 'documents', label: 'Documents' },
+  { value: 'drawings', label: 'Drawings' },
+  { value: 'models', label: 'Models' },
+  { value: 'bim', label: 'BIM hub' },
+  { value: 'authorities', label: 'Authorities' },
+  { value: 'instructions', label: 'Instructions' },
+  { value: 'inspections', label: 'Inspections' },
+  { value: 'punch', label: 'Punch list' },
   { value: 'photos', label: 'Site photos' },
   { value: 'technical', label: 'RFIs & Submittals' },
   { value: 'procurement', label: 'Procurement' },
   { value: 'commercial', label: 'Commercial' },
+  { value: 'registers', label: 'Registers' },
+  { value: 'reports', label: 'Reports' },
   { value: 'team', label: 'Team' },
   { value: 'structure', label: 'Structure' },
 ];
@@ -97,9 +118,22 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams();
   const { authedFetch, user } = useAuth();
   const isExternal = user?.accountType === 'EXTERNAL';
+  // An outside party's role on this project: a client may sign in through a
+  // client organisation or simply be on the team as the client.
+  const [mine, setMine] = useState<{ projectId: string; roles: string[] } | null>(null);
+  useEffect(() => {
+    if (!isExternal || !user) return;
+    authedFetch<{ userId: string | null; role: string }[]>(`/projects/${id}/members`)
+      .then((m) => setMine({ projectId: id, roles: m.filter((x) => x.userId === user.id).map((x) => x.role) }))
+      .catch(() => {});
+  }, [authedFetch, id, isExternal, user]);
+  const clientByRole = mine?.projectId === id && mine.roles.includes('CLIENT');
   // Budgets, variations and fees: Setjeka staff and the client only.
-  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId);
-  const visibleTabs = seesCommercial ? WORKSPACE_TABS : WORKSPACE_TABS.filter((t) => t.value !== 'commercial');
+  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId) || clientByRole;
+  const isClient = isExternal && (Boolean(user?.clientId) || clientByRole);
+  // Until an outside party's role here is known, client-hidden screens wait.
+  const roleKnown = !isExternal || Boolean(user?.clientId) || mine?.projectId === id;
+  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -415,6 +449,7 @@ export default function ProjectDetailPage() {
 
       {tab === 'overview' && <StageGatePanel currentStage={project.stage} projectId={project.id} onStageChanged={loadProject} />}
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
+      {tab === 'overview' && <SiteWeatherHistory projectId={project.id} />}
       {tab === 'inception' && (
         <InceptionWorkspace projectId={project.id} projectName={project.name} stage={project.stage} currency={project.currency} onProjectChanged={loadProject} />
       )}
@@ -441,6 +476,21 @@ export default function ProjectDetailPage() {
         </div>
       )}
       {tab === 'actions' && <ActionRegister projectId={project.id} />}
+      {tab === 'procsa' && (
+        <ProcsaTracker
+          projectId={project.id}
+          onGoTo={(t, register) => router.push(`/projects/${project.id}?tab=${t}${register ? `&register=${register}` : ''}`)}
+        />
+      )}
+      {tab === 'reports' && <ReportsPanel projectId={project.id} />}
+      {tab === 'drawings' && <DrawingsPanel projectId={project.id} />}
+      {tab === 'models' && <ModelsPanel projectId={project.id} />}
+      {tab === 'authorities' && <AuthoritiesPanel projectId={project.id} />}
+      {tab === 'instructions' && <InstructionsPanel projectId={project.id} />}
+      {tab === 'inspections' && roleKnown && !isClient && <InspectionsPanel projectId={project.id} />}
+      {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
+      {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}
+      {tab === 'registers' && <RegistersPanel key={searchParams.get('register') ?? 'registers'} projectId={project.id} initial={searchParams.get('register') ?? undefined} />}
       {tab === 'photos' && <SitePhotosPanel projectId={project.id} />}
       {tab === 'commercial' && seesCommercial && <ProjectCommercial projectId={project.id} currency={project.currency} />}
       {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}

@@ -3,7 +3,6 @@ import { existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { CreateSitePhotoDto, SitePhotoQuery, UpdateSitePhotoDto } from './dto/site-photo.dto.js';
 import { photoRootDir } from './upload.util.js';
@@ -16,7 +15,7 @@ const PHOTO_INCLUDE = {
   issue: { select: { id: true, title: true } },
 } as const;
 
-type Links = Pick<UpdateSitePhotoDto, 'projectNodeId' | 'scheduleActivityId' | 'taskId' | 'issueId'>;
+type Links = Pick<UpdateSitePhotoDto, 'projectNodeId' | 'scheduleActivityId' | 'taskId' | 'issueId' | 'inspectionId' | 'punchItemId'>;
 
 function cleanTags(tags: string[] | undefined): string[] | undefined {
   if (!tags) return undefined;
@@ -34,7 +33,6 @@ export class SitePhotosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectsService: ProjectsService,
-    private readonly notifications: NotificationsService,
   ) {}
 
   /** Setjeka staff manage every photo and decide what the client sees; a
@@ -53,6 +51,8 @@ export class SitePhotosService {
       [links.scheduleActivityId, () => this.prisma.scheduleActivity.findFirst({ where: { id: links.scheduleActivityId!, projectId } }), 'Programme activity'],
       [links.taskId, () => this.prisma.projectTask.findFirst({ where: { id: links.taskId!, projectId } }), 'Task'],
       [links.issueId, () => this.prisma.projectIssue.findFirst({ where: { id: links.issueId!, projectId } }), 'Issue'],
+      [links.inspectionId, () => this.prisma.siteInspection.findFirst({ where: { id: links.inspectionId!, projectId } }), 'Inspection'],
+      [links.punchItemId, () => this.prisma.punchItem.findFirst({ where: { id: links.punchItemId!, projectId } }), 'Punch item'],
     ];
     for (const [id, find, label] of checks) {
       if (id && !(await find())) throw new BadRequestException(`${label} not found in this project`);
@@ -77,14 +77,13 @@ export class SitePhotosService {
     const and: Prisma.SitePhotoWhereInput[] = [{ projectId }];
     if (client || query.shared === 'yes') and.push({ clientVisible: true });
     else if (query.shared === 'no') and.push({ clientVisible: false });
-    if (query.from) and.push({ takenAt: { gte: new Date(query.from) } });
+    if (query.from) and.push({ takenAt: { gte: new Date(/^\d{4}-\d{2}-\d{2}$/.test(query.from) ? `${query.from}T00:00:00.000+02:00` : query.from) } });
     if (query.to) {
-      const to = new Date(query.to);
-      // A bare date means "up to the end of that day".
-      if (/^\d{4}-\d{2}-\d{2}$/.test(query.to)) to.setUTCHours(23, 59, 59, 999);
+      // A bare date means "up to the end of that (South African) day".
+      const to = new Date(/^\d{4}-\d{2}-\d{2}$/.test(query.to) ? `${query.to}T23:59:59.999+02:00` : query.to);
       and.push({ takenAt: { lte: to } });
     }
-    for (const key of ['issueId', 'taskId', 'scheduleActivityId', 'projectNodeId', 'uploadedById'] as const) {
+    for (const key of ['issueId', 'inspectionId', 'punchItemId', 'taskId', 'scheduleActivityId', 'projectNodeId', 'uploadedById'] as const) {
       if (query[key]) and.push({ [key]: query[key] });
     }
     const q = query.q?.trim();
@@ -117,7 +116,7 @@ export class SitePhotosService {
 
   async create(projectId: string, userId: string, dto: CreateSitePhotoDto, file: Express.Multer.File, thumb?: Express.Multer.File) {
     const { internal } = await this.viewer(projectId, userId);
-    const links: Links = { projectNodeId: dto.projectNodeId, scheduleActivityId: dto.scheduleActivityId, taskId: dto.taskId, issueId: dto.issueId };
+    const links: Links = { projectNodeId: dto.projectNodeId, scheduleActivityId: dto.scheduleActivityId, taskId: dto.taskId, issueId: dto.issueId, inspectionId: dto.inspectionId, punchItemId: dto.punchItemId };
     try {
       await this.assertLinks(projectId, links);
     } catch (e) {
@@ -148,8 +147,6 @@ export class SitePhotosService {
       },
       include: PHOTO_INCLUDE,
     });
-    await this.alertLinkedOwners(photo, userId);
-    if (photo.clientVisible) await this.alertClients(projectId);
     return { ...photo, noteCount: 0 };
   }
 
@@ -164,7 +161,7 @@ export class SitePhotosService {
   }
 
   async update(projectId: string, userId: string, id: string, dto: UpdateSitePhotoDto) {
-    const { photo, internal } = await this.editable(projectId, userId, id);
+    const { internal } = await this.editable(projectId, userId, id);
     if (dto.clientVisible !== undefined && !internal) throw new ForbiddenException('Only Setjeka decides which photos the client sees');
     await this.assertLinks(projectId, dto);
     const updated = await this.prisma.sitePhoto.update({
@@ -181,13 +178,11 @@ export class SitePhotosService {
         scheduleActivityId: dto.scheduleActivityId,
         taskId: dto.taskId,
         issueId: dto.issueId,
+        inspectionId: dto.inspectionId,
+        punchItemId: dto.punchItemId,
       },
       include: PHOTO_INCLUDE,
     });
-    if ((dto.issueId && dto.issueId !== photo.issueId) || (dto.taskId && dto.taskId !== photo.taskId)) {
-      await this.alertLinkedOwners(updated, userId);
-    }
-    if (updated.clientVisible && !photo.clientVisible) await this.alertClients(projectId);
     return (await this.withNoteCounts([updated]))[0];
   }
 
@@ -196,7 +191,6 @@ export class SitePhotosService {
     const { internal } = await this.viewer(projectId, userId);
     if (!internal) throw new ForbiddenException('Only Setjeka decides which photos the client sees');
     const changed = await this.prisma.sitePhoto.updateMany({ where: { id: { in: ids }, projectId, clientVisible: !clientVisible }, data: { clientVisible } });
-    if (clientVisible && changed.count > 0) await this.alertClients(projectId);
     return { updated: changed.count };
   }
 
@@ -228,50 +222,6 @@ export class SitePhotosService {
       } catch {
         // A file left behind is harmless; the record is what matters.
       }
-    }
-  }
-
-  /** Tell whoever owns the linked issue or task that new evidence arrived.
-   * Repeat uploads fold into the one unread alert. */
-  private async alertLinkedOwners(
-    photo: { projectId: string; issueId: string | null; taskId: string | null; issue: { title: string } | null; task: { title: string } | null },
-    uploaderId: string,
-  ) {
-    const p = `/projects/${photo.projectId}?tab=photos`;
-    if (photo.issueId) {
-      const issue = await this.prisma.projectIssue.findUnique({ where: { id: photo.issueId }, select: { owner: { select: { userId: true } } } });
-      const ownerId = issue?.owner?.userId;
-      if (ownerId && ownerId !== uploaderId) {
-        await this.notifications.notify({
-          userId: ownerId, projectId: photo.projectId, type: 'PHOTO_ADDED', entityType: 'ISSUE', entityId: photo.issueId,
-          message: `New site photos on issue "${photo.issue?.title}"`, link: `${p}&issue=${photo.issueId}`, collapse: true,
-        });
-      }
-    }
-    if (photo.taskId) {
-      const task = await this.prisma.projectTask.findUnique({ where: { id: photo.taskId }, select: { assignedTo: { select: { userId: true } } } });
-      const assigneeId = task?.assignedTo?.userId;
-      if (assigneeId && assigneeId !== uploaderId) {
-        await this.notifications.notify({
-          userId: assigneeId, projectId: photo.projectId, type: 'PHOTO_ADDED', entityType: 'TASK', entityId: photo.taskId,
-          message: `New site photos on task "${photo.task?.title}"`, link: `${p}&task=${photo.taskId}`, collapse: true,
-        });
-      }
-    }
-  }
-
-  /** Let the client know new photos are waiting - one alert however many
-   * photos are shared before they look. */
-  private async alertClients(projectId: string) {
-    const [project, clients] = await Promise.all([
-      this.prisma.project.findUnique({ where: { id: projectId }, select: { name: true } }),
-      this.prisma.projectMember.findMany({ where: { projectId, role: 'CLIENT', userId: { not: null }, user: { accountType: 'EXTERNAL' } }, select: { userId: true } }),
-    ]);
-    for (const c of clients) {
-      await this.notifications.notify({
-        userId: c.userId, projectId, type: 'PHOTOS_SHARED', entityType: 'SITE_PHOTO', entityId: projectId,
-        message: `New site photos from ${project?.name ?? 'your project'}`, link: `/projects/${projectId}?tab=photos`, collapse: true,
-      });
     }
   }
 }

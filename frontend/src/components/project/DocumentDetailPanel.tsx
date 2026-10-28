@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Trash2, Upload as UploadIcon, Eye, Download, Check, XCircle, RotateCcw, Share2 } from 'lucide-react';
+import { X, Trash2, Upload as UploadIcon, Eye, Download, Check, XCircle, RotateCcw, Share2, History } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from './CommentThread';
 import { RevisionCompareModal } from './RevisionCompareModal';
+import { ClientApprovalBox } from '@/components/signoff/ClientApprovalBox';
 import type { ProjectDocument } from './DocumentsPanel';
+import { TagEditor } from '@/components/files/Tags';
 
 interface ShareableMember {
   id: string;
@@ -26,6 +28,15 @@ const REVIEW_BADGE: Record<string, string> = {
   REJECTED: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
   REVISION_REQUESTED: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
 };
+
+/** The next revision after the highest one: A -> B, 3 -> 4, P02 -> P03. */
+function nextRevision(used: string[]) {
+  const top = [...used].sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0] ?? 'A';
+  const m = top.match(/^(.*?)(\d+)$/);
+  if (m) return `${m[1]}${String(Number(m[2]) + 1).padStart(m[2].length, '0')}`;
+  if (/^[A-Y]$/i.test(top)) return String.fromCharCode(top.toUpperCase().charCodeAt(0) + 1);
+  return `${top}1`;
+}
 
 export function DocumentDetailPanel({
   projectId,
@@ -111,7 +122,7 @@ export function DocumentDetailPanel({
   }
 
   async function remove() {
-    if (!confirm(`Delete "${document.name}" and all its revisions?`)) return;
+    if (!confirm(`Move "${document.name}" and all its revisions to the recycle bin? An administrator can restore it.`)) return;
     await authedFetch(`/projects/${projectId}/documents/${document.id}`, { method: 'DELETE' });
     onChanged();
     onClose();
@@ -133,6 +144,21 @@ export function DocumentDetailPanel({
       setError(err instanceof ApiError ? err.message : 'Failed to upload revision.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** Bring an older version back as the newest revision (the older one
+   * stays on the record). */
+  async function restore(revisionId: string, from: string) {
+    const suggested = nextRevision(document.revisions.map((r) => r.revisionNumber));
+    const rev = prompt(`Restore revision ${from} as a new revision. Number for the new revision:`, suggested);
+    if (!rev?.trim()) return;
+    setError(null);
+    try {
+      await authedFetch(`/projects/${projectId}/documents/${document.id}/revisions/${revisionId}/restore`, { method: 'POST', body: { revisionNumber: rev.trim() } });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to restore the version.');
     }
   }
 
@@ -188,6 +214,7 @@ export function DocumentDetailPanel({
             <input className={inputClass} placeholder="Type" value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} />
             <input className={inputClass} placeholder="Discipline" value={form.discipline} onChange={(e) => setForm({ ...form, discipline: e.target.value })} />
           </div>
+          <TagEditor projectId={projectId} documentId={document.id} value={(document.tags ?? []).map((t) => t.tag)} onChanged={onChanged} />
           <button onClick={save} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -212,6 +239,7 @@ export function DocumentDetailPanel({
 
         <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Revisions</h3>
+          {document.revisions[0] && <ClientApprovalBox key={document.revisions[0].id} projectId={projectId} documentId={document.id} revisionId={document.revisions[0].id} onChanged={onChanged} />}
           <ul className="mb-2 space-y-1.5">
             {document.revisions.map((rev, i) => (
               <li key={rev.id} className="rounded-md bg-slate-50 px-2.5 py-2 text-xs dark:bg-slate-800/50">
@@ -257,6 +285,12 @@ export function DocumentDetailPanel({
                         Reject
                       </button>
                     </>
+                  )}
+                  {i > 0 && (
+                    <button onClick={() => restore(rev.id, rev.revisionNumber)} className="flex items-center gap-1 text-sky-700 hover:underline dark:text-sky-400">
+                      <History size={12} />
+                      Restore as current
+                    </button>
                   )}
                   {i > 0 && (
                     <button

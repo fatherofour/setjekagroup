@@ -31,7 +31,7 @@ export function ProjectSwitcher() {
   const filtered = (projects ?? []).filter((p) => p.name.toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} data-guide="project">
       <button
         onClick={() => setOpen((v) => !v)}
         className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium transition ${

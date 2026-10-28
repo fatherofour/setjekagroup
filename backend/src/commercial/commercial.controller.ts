@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { requestMeta } from '../signoff/signoff.controller.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
@@ -104,7 +106,7 @@ export class CommercialController {
   @Post('variations/:id/submit')
   @RequirePermission('COMMERCIAL', 'EDIT')
   submit(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: VariationActionDto, @CurrentUser() user: JwtPayload) {
-    return this.commercial.submitVariation(projectId, id, user.sub, dto.comment);
+    return this.commercial.submitVariation(projectId, id, user.sub, dto.comment, dto.responseDueAt);
   }
 
   @Post('variations/:id/withdraw')
@@ -117,8 +119,8 @@ export class CommercialController {
   // project's client (Meeting 3 hard rule).
   @Post('variations/:id/decide')
   @RequirePermission('COMMERCIAL', 'APPROVE')
-  decide(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: DecideVariationDto, @CurrentUser() user: JwtPayload) {
-    return this.commercial.decideVariation(projectId, id, user.sub, dto);
+  decide(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: DecideVariationDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.commercial.decideVariation(projectId, id, user.sub, dto, requestMeta(req));
   }
 
   @Delete('variations/:id')

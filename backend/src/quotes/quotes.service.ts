@@ -74,7 +74,7 @@ export class QuotesService {
     if (!invited) throw new ForbiddenException('This vendor was not invited to this RFQ');
 
     if (dto.documentId) {
-      const doc = await this.prisma.projectDocument.findFirst({ where: { id: dto.documentId, projectId } });
+      const doc = await this.prisma.projectDocument.findFirst({ where: { deletedAt: null, id: dto.documentId, projectId } });
       if (!doc) throw new BadRequestException('Document not found in this project');
     }
 
@@ -109,7 +109,7 @@ export class QuotesService {
     await this.getRfqInProject(projectId, rfqId);
     await this.getOwnedQuote(projectId, rfqId, id);
     if (dto.documentId) {
-      const doc = await this.prisma.projectDocument.findFirst({ where: { id: dto.documentId, projectId } });
+      const doc = await this.prisma.projectDocument.findFirst({ where: { deletedAt: null, id: dto.documentId, projectId } });
       if (!doc) throw new BadRequestException('Document not found in this project');
     }
 

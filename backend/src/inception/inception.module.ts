@@ -1,3 +1,4 @@
+import { SignoffModule } from '../signoff/signoff.module.js';
 import { Module } from '@nestjs/common';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { PermissionsModule } from '../permissions/permissions.module.js';
@@ -10,9 +11,9 @@ import { DeliverablesService } from './deliverables.service.js';
 import { RegistersService } from './registers.service.js';
 
 @Module({
-  imports: [ProjectsModule, PermissionsModule, NotificationsModule, ScheduleModule],
+  imports: [ProjectsModule, PermissionsModule, NotificationsModule, ScheduleModule, SignoffModule],
   controllers: [InceptionController],
   providers: [InceptionService, InceptionStateService, DeliverablesService, RegistersService],
-  exports: [DeliverablesService],
+  exports: [DeliverablesService, InceptionService],
 })
 export class InceptionModule {}

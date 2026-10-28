@@ -14,7 +14,7 @@ interface WeatherResponse {
   current_weather: CurrentWeather;
 }
 
-const WEATHER_CODES: Record<number, { label: string; icon: LucideIcon }> = {
+export const WEATHER_CODES: Record<number, { label: string; icon: LucideIcon }> = {
   0: { label: 'Clear sky', icon: Sun },
   1: { label: 'Mainly clear', icon: Sun },
   2: { label: 'Partly cloudy', icon: CloudSun },
@@ -38,7 +38,7 @@ const WEATHER_CODES: Record<number, { label: string; icon: LucideIcon }> = {
   99: { label: 'Thunderstorm w/ hail', icon: CloudLightning },
 };
 
-function describeWeather(code: number) {
+export function describeWeather(code: number) {
   return WEATHER_CODES[code] ?? { label: 'Unknown', icon: Cloud };
 }
 

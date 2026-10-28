@@ -29,6 +29,16 @@ export function recordLink(entityType: CommentEntityType, ids: { projectId?: str
       return `${p}?tab=commercial`;
     case 'PROJECT':
       return `${p}?tab=actions`;
+    case 'COMMUNICATION':
+      return ids.entityId ? `${p}?tab=instructions&communication=${ids.entityId}` : `${p}?tab=instructions`;
+    case 'INSPECTION':
+      return ids.entityId ? `${p}?tab=inspections&inspection=${ids.entityId}` : `${p}?tab=inspections`;
+    case 'PUNCH_ITEM':
+      return ids.entityId ? `${p}?tab=punch&item=${ids.entityId}` : `${p}?tab=punch`;
+    case 'CLASH':
+      return `${p}?tab=models`;
+    case 'CONSENT':
+      return `${p}?tab=authorities`;
     case 'SITE_PHOTO':
       return ids.entityId ? `${p}?tab=photos&photo=${ids.entityId}` : `${p}?tab=photos`;
     default:

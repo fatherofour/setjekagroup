@@ -32,7 +32,7 @@ export class CommentsService {
       TASK: () => this.prisma.projectTask.findFirst({ where: { id: entityId, projectId } }),
       ISSUE: () => this.prisma.projectIssue.findFirst({ where: { id: entityId, projectId } }),
       SCHEDULE_ACTIVITY: () => this.prisma.scheduleActivity.findFirst({ where: { id: entityId, projectId } }),
-      DOCUMENT_REVISION: () => this.prisma.documentRevision.findFirst({ where: { id: entityId, document: { projectId } } }),
+      DOCUMENT_REVISION: () => this.prisma.documentRevision.findFirst({ where: { id: entityId, document: { projectId, deletedAt: null } } }),
       RISK: () => this.prisma.projectRisk.findFirst({ where: { id: entityId, projectId } }),
       RFI: () => this.prisma.rfi.findFirst({ where: { id: entityId, projectId } }),
       SUBMITTAL: () => this.prisma.submittal.findFirst({ where: { id: entityId, projectId } }),
@@ -41,6 +41,11 @@ export class CommentsService {
       STAGE_DELIVERABLE: () => this.prisma.stageDeliverable.findFirst({ where: { id: entityId, projectId } }),
       MEETING: () => this.prisma.meeting.findFirst({ where: { id: entityId, projectId } }),
       SITE_PHOTO: () => this.prisma.sitePhoto.findFirst({ where: { id: entityId, projectId } }),
+      COMMUNICATION: () => this.prisma.projectCommunication.findFirst({ where: { id: entityId, projectId } }),
+      INSPECTION: () => this.prisma.siteInspection.findFirst({ where: { id: entityId, projectId } }),
+      CONSENT: () => this.prisma.consentApproval.findFirst({ where: { id: entityId, projectId } }),
+      PUNCH_ITEM: () => this.prisma.punchItem.findFirst({ where: { id: entityId, projectId } }),
+      CLASH: () => this.prisma.clash.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),
@@ -110,15 +115,46 @@ export class CommentsService {
     });
   }
 
+  /** Threads on some records are private to the people party to them: an
+   * instruction or letter to its author and recipients (and Setjeka), an
+   * inspection to everyone but the client, and a photo to the client only
+   * once Setjeka has shared it. */
+  private async canSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
+    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO'].includes(entityType)) return true;
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+    if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
+    const client = Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
+    let visible = true;
+    if (entityType === 'COMMUNICATION') {
+      visible = Boolean(await this.prisma.projectCommunication.findFirst({ where: { id: entityId, projectId, OR: [{ authorId: userId }, { recipients: { some: { userId } } }] } }));
+    } else if (entityType === 'INSPECTION') {
+      visible = !client;
+    } else if (entityType === 'SITE_PHOTO' && client) {
+      visible = Boolean(await this.prisma.sitePhoto.findFirst({ where: { id: entityId, projectId, clientVisible: true } }));
+    }
+    return visible;
+  }
+
+  private async assertCanSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
+    if (!(await this.canSee(projectId, userId, entityType, entityId))) throw new NotFoundException('Record not found');
+  }
+
   async findAll(projectId: string, ownerId: string, entityType: CommentEntityType, entityId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
+    await this.assertCanSee(projectId, ownerId, entityType, entityId);
     return this.prisma.comment.findMany({ where: { projectId, entityType, entityId }, include: NOTE_INCLUDE, orderBy: { createdAt: 'asc' } });
   }
 
   async create(projectId: string, ownerId: string, authorId: string, dto: CreateCommentDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     await this.assertEntityInProject(dto.entityType, dto.entityId, projectId);
-    if (dto.recipientId) await this.assertRecipient(projectId, dto.recipientId);
+    await this.assertCanSee(projectId, authorId, dto.entityType, dto.entityId);
+    if (dto.recipientId) {
+      await this.assertRecipient(projectId, dto.recipientId);
+      // A private thread can't be used to reach someone outside it - the
+      // client can't note the architect on a request to Setjeka.
+      if (!(await this.canSee(projectId, dto.recipientId, dto.entityType, dto.entityId))) throw new BadRequestException("That person can't see this record");
+    }
 
     const comment = await this.prisma.comment.create({
       data: { projectId, entityType: dto.entityType, entityId: dto.entityId, authorId, ...this.noteData(dto) },
@@ -139,7 +175,7 @@ export class CommentsService {
     });
     for (const member of members) {
       if (!member.user || member.user.id === authorId || member.user.id === recipientId) continue;
-      if (body.includes(`@${member.user.fullName}`)) {
+      if (body.includes(`@${member.user.fullName}`) && (await this.canSee(projectId, member.user.id, entityType, entityId))) {
         await this.notifications.notify({
           userId: member.user.id,
           projectId,

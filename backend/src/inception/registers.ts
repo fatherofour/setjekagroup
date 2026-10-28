@@ -69,7 +69,7 @@ export const REGISTERS: Record<string, RegisterConfig> = {
       plannedSubmission: { type: 'date' },
       submittedAt: { type: 'date' },
       approvedAt: { type: 'date' },
-      status: { type: 'enum', values: ['NOT_STARTED', 'IN_PREPARATION', 'SUBMITTED', 'APPROVED', 'REJECTED', 'NOT_REQUIRED'] },
+      status: { type: 'enum', values: ['NOT_STARTED', 'IN_PREPARATION', 'SUBMITTED', 'RETURNED_WITH_COMMENTS', 'APPROVED', 'REJECTED', 'NOT_REQUIRED'] },
       reference: { type: 'string', max: 120 },
       notes: { type: 'string' },
     },

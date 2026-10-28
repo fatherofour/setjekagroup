@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { ChatWidget } from '@/components/ChatWidget';
+import { Guide } from '@/components/guide/Guide';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto bg-slate-50 px-4 pb-24 pt-6 dark:bg-slate-950 sm:px-8 sm:pb-28 sm:pt-8">{children}</main>
       </div>
       <ChatWidget />
+      <Suspense fallback={null}>
+        <Guide />
+      </Suspense>
     </div>
   );
 }

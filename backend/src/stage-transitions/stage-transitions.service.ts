@@ -8,6 +8,8 @@ import { MILESTONE_FOR_STAGE_EXIT, markMilestone } from '../opportunities/milest
 import type { ProjectStage } from '../generated/prisma/enums.js';
 import type { RequestTransitionDto } from './dto/request-transition.dto.js';
 import type { DecideTransitionDto } from './dto/decide-transition.dto.js';
+import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js';
+import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue } from '../signoff/dto/decision.dto.js';
 
 // Mirrors frontend/src/lib/projectStages.ts's PROJECT_STAGES order - the
 // fixed sequence a stage-gate request can only move one step forward
@@ -36,6 +38,7 @@ export class StageTransitionsService {
     private readonly notifications: NotificationsService,
     private readonly permissionsService: PermissionsService,
     private readonly deliverables: DeliverablesService,
+    private readonly signoff: SignoffService,
   ) {}
 
   async findAll(projectId: string, ownerId: string) {
@@ -82,6 +85,7 @@ export class StageTransitionsService {
         toStage: dto.toStage,
         requestedById,
         requestComment: dto.comment,
+        responseDueAt: responseDue(dto.responseDueAt),
       },
       include: TRANSITION_INCLUDE,
     });
@@ -130,27 +134,48 @@ export class StageTransitionsService {
     }
   }
 
-  async decide(projectId: string, decidedById: string, id: string, dto: DecideTransitionDto) {
+  async decide(projectId: string, decidedById: string, id: string, dto: DecideTransitionDto, meta: RequestMeta = {}) {
     await this.projectsService.findOneForOwner(projectId, decidedById);
     const transition = await this.prisma.stageTransition.findFirst({ where: { id, projectId } });
     if (!transition) throw new NotFoundException('Stage transition not found');
     if (transition.status !== 'PENDING') throw new BadRequestException('This transition has already been decided');
+    const { outcome, comment } = resolveOutcome(dto);
+    const approve = isApproval(outcome);
 
     // Re-checked at decision time: a document may have been edited (and so
     // reopened) after the request was made.
-    if (dto.approve) await this.assertStageDocumentsApproved(projectId, transition.fromStage);
+    if (approve) await this.assertStageDocumentsApproved(projectId, transition.fromStage);
 
-    const status = dto.approve ? 'APPROVED' : 'REJECTED';
+    const project = await this.prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { name: true } });
+    await this.signoff.sign({
+      projectId,
+      subject: 'STAGE_TRANSITION',
+      subjectId: id,
+      title: `${project.name}: advance from ${transition.fromStage} to ${transition.toStage}`,
+      kind: 'Stage gate',
+      outcome,
+      comment,
+      signature: dto.signature,
+      signerId: decidedById,
+      meta,
+      facts: [
+        ['From stage', transition.fromStage],
+        ['To stage', transition.toStage],
+        ['Requested', `${transition.createdAt.toLocaleDateString('en-ZA')}${transition.requestComment ? ` - ${transition.requestComment}` : ''}`],
+      ],
+    });
+
+    const status = approve ? 'APPROVED' : 'REJECTED';
     await this.prisma.$transaction([
       this.prisma.stageTransition.update({
         where: { id },
-        data: { status, decidedById, decisionComment: dto.comment, decidedAt: new Date() },
+        data: { status, decidedById, decisionComment: comment, decisionOutcome: outcome, decidedAt: new Date() },
       }),
-      ...(dto.approve ? [this.prisma.project.update({ where: { id: projectId }, data: { stage: transition.toStage } })] : []),
+      ...(approve ? [this.prisma.project.update({ where: { id: projectId }, data: { stage: transition.toStage } })] : []),
     ]);
     // Leaving a stage completes it on the development milestones (DEV R12).
     const milestoneKey = MILESTONE_FOR_STAGE_EXIT[transition.fromStage];
-    if (dto.approve && milestoneKey) await markMilestone(this.prisma, { projectId }, milestoneKey);
+    if (approve && milestoneKey) await markMilestone(this.prisma, { projectId }, milestoneKey);
 
     await this.notifications.notify({
       userId: transition.requestedById,
@@ -158,9 +183,7 @@ export class StageTransitionsService {
       type: 'STAGE_TRANSITION_DECIDED',
       entityType: 'STAGE_TRANSITION',
       entityId: id,
-      message: dto.approve
-        ? `Advancing to ${transition.toStage} was approved`
-        : `Advancing to ${transition.toStage} was rejected`,
+      message: `Advancing to ${transition.toStage}: ${OUTCOME_LABEL[outcome].toLowerCase()}${comment ? ` - ${comment}` : ''}`,
     });
 
     return this.prisma.stageTransition.findFirst({ where: { id }, include: TRANSITION_INCLUDE });

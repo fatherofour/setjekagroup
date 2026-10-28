@@ -34,5 +34,6 @@ import { PermissionsModule } from '../permissions/permissions.module.js';
     InvestmentDecisionsService,
     OpportunityDocumentsService,
   ],
+  exports: [OpportunitiesService],
 })
 export class OpportunitiesModule {}

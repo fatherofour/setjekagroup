@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, Check, X as XIcon } from 'lucide-react';
+import { ArrowRight, Stamp } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { PROJECT_STAGES, projectStageInfo, type ProjectStage } from '@/lib/projectStages';
+import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
+import { DecisionDialog } from '@/components/signoff/DecisionDialog';
+import { SignedCopies } from '@/components/signoff/SignedCopies';
 
 interface StageTransition {
   id: string;
@@ -13,14 +16,15 @@ interface StageTransition {
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   requestComment: string | null;
   decisionComment: string | null;
+  decisionOutcome: ApprovalOutcome | null;
+  responseDueAt: string | null;
   decidedAt: string | null;
   createdAt: string;
   requestedBy: { id: string; fullName: string };
   decidedBy: { id: string; fullName: string } | null;
 }
 
-const inputClass =
-  'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
+const inputClass = 'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
 function nextStage(current: ProjectStage): ProjectStage | null {
   const idx = PROJECT_STAGES.findIndex((s) => s.value === current);
@@ -28,13 +32,14 @@ function nextStage(current: ProjectStage): ProjectStage | null {
 }
 
 export function StageGatePanel({ currentStage, projectId, onStageChanged }: { currentStage: ProjectStage; projectId: string; onStageChanged: () => void }) {
-  const { authedFetch } = useAuth();
+  const { authedFetch, user } = useAuth();
   const [transitions, setTransitions] = useState<StageTransition[] | null>(null);
   const [comment, setComment] = useState('');
-  const [decisionComment, setDecisionComment] = useState('');
+  const [dueBy, setDueBy] = useState(defaultDueDate());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [deciding, setDeciding] = useState(false);
 
   const load = () => {
     authedFetch<StageTransition[]>(`/projects/${projectId}/stage-transitions`)
@@ -50,6 +55,7 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
   const target = nextStage(currentStage);
   const pending = transitions?.find((t) => t.status === 'PENDING') ?? null;
   const history = transitions?.filter((t) => t.status !== 'PENDING') ?? [];
+  const due = dueLabel(pending?.responseDueAt);
 
   async function requestAdvance() {
     if (!target) return;
@@ -58,31 +64,12 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
     try {
       await authedFetch(`/projects/${projectId}/stage-transitions`, {
         method: 'POST',
-        body: { toStage: target, comment: comment.trim() || undefined },
+        body: { toStage: target, comment: comment.trim() || undefined, responseDueAt: dueBy || undefined },
       });
       setComment('');
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to request the stage change.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function decide(approve: boolean) {
-    if (!pending) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await authedFetch(`/projects/${projectId}/stage-transitions/${pending.id}/decide`, {
-        method: 'PATCH',
-        body: { approve, comment: decisionComment.trim() || undefined },
-      });
-      setDecisionComment('');
-      load();
-      onStageChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to record the decision.');
     } finally {
       setSaving(false);
     }
@@ -95,9 +82,7 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
       {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
 
       <div className="mb-3 flex items-center gap-2 text-sm">
-        <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-          {projectStageInfo(currentStage).label}
-        </span>
+        <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{projectStageInfo(currentStage).label}</span>
         {target && (
           <>
             <ArrowRight size={14} className="text-slate-300" />
@@ -109,50 +94,35 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
       {pending ? (
         <div className="rounded-md bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
           <p className="text-amber-800 dark:text-amber-300">
-            <span className="font-medium">{pending.requestedBy.fullName}</span> requested advancing to{' '}
-            <span className="font-medium">{projectStageInfo(pending.toStage).label}</span>
+            <span className="font-medium">{pending.requestedBy.fullName}</span> requested advancing to <span className="font-medium">{projectStageInfo(pending.toStage).label}</span>
           </p>
           {pending.requestComment && <p className="mt-1 text-amber-700 dark:text-amber-400">{pending.requestComment}</p>}
-          <input
-            className={`${inputClass} mt-2 w-full`}
-            placeholder="Decision comment (optional)"
-            value={decisionComment}
-            onChange={(e) => setDecisionComment(e.target.value)}
-          />
-          <div className="mt-2 flex gap-2">
-            <button
-              onClick={() => decide(true)}
-              disabled={saving}
-              className="flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
-            >
-              <Check size={13} />
-              Approve
-            </button>
-            <button
-              onClick={() => decide(false)}
-              disabled={saving}
-              className="flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              <XIcon size={13} />
-              Reject
-            </button>
-          </div>
+          {due && <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${dueTone(due)}`}>{due.text}</span>}
+          {pending.requestedBy.id !== user?.id && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setDeciding(true)}
+                className="flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+              >
+                <Stamp size={13} />
+                Decide and sign
+              </button>
+            </div>
+          )}
         </div>
       ) : target ? (
         <div className="space-y-2">
-          <input
-            className={`${inputClass} w-full`}
-            placeholder={`Why advance to ${projectStageInfo(target).label}? (optional)`}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-          <button
-            onClick={requestAdvance}
-            disabled={saving}
-            className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
-          >
-            Request advancement to {projectStageInfo(target).label}
-          </button>
+          <input className={`${inputClass} w-full`} placeholder={`Why advance to ${projectStageInfo(target).label}? (optional)`} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-slate-500">
+              Respond by
+              <input type="date" min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
+            </label>
+            <button onClick={requestAdvance} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
+              Request advancement to {projectStageInfo(target).label}
+            </button>
+          </div>
         </div>
       ) : (
         <p className="text-sm text-slate-400">This project is at its final stage.</p>
@@ -171,17 +141,37 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
                     {projectStageInfo(t.fromStage).label} → {projectStageInfo(t.toStage).label}
                   </span>{' '}
                   <span className={t.status === 'APPROVED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                    {t.status === 'APPROVED' ? 'Approved' : 'Rejected'}
+                    {t.decisionOutcome ? OUTCOME_LABEL[t.decisionOutcome] : t.status === 'APPROVED' ? 'Approved' : 'Rejected'}
                   </span>
                   <span className="ml-2 text-slate-400">
                     by {t.decidedBy?.fullName ?? '—'} · {t.decidedAt ? new Date(t.decidedAt).toLocaleString() : ''}
                   </span>
                   {t.decisionComment && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t.decisionComment}</p>}
+                  <div className="mt-1">
+                    <SignedCopies projectId={projectId} subjectId={t.id} compact />
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+      )}
+
+      {deciding && pending && (
+        <DecisionDialog
+          projectId={projectId}
+          title={`${projectStageInfo(pending.fromStage).label} to ${projectStageInfo(pending.toStage).label}`}
+          context="Stage gate"
+          dueAt={pending.responseDueAt}
+          endpoint={`/projects/${projectId}/stage-transitions/${pending.id}/decide`}
+          method="PATCH"
+          subjectId={pending.id}
+          onClose={() => setDeciding(false)}
+          onDecided={() => {
+            load();
+            onStageChanged();
+          }}
+        />
       )}
     </div>
   );

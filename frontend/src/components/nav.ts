@@ -25,6 +25,18 @@ import {
   Coins,
   Camera,
   Bell,
+  ListTodo,
+  ClipboardList,
+  Presentation,
+  PenTool,
+  Landmark,
+  Mail,
+  SearchCheck,
+  Box,
+  Trash2,
+  FileSearch,
+  ListX,
+  Network,
   type LucideIcon,
 } from 'lucide-react';
 import type { AuthUser } from '@/lib/auth-context';
@@ -109,14 +121,32 @@ export const NAV: NavEntry[] = [
     children: [
       { label: 'Overview', href: '/projects', icon: FolderKanban },
       { label: 'Inception (Stage 1)', href: '/projects', icon: ClipboardCheck, requiresProject: true, projectPathSuffix: '?tab=inception' },
+      { label: 'PROCSA tracker', href: '/projects', icon: ListTodo, requiresProject: true, projectPathSuffix: '?tab=procsa' },
+      { label: 'Registers', href: '/projects', icon: ClipboardList, requiresProject: true, projectPathSuffix: '?tab=registers' },
+      { label: 'Reports', href: '/projects', icon: Presentation, requiresProject: true, projectPathSuffix: '?tab=reports' },
       { label: 'Meetings', href: '/projects', icon: CalendarClock, requiresProject: true, projectPathSuffix: '?tab=meetings' },
       { label: 'Schedule', href: '/projects', icon: GanttChart, requiresProject: true, projectPathSuffix: '/schedule' },
       { label: 'Tasks', href: '/projects', icon: ListChecks, requiresProject: true, projectPathSuffix: '?tab=tasks' },
       { label: 'Issues', href: '/projects', icon: AlertTriangle, requiresProject: true, projectPathSuffix: '?tab=issues' },
       { label: 'Risks', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=risks' },
       { label: 'Documents', href: '/projects', icon: FileText, requiresProject: true, projectPathSuffix: '?tab=documents' },
+      { label: 'Search documents', href: '/search', icon: FileSearch },
       { label: 'Site photos', href: '/projects', icon: Camera, requiresProject: true, projectPathSuffix: '?tab=photos' },
       { label: 'RFIs & Submittals', href: '/projects', icon: HelpCircle, requiresProject: true, projectPathSuffix: '?tab=technical' },
+    ],
+  },
+  {
+    // The architect's working set (26 Oct 2026), used by Setjeka too.
+    label: 'Design & site',
+    icon: PenTool,
+    children: [
+      { label: 'Drawings', href: '/projects', icon: PenTool, requiresProject: true, projectPathSuffix: '?tab=drawings' },
+      { label: 'Models', href: '/projects', icon: Box, requiresProject: true, projectPathSuffix: '?tab=models' },
+      { label: 'BIM hub', href: '/projects', icon: Network, requiresProject: true, projectPathSuffix: '?tab=bim' },
+      { label: 'Authorities', href: '/projects', icon: Landmark, requiresProject: true, projectPathSuffix: '?tab=authorities' },
+      { label: 'Instructions', href: '/projects', icon: Mail, requiresProject: true, projectPathSuffix: '?tab=instructions' },
+      { label: 'Inspections', href: '/projects', icon: SearchCheck, requiresProject: true, projectPathSuffix: '?tab=inspections' },
+      { label: 'Punch list', href: '/projects', icon: ListX, requiresProject: true, projectPathSuffix: '?tab=punch' },
     ],
   },
   {
@@ -126,6 +156,7 @@ export const NAV: NavEntry[] = [
     children: [
       { label: 'Cost database', href: '/cost-database', icon: Database },
       { label: 'Estimates', href: '/estimates', icon: Calculator },
+      { label: 'Rough estimates', href: '/rough-estimates', icon: Calculator },
       { label: 'Project commercials', href: '/projects', icon: Coins, requiresProject: true, projectPathSuffix: '?tab=commercial' },
     ],
   },
@@ -145,6 +176,7 @@ export const NAV: NavEntry[] = [
       { label: 'Users', href: '/administration?tab=users', icon: Users },
       { label: 'Permissions', href: '/administration?tab=permissions', icon: ShieldCheck },
       { label: 'Audit Log', href: '/administration?tab=audit-log', icon: ScrollText },
+      { label: 'Recycle bin', href: '/administration?tab=recycle-bin', icon: Trash2 },
     ],
   },
 ];

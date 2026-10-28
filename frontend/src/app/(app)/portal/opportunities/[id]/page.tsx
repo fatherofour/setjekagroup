@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { APPOINTMENT_ROLE_LABEL, type OrganisationProjectRole } from '@/lib/organisationMeta';
 import {
+  acquisitionLabel,
   OPPORTUNITY_STAGE_LABEL,
   OPPORTUNITY_STAGE_TONE,
   SITE_STATUS_LABEL,
@@ -209,7 +210,7 @@ export default function ClientPortalOpportunityPage() {
                     {[s.address, s.erfNumber && `Erf ${s.erfNumber}`, s.sizeSqm != null && `${s.sizeSqm.toLocaleString()} m²`, s.zoning].filter(Boolean).join(' · ')}
                   </p>
                   {s.status === 'SELECTED' && s.acquisitionStatus !== 'NOT_STARTED' && (
-                    <p className="text-xs text-slate-500">Acquisition: {s.acquisitionStatus.replace(/_/g, ' ').toLowerCase()}</p>
+                    <p className="text-xs text-slate-500">Land: {acquisitionLabel(s.acquisitionStatus)}</p>
                   )}
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${SITE_STATUS_TONE[s.status]}`}>{SITE_STATUS_LABEL[s.status]}</span>

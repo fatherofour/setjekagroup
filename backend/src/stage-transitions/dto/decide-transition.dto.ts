@@ -1,10 +1,3 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { DecisionDto } from '../../signoff/dto/decision.dto.js';
 
-export class DecideTransitionDto {
-  @IsBoolean()
-  approve!: boolean;
-
-  @IsOptional()
-  @IsString()
-  comment?: string;
-}
+export class DecideTransitionDto extends DecisionDto {}

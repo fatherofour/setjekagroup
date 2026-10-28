@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateOpportunitySiteDto, UpdateOpportunitySiteDto } from './dto/opportunity-site.dto.js';
 import { markMilestone } from './milestones.js';
 
-const SECURED = ['AGREEMENT_SIGNED', 'TRANSFERRED', 'LEASED'];
+const SECURED = ['AGREEMENT_SIGNED', 'TRANSFERRED', 'LEASED', 'CLIENT_OWNED'];
 
 @Injectable()
 export class OpportunitySitesService {
@@ -30,9 +30,33 @@ export class OpportunitySitesService {
 
   async create(opportunityId: string, dto: CreateOpportunitySiteDto) {
     const opportunity = await this.getEditableOpportunity(opportunityId);
-    return this.prisma.opportunitySite.create({
-      data: { ...dto, name: dto.name.trim(), currency: dto.currency ?? opportunity.currency, opportunityId },
-    });
+    const { clientOwned, ...fields } = dto;
+    if (!clientOwned) {
+      return this.prisma.opportunitySite.create({
+        data: { ...fields, name: fields.name.trim(), currency: fields.currency ?? opportunity.currency, opportunityId },
+      });
+    }
+    // Land the client already owns (App Review, 17 Oct 2026): still
+    // registered as the site, chosen and secured from the start. Any
+    // previously selected candidate drops back to shortlisted.
+    const client = opportunity.clientId ? await this.prisma.client.findUnique({ where: { id: opportunity.clientId }, select: { name: true } }) : null;
+    const [, site] = await this.prisma.$transaction([
+      this.prisma.opportunitySite.updateMany({ where: { opportunityId, status: 'SELECTED' }, data: { status: 'SHORTLISTED' } }),
+      this.prisma.opportunitySite.create({
+        data: {
+          ...fields,
+          name: fields.name.trim(),
+          ownership: fields.ownership?.trim() || client?.name || 'The client',
+          askingPrice: null,
+          currency: fields.currency ?? opportunity.currency,
+          status: 'SELECTED',
+          acquisitionStatus: 'CLIENT_OWNED',
+          opportunityId,
+        },
+      }),
+    ]);
+    await markMilestone(this.prisma, { opportunityId }, 'SITE_SECURED', new Date());
+    return site;
   }
 
   async update(opportunityId: string, siteId: string, dto: UpdateOpportunitySiteDto) {

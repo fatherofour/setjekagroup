@@ -6,13 +6,18 @@ import { isExecutive } from '../auth/executive.js';
 import type { PermissionModule } from '../generated/prisma/enums.js';
 
 export interface ApprovalItem {
-  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION';
+  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION';
   id: string;
   title: string;
   context: string;
   href: string;
   requestedBy: string | null;
   requestedAt: Date | null;
+  /** When the client was asked to respond by, if a date was set. */
+  dueAt: Date | null;
+  /** The record to decide on, for the decision dialog. */
+  projectId?: string;
+  decideKey?: string;
 }
 
 /** Register COL "Approval center": one queue of everything waiting on the
@@ -66,6 +71,9 @@ export class ApprovalsService {
         href: `/projects/${d.projectId}?tab=inception`,
         requestedBy: d.submittedBy?.fullName ?? null,
         requestedAt: d.submittedAt,
+        dueAt: d.responseDueAt,
+        projectId: d.projectId,
+        decideKey: d.key,
       });
     }
     for (const t of transitions) {
@@ -78,6 +86,8 @@ export class ApprovalsService {
         href: `/projects/${t.projectId}?tab=overview`,
         requestedBy: t.requestedBy.fullName,
         requestedAt: t.createdAt,
+        dueAt: t.responseDueAt,
+        projectId: t.projectId,
       });
     }
 
@@ -97,6 +107,30 @@ export class ApprovalsService {
           href: `/projects/${v.projectId}?tab=commercial`,
           requestedBy: v.raisedBy.fullName,
           requestedAt: v.submittedAt,
+          dueAt: v.responseDueAt,
+          projectId: v.projectId,
+        });
+      }
+      // Drawings and documents sent for the client's approval and signature.
+      const docs = await this.prisma.documentApprovalRequest.findMany({
+        where: { status: 'PENDING', project: { members: { some: { userId, role: 'CLIENT' } } } },
+        include: {
+          project: { select: { id: true, name: true, projectCode: true } },
+          requestedBy: { select: { fullName: true } },
+          revision: { select: { revisionNumber: true, document: { select: { name: true } } } },
+        },
+      });
+      for (const r of docs) {
+        items.push({
+          kind: 'DOCUMENT_REVISION',
+          id: r.id,
+          title: `${r.revision.document.name} (Rev ${r.revision.revisionNumber})`,
+          context: projectLabel(r.project),
+          href: `/projects/${r.projectId}?tab=documents`,
+          requestedBy: r.requestedBy.fullName,
+          requestedAt: r.createdAt,
+          dueAt: r.responseDueAt,
+          projectId: r.projectId,
         });
       }
     }
@@ -125,6 +159,7 @@ export class ApprovalsService {
           href: `/opportunities/${d.opportunityId}`,
           requestedBy: d.requestedBy.fullName,
           requestedAt: d.createdAt,
+          dueAt: null,
         });
       }
       for (const p of payments) {
@@ -136,10 +171,16 @@ export class ApprovalsService {
           href: `/opportunities/${p.opportunityId}?tab=payments`,
           requestedBy: p.recordedBy.fullName,
           requestedAt: p.createdAt,
+          dueAt: null,
         });
       }
     }
 
-    return items.sort((a, b) => (a.requestedAt?.getTime() ?? 0) - (b.requestedAt?.getTime() ?? 0));
+    // Soonest deadline first; items without one after, oldest first.
+    return items.sort((a, b) => {
+      if (a.dueAt && b.dueAt) return a.dueAt.getTime() - b.dueAt.getTime();
+      if (a.dueAt || b.dueAt) return a.dueAt ? -1 : 1;
+      return (a.requestedAt?.getTime() ?? 0) - (b.requestedAt?.getTime() ?? 0);
+    });
   }
 }

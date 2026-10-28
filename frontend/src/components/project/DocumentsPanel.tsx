@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Plus, Download, FileText, Folder as FolderIcon } from 'lucide-react';
+import { Plus, Download, FileText, Folder as FolderIcon, FileSearch, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { DocumentDetailPanel } from './DocumentDetailPanel';
+import { TagChip } from '@/components/files/Tags';
+import { DocumentSearch } from '@/components/files/DocumentSearch';
+import type { DocTag } from '@/lib/files';
 
 interface DocumentFolder {
   id: string;
@@ -33,6 +37,7 @@ export interface ProjectDocument {
   createdBy: { id: string; fullName: string };
   createdAt: string;
   revisions: RevisionLite[];
+  tags?: { tag: DocTag }[];
 }
 
 const inputClass =
@@ -150,7 +155,10 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [openDocId, setOpenDocId] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [openDocId, setOpenDocId] = useState<string | null>(searchParams.get('doc'));
+  const [searching, setSearching] = useState(false);
 
   const load = () => {
     authedFetch<ProjectDocument[]>(`/projects/${projectId}/documents`)
@@ -165,9 +173,14 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const types = useMemo(() => Array.from(new Set((documents ?? []).map((d) => d.documentType).filter(Boolean))) as string[], [documents]);
+  const tags = useMemo(() => {
+    const m = new Map<string, DocTag>();
+    for (const d of documents ?? []) for (const t of d.tags ?? []) m.set(t.tag.id, t.tag);
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [documents]);
   const filtered = useMemo(
-    () => (documents ?? []).filter((d) => !typeFilter || d.documentType === typeFilter),
-    [documents, typeFilter],
+    () => (documents ?? []).filter((d) => (!typeFilter || d.documentType === typeFilter) && (!tagFilter || d.tags?.some((t) => t.tag.id === tagFilter))),
+    [documents, typeFilter, tagFilter],
   );
 
   function exportCsv() {
@@ -189,6 +202,14 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Documents</h2>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setSearching((v) => !v)}
+            aria-expanded={searching}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            {searching ? <X size={13} /> : <FileSearch size={13} />}
+            {searching ? 'Close search' : 'Search inside'}
+          </button>
+          <button
             onClick={exportCsv}
             disabled={!documents || documents.length === 0}
             className="flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -200,6 +221,21 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
       </div>
 
       {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
+
+      {searching && (
+        <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <DocumentSearch projectId={projectId} autoFocus onOpenDocument={setOpenDocId} />
+        </div>
+      )}
+
+      {tags.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-slate-400">Tags:</span>
+          {tags.map((t) => (
+            <TagChip key={t.id} tag={t} active={tagFilter === t.id} onClick={() => setTagFilter(tagFilter === t.id ? null : t.id)} />
+          ))}
+        </div>
+      )}
 
       {types.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5">
@@ -234,6 +270,11 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
                 <button onClick={() => setOpenDocId(d.id)} className="flex w-full items-center gap-2 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <FileText size={14} className="shrink-0 text-slate-400" />
                   <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">{d.name}</span>
+                  {d.tags?.slice(0, 3).map((t) => (
+                    <span key={t.tag.id} className="hidden shrink-0 sm:inline">
+                      <TagChip tag={t.tag} />
+                    </span>
+                  ))}
                   {d.folder && (
                     <span className="flex shrink-0 items-center gap-1 text-xs text-slate-400">
                       <FolderIcon size={11} />

@@ -89,7 +89,7 @@ export class ClientProjectsService {
       }),
       this.prisma.developmentMilestone.findMany({ where: { projectId }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
       this.prisma.projectDocument.findMany({
-        where: { projectId, clientVisible: true },
+        where: { deletedAt: null, projectId, clientVisible: true },
         select: {
           id: true,
           name: true,
@@ -122,6 +122,18 @@ export class ClientProjectsService {
       }),
       this.programme(projectId),
     ]);
+    const [docApprovals, records] = await Promise.all([
+      this.prisma.documentApprovalRequest.findMany({
+        where: { projectId, status: { in: ['PENDING', 'DECIDED'] }, revision: { document: { clientVisible: true } } },
+        include: { requestedBy: PERSON, decidedBy: PERSON, revision: { select: { id: true, revisionNumber: true, originalFilename: true, mimeType: true, document: { select: { id: true, name: true, documentType: true } } } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.approvalRecord.findMany({ where: { projectId }, select: { id: true, subject: true, subjectId: true, signedAt: true }, orderBy: { signedAt: 'desc' } }),
+    ]);
+    // The latest signed copy for each decided item.
+    const recordFor = (subjectId: string) => records.find((r) => r.subjectId === subjectId)?.id ?? null;
+    const OUTCOME: Record<string, string> = { APPROVED: 'Approved', APPROVED_WITH_COMMENTS: 'Approved with comments', REJECTED: 'Rejected', REJECTED_WITH_COMMENTS: 'Rejected with comments' };
+    const outcomeOf = (o: string | null, fallback: string) => (o ? OUTCOME[o] : fallback);
 
     const summary = await this.commercial.summary(projectId).catch(() => null);
     const commercial =
@@ -148,16 +160,19 @@ export class ClientProjectsService {
     const decisions = [
       ...deliverables
         .filter((d) => d.decidedAt && d.decidedBy)
-        .map((d) => ({ kind: 'Stage 1 document', title: `${title(d.key)} (v${d.version})`, outcome: d.status === 'APPROVED' ? 'Approved' : 'Revision requested', by: d.decidedBy!.fullName, at: d.decidedAt!, comment: d.decisionComment })),
+        .map((d) => ({ kind: 'Stage 1 document', title: `${title(d.key)} (v${d.version})`, outcome: outcomeOf(d.decisionOutcome, d.status === 'APPROVED' ? 'Approved' : 'Revision requested'), by: d.decidedBy!.fullName, at: d.decidedAt!, comment: d.decisionComment, recordId: recordFor(d.id) })),
       ...variations
         .filter((v) => v.decidedAt && v.decidedBy)
-        .map((v) => ({ kind: 'Variation', title: `${v.number} ${v.title}`, outcome: v.status === 'APPROVED' ? 'Approved' : 'Rejected', by: v.decidedBy!.fullName, at: v.decidedAt!, comment: v.decisionComment })),
+        .map((v) => ({ kind: 'Variation', title: `${v.number} ${v.title}`, outcome: outcomeOf(v.decisionOutcome, v.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: v.decidedBy!.fullName, at: v.decidedAt!, comment: v.decisionComment, recordId: recordFor(v.id) })),
       ...transitions
         .filter((t) => t.decidedAt && t.decidedBy)
-        .map((t) => ({ kind: 'Stage gate', title: `${t.fromStage} → ${t.toStage}`, outcome: t.status === 'APPROVED' ? 'Approved' : 'Rejected', by: t.decidedBy!.fullName, at: t.decidedAt!, comment: t.decisionComment })),
+        .map((t) => ({ kind: 'Stage gate', title: `${t.fromStage} → ${t.toStage}`, outcome: outcomeOf(t.decisionOutcome, t.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: t.decidedBy!.fullName, at: t.decidedAt!, comment: t.decisionComment, recordId: recordFor(t.id) })),
+      ...docApprovals
+        .filter((r) => r.status === 'DECIDED' && r.decidedAt && r.decidedBy)
+        .map((r) => ({ kind: 'Document', title: `${r.revision.document.name} (Rev ${r.revision.revisionNumber})`, outcome: outcomeOf(r.outcome, 'Decided'), by: r.decidedBy!.fullName, at: r.decidedAt!, comment: r.comment, recordId: recordFor(r.revisionId) })),
     ]
       .sort((a, b) => b.at.getTime() - a.at.getTime())
-      .slice(0, 12);
+      .slice(0, 20);
 
     return {
       project,
@@ -167,11 +182,27 @@ export class ClientProjectsService {
       approvals: {
         documents: deliverables
           .filter((d) => d.status === 'SUBMITTED')
-          .map((d) => ({ key: d.key, title: title(d.key), version: d.version, submittedAt: d.submittedAt, submittedBy: d.submittedBy?.fullName ?? null, note: d.events[0]?.type === 'SUBMITTED' ? d.events[0].comment : null })),
+          .map((d) => ({ id: d.id, key: d.key, title: title(d.key), version: d.version, submittedAt: d.submittedAt, submittedBy: d.submittedBy?.fullName ?? null, note: d.events[0]?.type === 'SUBMITTED' ? d.events[0].comment : null, dueAt: d.responseDueAt })),
         variations: variations
           .filter((v) => v.status === 'SUBMITTED')
-          .map((v) => ({ id: v.id, number: v.number, title: v.title, description: v.description, reason: v.reason, value: v.assessedValue ?? v.estimatedValue, timeImpactDays: v.timeImpactDays, raisedBy: v.raisedBy.fullName, submittedAt: v.submittedAt })),
-        stageGate: pendingGate ? { id: pendingGate.id, fromStage: pendingGate.fromStage, toStage: pendingGate.toStage, comment: pendingGate.requestComment, requestedBy: pendingGate.requestedBy.fullName, requestedAt: pendingGate.createdAt } : null,
+          .map((v) => ({ id: v.id, number: v.number, title: v.title, description: v.description, reason: v.reason, value: v.assessedValue ?? v.estimatedValue, timeImpactDays: v.timeImpactDays, raisedBy: v.raisedBy.fullName, submittedAt: v.submittedAt, dueAt: v.responseDueAt })),
+        stageGate: pendingGate ? { id: pendingGate.id, fromStage: pendingGate.fromStage, toStage: pendingGate.toStage, comment: pendingGate.requestComment, requestedBy: pendingGate.requestedBy.fullName, requestedAt: pendingGate.createdAt, dueAt: pendingGate.responseDueAt } : null,
+        drawings: docApprovals
+          .filter((r) => r.status === 'PENDING')
+          .map((r) => ({
+            id: r.id,
+            documentId: r.revision.document.id,
+            revisionId: r.revision.id,
+            name: r.revision.document.name,
+            documentType: r.revision.document.documentType,
+            revisionNumber: r.revision.revisionNumber,
+            mimeType: r.revision.mimeType,
+            originalFilename: r.revision.originalFilename,
+            message: r.message,
+            requestedBy: r.requestedBy.fullName,
+            requestedAt: r.createdAt,
+            dueAt: r.responseDueAt,
+          })),
       },
       stageHistory: transitions.filter((t) => t.status === 'APPROVED').map((t) => ({ toStage: t.toStage, decidedAt: t.decidedAt })),
       decisions,

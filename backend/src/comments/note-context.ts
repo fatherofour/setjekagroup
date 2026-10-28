@@ -18,6 +18,11 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   PROJECT: 'Project',
   OPPORTUNITY: 'Opportunity',
   SITE_PHOTO: 'Site photo',
+  COMMUNICATION: 'Instruction',
+  INSPECTION: 'Inspection',
+  CONSENT: 'Authority approval',
+  PUNCH_ITEM: 'Punch item',
+  CLASH: 'Clash',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -75,6 +80,21 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'SITE_PHOTO':
         put(type, (await prisma.sitePhoto.findMany({ where, select: { id: true, caption: true, originalFilename: true } })).map((r) => ({ id: r.id, label: r.caption ?? r.originalFilename })));
+        break;
+      case 'COMMUNICATION':
+        put(type, (await prisma.projectCommunication.findMany({ where, select: { id: true, number: true, subject: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.subject}` })));
+        break;
+      case 'INSPECTION':
+        put(type, (await prisma.siteInspection.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'CONSENT':
+        put(type, (await prisma.consentApproval.findMany({ where, select: { id: true, title: true } })).map((r) => ({ id: r.id, label: r.title })));
+        break;
+      case 'PUNCH_ITEM':
+        put(type, (await prisma.punchItem.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'CLASH':
+        put(type, (await prisma.clash.findMany({ where, select: { id: true, aName: true, bName: true, aType: true, bType: true } })).map((r) => ({ id: r.id, label: `${r.aName ?? r.aType} / ${r.bName ?? r.bType}` })));
         break;
       case 'OPPORTUNITY':
         put(type, (await prisma.opportunity.findMany({ where, select: { id: true, name: true } })).map((r) => ({ id: r.id, label: r.name })));

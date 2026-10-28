@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { requestMeta } from '../signoff/signoff.controller.js';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
@@ -41,13 +43,13 @@ export class InceptionController {
   @UseGuards(InternalOnlyGuard)
   @RequirePermission('PROJECT_DEFINITION', 'EDIT')
   submit(@Param('projectId') projectId: string, @Param('key') key: string, @Body() dto: DeliverableActionDto, @CurrentUser() user: JwtPayload) {
-    return this.deliverables.submit(projectId, key, user.sub, dto.comment);
+    return this.deliverables.submit(projectId, key, user.sub, dto.comment, dto.responseDueAt);
   }
 
   @Post('deliverables/:key/decide')
   @RequirePermission('PROJECT_DEFINITION', 'APPROVE')
-  decide(@Param('projectId') projectId: string, @Param('key') key: string, @Body() dto: DecideDeliverableDto, @CurrentUser() user: JwtPayload) {
-    return this.deliverables.decide(projectId, key, user.sub, dto.approve, dto.comment);
+  decide(@Param('projectId') projectId: string, @Param('key') key: string, @Body() dto: DecideDeliverableDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.deliverables.decide(projectId, key, user.sub, dto, requestMeta(req));
   }
 
   @Get('responsibilities')

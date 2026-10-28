@@ -77,7 +77,7 @@ const ALL_ROLES: ProjectMemberRole[] = [...FULL_ACCESS_ROLES, ...CONSULTANT_ROLE
 const ALL_MODULES: PermissionModule[] = [
   'SCHEDULE', 'TASKS', 'ISSUES', 'RISKS', 'DOCUMENTS', 'TRANSMITTALS',
   'RFIS', 'SUBMITTALS', 'PROJECT_STRUCTURE', 'TEAM', 'COMMENTS', 'STAGE_GATE', 'PROCUREMENT',
-  'PROJECT_DEFINITION', 'MEETINGS', 'COMMERCIAL', 'SITE_PHOTOS',
+  'PROJECT_DEFINITION', 'MEETINGS', 'COMMERCIAL', 'SITE_PHOTOS', 'COMMUNICATIONS', 'INSPECTIONS',
 ];
 const ALL_ACTIONS: PermissionAction[] = ['VIEW', 'CREATE', 'EDIT', 'DELETE', 'APPROVE', 'COMMENT'];
 // PROCUREMENT is included so a vendor (CONTRACTOR role) can submit and
@@ -100,6 +100,25 @@ function defaultAllowed(role: ProjectMemberRole, module: PermissionModule, actio
     if (FULL_ACCESS_ROLES.includes(role)) return true;
     if (CONSULTANT_ROLES.includes(role) || role === 'CONTRACTOR') return true;
     return action === 'VIEW' || action === 'COMMENT';
+  }
+  // Instructions and correspondence: CommunicationsService routes them
+  // (outside parties write to Setjeka only). APPROVE is "issue", Setjeka
+  // only. Nothing is deleted; it is cancelled.
+  if (module === 'COMMUNICATIONS') {
+    if (action === 'DELETE') return false;
+    if (FULL_ACCESS_ROLES.includes(role)) return true;
+    if (role === 'OTHER') return action === 'VIEW' || action === 'COMMENT';
+    return action !== 'APPROVE';
+  }
+  // Inspections: consultants carry them out, contractors request them, and
+  // the client sees none by default.
+  if (module === 'INSPECTIONS') {
+    if (action === 'APPROVE') return false;
+    if (FULL_ACCESS_ROLES.includes(role)) return true;
+    if (CONSULTANT_ROLES.includes(role)) return action !== 'DELETE';
+    if (role === 'CONTRACTOR') return action === 'VIEW' || action === 'COMMENT' || action === 'CREATE';
+    if (role === 'OTHER') return action === 'VIEW' || action === 'COMMENT';
+    return false;
   }
   // PROCSA PM 1.9 and the Meeting 3 hard rule: the client alone approves
   // Stage 1 documents - never Setjeka on the client's behalf.

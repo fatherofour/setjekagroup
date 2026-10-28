@@ -27,6 +27,23 @@ export const SITE_STATUS_LABEL: Record<SiteStatus, string> = {
   REJECTED: 'Rejected',
 };
 
+export type AcquisitionStatus = 'NOT_STARTED' | 'NEGOTIATING' | 'OFFER_MADE' | 'AGREEMENT_SIGNED' | 'TRANSFERRED' | 'LEASED' | 'CLIENT_OWNED' | 'WITHDRAWN';
+
+export const ACQUISITION_LABEL: Record<AcquisitionStatus, string> = {
+  NOT_STARTED: 'Not started',
+  NEGOTIATING: 'Negotiating',
+  OFFER_MADE: 'Offer made',
+  AGREEMENT_SIGNED: 'Sale / lease agreement signed',
+  TRANSFERRED: 'Transferred',
+  LEASED: 'Leased',
+  CLIENT_OWNED: 'Already owned by the client',
+  WITHDRAWN: 'Withdrawn',
+};
+
+export function acquisitionLabel(status: string) {
+  return ACQUISITION_LABEL[status as AcquisitionStatus] ?? status.replace(/_/g, ' ').toLowerCase();
+}
+
 export const SITE_STATUS_TONE: Record<SiteStatus, string> = {
   CANDIDATE: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
   SHORTLISTED: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',

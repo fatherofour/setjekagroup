@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FolderKanban, Search, X } from 'lucide-react';
+import { FileSearch, FolderKanban, Search, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useCurrentProject, type CurrentProject } from '@/lib/current-project-context';
 
 export function SearchPalette() {
   const { authedFetch } = useAuth();
   const { setCurrentProject } = useCurrentProject();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [projects, setProjects] = useState<CurrentProject[] | null>(null);
@@ -45,6 +47,7 @@ export function SearchPalette() {
   return (
     <>
       <button
+        data-guide="search"
         onClick={() => setOpen(true)}
         className="hidden h-8 w-44 items-center gap-2 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-400 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 sm:flex md:w-56"
         type="button"
@@ -74,7 +77,13 @@ export function SearchPalette() {
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search projects by name…"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && results.length === 0 && query.trim().length >= 2) {
+                    setOpen(false);
+                    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+                  }
+                }}
+                placeholder="Search projects, or inside documents…"
                 className="flex-1 bg-transparent text-sm outline-none dark:text-slate-100"
               />
               <button onClick={() => setOpen(false)} aria-label="Close search" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
@@ -83,6 +92,18 @@ export function SearchPalette() {
             </div>
 
             <div className="max-h-80 overflow-y-auto p-2">
+              {query.trim().length >= 2 && (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+                  }}
+                  className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <FileSearch size={14} className="shrink-0 text-emerald-600" />
+                  <span className="truncate">Search inside documents for “{query.trim()}”</span>
+                </button>
+              )}
               {projects === null ? (
                 <p className="px-2 py-4 text-sm text-slate-400">Loading…</p>
               ) : results.length === 0 ? (

@@ -4,5 +4,10 @@
     "rootDir": "./src"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"],
+  // Uploaded files land under ./uploads; without this, `start:dev`
+  // recompiles and restarts the server on every upload.
+  "watchOptions": {
+    "excludeDirectories": ["**/node_modules", "uploads", "dist", "coverage"]
+  }
 }

@@ -18,4 +18,10 @@ export class CreateTransmittalDto {
   @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   documentRevisionIds!: string[];
+
+  /** Everyone on these distribution lists is added as a recipient. */
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  distributionListIds?: string[];
 }

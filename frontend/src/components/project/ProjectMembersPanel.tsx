@@ -29,7 +29,9 @@ const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
 export function ProjectMembersPanel({ projectId }: { projectId: string }) {
-  const { authedFetch } = useAuth();
+  const { authedFetch, user } = useAuth();
+  // Setjeka keeps the team; outside parties see who is on it.
+  const manages = user?.role === 'ADMIN' || user?.accountType === 'INTERNAL';
   const [members, setMembers] = useState<ProjectMember[] | null>(null);
   const [contractors, setContractors] = useState<Contractor[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     load();
-    loadContractors();
+    if (manages) loadContractors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -169,19 +171,23 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
                   <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{title}</p>
                   <p className="truncate text-xs text-slate-400 dark:text-slate-500">{subParts.join(' · ')}</p>
                 </div>
-                <button
-                  onClick={() => remove(m.id)}
-                  className="shrink-0 rounded p-1 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/member:opacity-100 dark:hover:bg-red-950"
-                  aria-label={`Remove ${title}`}
-                >
-                  <Trash2 size={14} />
-                </button>
+                {manages && (
+                  <button
+                    onClick={() => remove(m.id)}
+                    className="shrink-0 rounded p-1 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover/member:opacity-100 dark:hover:bg-red-950"
+                    aria-label={`Remove ${title}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
       )}
 
+      {manages && (
+      <>
       <form onSubmit={handleAdd} className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
           <Select value={role} onChange={(v) => setRole(v as ProjectMemberRole)} options={PROJECT_MEMBER_ROLES} className={inputClass} />
@@ -264,6 +270,8 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
         </Link>
         . No email provider is connected yet, so the set-password link above must be copied and shared manually.
       </p>
+      </>
+      )}
     </div>
   );
 }

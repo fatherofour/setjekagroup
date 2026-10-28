@@ -80,7 +80,7 @@ export class RegistersService {
         const found = await this.prisma.projectMember.count({ where: { id, projectId } });
         if (!found) throw new BadRequestException(`${name}: team member not found on this project`);
       } else if (spec.type === 'document') {
-        const found = await this.prisma.projectDocument.count({ where: { id, projectId } });
+        const found = await this.prisma.projectDocument.count({ where: { deletedAt: null, id, projectId } });
         if (!found) throw new BadRequestException(`${name}: document not found on this project`);
       }
     }

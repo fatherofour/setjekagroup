@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, ChevronRight, Circle, CircleDashed, History, Lock, Unlock } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
-import { cardClass, inputClass, primaryButton, secondaryButton } from '@/lib/stage0';
+import { cardClass, inputClass, primaryButton } from '@/lib/stage0';
 import { DELIVERABLE_STATUS_LABEL, DELIVERABLE_STATUS_TONE, type DeliverableStatus } from '@/lib/inception';
+import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
+import { DecisionDialog } from '@/components/signoff/DecisionDialog';
+import { SignedCopies } from '@/components/signoff/SignedCopies';
 
 export interface Deliverable {
   key: string;
@@ -20,6 +23,9 @@ export interface Deliverable {
   decidedBy: { fullName: string } | null;
   decidedAt: string | null;
   decisionComment: string | null;
+  decisionOutcome: ApprovalOutcome | null;
+  responseDueAt: string | null;
+  id: string | null;
   events: { id: string; type: string; version: number; comment: string | null; createdAt: string; actor: { fullName: string } }[];
 }
 
@@ -53,12 +59,19 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
   const [busy, setBusy] = useState<string | null>(null);
   const [comment, setComment] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<string | null>(null);
+  const [dueBy, setDueBy] = useState<Record<string, string>>({});
+  const [deciding, setDeciding] = useState<Deliverable | null>(null);
+  const [refresh, setRefresh] = useState(0);
   const base = `/projects/${projectId}/inception/deliverables`;
 
-  useEffect(() => {
+  const load = () =>
     authedFetch<Deliverable[]>(base)
       .then(setItems)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load Stage 1 documents.'));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authedFetch, base]);
 
   async function act(key: string, path: string, body: Record<string, unknown>) {
@@ -140,49 +153,68 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
 
                 {!d.ready && d.status !== 'APPROVED' && <p className="mt-1.5 pl-6 text-xs text-slate-500 dark:text-slate-400">To prepare: {d.readyWhen.toLowerCase()}.</p>}
                 {d.status === 'SUBMITTED' && d.submittedBy && (
-                  <p className="mt-1.5 pl-6 text-xs text-slate-500">
+                  <p className="mt-1.5 flex flex-wrap items-center gap-2 pl-6 text-xs text-slate-500">
                     Submitted by {d.submittedBy.fullName} on {new Date(d.submittedAt!).toLocaleDateString()}
+                    {(() => {
+                      const due = dueLabel(d.responseDueAt);
+                      return due && <span className={`rounded-full px-2 py-0.5 font-medium ${dueTone(due)}`}>{due.text}</span>;
+                    })()}
                   </p>
                 )}
                 {d.status === 'REVISION_REQUESTED' && d.decisionComment && (
                   <p className="mt-1.5 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                    {d.decidedBy?.fullName} asked for changes: {d.decisionComment}
+                    {d.decidedBy?.fullName}: {d.decisionOutcome ? OUTCOME_LABEL[d.decisionOutcome].toLowerCase() : 'asked for changes'}
+                    {d.decisionComment ? ` - ${d.decisionComment}` : ''}
                   </p>
                 )}
                 {d.status === 'APPROVED' && d.decidedBy && (
                   <p className="mt-1.5 pl-6 text-xs text-slate-500">
-                    Approved by {d.decidedBy.fullName} on {new Date(d.decidedAt!).toLocaleDateString()}
+                    {d.decisionOutcome ? OUTCOME_LABEL[d.decisionOutcome] : 'Approved'} by {d.decidedBy.fullName} on {new Date(d.decidedAt!).toLocaleDateString()}
+                    {d.decisionOutcome === 'APPROVED_WITH_COMMENTS' && d.decisionComment ? ` - ${d.decisionComment}` : ''}
                   </p>
+                )}
+                {d.id && (
+                  <div className="mt-1.5 pl-6">
+                    <SignedCopies projectId={projectId} subjectId={d.id} refresh={refresh} compact />
+                  </div>
                 )}
 
                 {(canSubmit || (d.status === 'SUBMITTED' && isClient)) && stage === 'INCEPTION' && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
-                    <input
-                      aria-label={`Comment for ${d.title}`}
-                      className={`${inputClass} h-8 min-w-[200px] flex-1 text-xs`}
-                      placeholder={d.status === 'SUBMITTED' ? 'Comment (required to request a revision)' : 'Note to the client (optional)'}
-                      value={comment[d.key] ?? ''}
-                      onChange={(e) => setComment((c) => ({ ...c, [d.key]: e.target.value }))}
-                    />
                     {canSubmit && (
-                      <button type="button" disabled={busy === d.key} onClick={() => act(d.key, 'submit', { comment: comment[d.key] || undefined })} className={primaryButton}>
-                        Submit to client
-                      </button>
-                    )}
-                    {d.status === 'SUBMITTED' && isClient && (
                       <>
-                        <button type="button" disabled={busy === d.key} onClick={() => act(d.key, 'decide', { approve: true, comment: comment[d.key] || undefined })} className={primaryButton}>
-                          Approve
-                        </button>
+                        <input
+                          aria-label={`Note to the client about ${d.title}`}
+                          className={`${inputClass} h-8 min-w-[200px] flex-1 text-xs`}
+                          placeholder="Note to the client (optional)"
+                          value={comment[d.key] ?? ''}
+                          onChange={(e) => setComment((c) => ({ ...c, [d.key]: e.target.value }))}
+                        />
+                        <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                          Respond by
+                          <input
+                            type="date"
+                            min={todayInput()}
+                            aria-label={`Client to respond to ${d.title} by`}
+                            className={`${inputClass} h-8 w-auto text-xs`}
+                            value={dueBy[d.key] ?? defaultDueDate()}
+                            onChange={(e) => setDueBy((v) => ({ ...v, [d.key]: e.target.value }))}
+                          />
+                        </label>
                         <button
                           type="button"
-                          disabled={busy === d.key || !(comment[d.key] ?? '').trim()}
-                          onClick={() => act(d.key, 'decide', { approve: false, comment: comment[d.key] })}
-                          className={secondaryButton}
+                          disabled={busy === d.key}
+                          onClick={() => act(d.key, 'submit', { comment: comment[d.key] || undefined, responseDueAt: (dueBy[d.key] ?? defaultDueDate()) || undefined })}
+                          className={primaryButton}
                         >
-                          Request revision
+                          Submit to client
                         </button>
                       </>
+                    )}
+                    {d.status === 'SUBMITTED' && isClient && (
+                      <button type="button" onClick={() => setDeciding(d)} className={primaryButton}>
+                        Decide and sign
+                      </button>
                     )}
                   </div>
                 )}
@@ -209,6 +241,27 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
             );
           })}
         </ul>
+      )}
+
+      {deciding && deciding.id && (
+        <DecisionDialog
+          projectId={projectId}
+          title={`${deciding.title} (v${deciding.version})`}
+          context="PROCSA Stage 1 document"
+          dueAt={deciding.responseDueAt}
+          endpoint={`${base}/${deciding.key}/decide`}
+          subjectId={deciding.id}
+          onClose={() => setDeciding(null)}
+          onDecided={() => {
+            load();
+            setRefresh((r) => r + 1);
+            onChanged?.();
+          }}
+        >
+          <button type="button" onClick={() => onGoTo(SECTION_FOR_DELIVERABLE[deciding.key])} className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+            Read the document before deciding
+          </button>
+        </DecisionDialog>
       )}
     </div>
   );

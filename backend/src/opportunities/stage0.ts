@@ -23,7 +23,7 @@ export interface Stage0Facts {
   checks: { roleKey: string; code: string; note: string | null; doneAt: Date; doneBy: { fullName: string } }[];
 }
 
-const SECURED = ['AGREEMENT_SIGNED', 'TRANSFERRED', 'LEASED'];
+const SECURED = ['AGREEMENT_SIGNED', 'TRANSFERRED', 'LEASED', 'CLIENT_OWNED'];
 
 type Rule = (f: Stage0Facts) => string | null;
 

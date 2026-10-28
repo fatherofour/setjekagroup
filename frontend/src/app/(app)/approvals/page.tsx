@@ -7,8 +7,9 @@ import { useAuth } from '@/lib/auth-context';
 import { clientLink } from '@/lib/portal';
 import { ApiError } from '@/lib/api-client';
 import { cardClass } from '@/lib/stage0';
+import { dueLabel, dueTone } from '@/lib/signoff';
 
-type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION';
+type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION';
 
 interface ApprovalItem {
   kind: Kind;
@@ -18,6 +19,7 @@ interface ApprovalItem {
   href: string;
   requestedBy: string | null;
   requestedAt: string | null;
+  dueAt: string | null;
 }
 
 const KIND_LABEL: Record<Kind, string> = {
@@ -26,6 +28,7 @@ const KIND_LABEL: Record<Kind, string> = {
   INVESTMENT_DECISION: 'Investment decision',
   STAGE0_PAYMENT: 'Stage 0 payment',
   VARIATION: 'Variation',
+  DOCUMENT_REVISION: 'Drawing / document',
 };
 
 const KIND_TONE: Record<Kind, string> = {
@@ -34,6 +37,7 @@ const KIND_TONE: Record<Kind, string> = {
   INVESTMENT_DECISION: 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
   STAGE0_PAYMENT: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   VARIATION: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+  DOCUMENT_REVISION: 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
 };
 
 /** Register COL "Approval center" / CLI "Client approvals": everything
@@ -52,7 +56,7 @@ export default function ApprovalsPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Approvals</h1>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Everything waiting for your decision — investment decisions and Stage 0 payments, Stage 1 documents and stage-gate requests.</p>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Everything waiting for your decision, soonest deadline first: investment decisions and Stage 0 payments, Stage 1 documents, variations, drawings and stage-gate requests.</p>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
 
@@ -77,6 +81,10 @@ export default function ApprovalsPage() {
                     {i.requestedAt && `, ${new Date(i.requestedAt).toLocaleDateString()}`}
                   </p>
                 </div>
+                {(() => {
+                  const due = dueLabel(i.dueAt);
+                  return due && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${dueTone(due)}`}>{due.text}</span>;
+                })()}
                 <ArrowRight size={15} className="text-slate-400" />
               </Link>
             </li>

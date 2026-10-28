@@ -80,12 +80,13 @@ export function Sidebar({ open }: { open: boolean }) {
 
   return (
     <aside
+      data-guide="sidebar"
       className={`fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col text-emerald-50 transition-all duration-200 lg:static lg:z-auto lg:translate-x-0 ${
         open ? 'translate-x-0' : '-translate-x-full'
       } ${collapsed ? 'lg:w-[68px]' : 'lg:w-60'}`}
       style={{ backgroundColor: GREEN }}
     >
-      <div className={`flex items-center px-5 py-6 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+      <div className={`flex shrink-0 items-center px-5 py-6 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={collapsed ? '/setjeka/icon-mark.png' : '/setjeka/logo.png'}
@@ -106,7 +107,9 @@ export function Sidebar({ open }: { open: boolean }) {
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      {/* min-h-0 + overflow: with a group expanded the menu outgrows the
+          screen; it scrolls here instead of spilling past the sidebar. */}
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 [scrollbar-color:rgba(255,255,255,.25)_transparent] [scrollbar-width:thin]">
         {visibleNav.map((entry) => {
           if (isNavGroup(entry)) {
             const GroupIcon = entry.icon;
@@ -184,7 +187,7 @@ export function Sidebar({ open }: { open: boolean }) {
         })}
       </nav>
 
-      <div className={`px-3 pb-4 ${collapsed ? 'lg:flex lg:justify-center' : ''}`}>
+      <div className={`shrink-0 px-3 pb-4 pt-2 ${collapsed ? 'lg:flex lg:justify-center' : ''}`}>
         <button
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

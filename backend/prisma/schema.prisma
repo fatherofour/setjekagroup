@@ -62,6 +62,11 @@ enum PermissionModule {
   COMMERCIAL
   // Site photo capture (FIELD register): upload, link, share with the client.
   SITE_PHOTOS
+  // Instructions and correspondence: client requests to Setjeka, Setjeka
+  // instructions, architect-drafted contract instructions, letters.
+  COMMUNICATIONS
+  // Inspection requests and design-side site inspections with checklists.
+  INSPECTIONS
 }
 
 enum PermissionAction {
@@ -272,6 +277,9 @@ model User {
   client              Client?         @relation("ClientPortalUsers", fields: [clientId], references: [id], onDelete: SetNull)
   contractorId        String?
   contractor          Contractor?     @relation("ContractorPortalUsers", fields: [contractorId], references: [id], onDelete: SetNull)
+  // The in-app guide: { seen: string[], off: boolean } - which screens'
+  // tips and tours this person has been through, kept across devices.
+  guideState          Json            @default("{}")
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -290,6 +298,12 @@ model User {
   actionsCompleted            Comment[]                    @relation("CommentCompletedBy")
   notifications               Notification[]
   sitePhotos                  SitePhoto[]
+  registerEntriesCreated      ProjectRegisterEntry[]
+  reportsGenerated            ProjectReport[]
+  approvalRecords             ApprovalRecord[]
+  savedSignature              UserSignature?
+  documentApprovalsRequested  DocumentApprovalRequest[]    @relation("DocumentApprovalRequestedBy")
+  documentApprovalsDecided    DocumentApprovalRequest[]    @relation("DocumentApprovalDecidedBy")
   // In-app alert categories this person has switched off (see
   // notifications/categories.ts). Approvals can never be muted.
   mutedAlertCategories        String[]                     @default([])
@@ -337,6 +351,28 @@ model User {
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
+  plannedDrawingsCreated      PlannedDrawing[]
+  communicationsAuthored      ProjectCommunication[]       @relation("CommunicationAuthor")
+  communicationsIssued        ProjectCommunication[]       @relation("CommunicationIssuer")
+  communicationsReceived      CommunicationRecipient[]
+  consentEventsLogged         ConsentEvent[]
+  inspectionsRequested        SiteInspection[]             @relation("InspectionRequester")
+  inspectionsCompleted        SiteInspection[]             @relation("InspectionCompleter")
+  inspectionTemplates         InspectionTemplate[]
+  drawingMarkups              DrawingMarkup[]              @relation("MarkupAuthor")
+  markupsResolved             DrawingMarkup[]              @relation("MarkupResolver")
+  modelLinksCreated           ModelObjectLink[]
+  documentsDeleted            ProjectDocument[]            @relation("DocumentDeletedBy")
+  distributionListsMade       DistributionList[]
+  calibrationsMade            DrawingCalibration[]
+  punchItemsRaised            PunchItem[]                  @relation("PunchRaiser")
+  punchItemsClosed            PunchItem[]                  @relation("PunchCloser")
+  bimFederationsMade          BimFederation[]
+  clashTestsMade              ClashTest[]
+  smartViewsMade              SmartView[]
+  requirementSetsMade         BimRequirementSet[]
+  romEstimatesMade            RomEstimate[]
+  romRatesUpdated             RomRate[]
 
   @@index([resetTokenHash])
 }
@@ -352,6 +388,7 @@ model User {
 // Delivery, VendorScorecard).
 model Contractor {
   id                      String                             @id @default(uuid())
+  registerEntries         ProjectRegisterEntry[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -602,6 +639,11 @@ model Project {
   comments                 Comment[]
   notifications            Notification[]
   sitePhotos               SitePhoto[]
+  weatherDays              SiteWeatherDay[]
+  registerEntries          ProjectRegisterEntry[]
+  reports                  ProjectReport[]
+  approvalRecords          ApprovalRecord[]
+  documentApprovals        DocumentApprovalRequest[]
   documentFolders          DocumentFolder[]
   documents                ProjectDocument[]
   transmittals             Transmittal[]
@@ -634,6 +676,19 @@ model Project {
   budgetLines              BudgetLine[]
   variations               Variation[]
   supplierInvoices         SupplierInvoice[]
+  plannedDrawings          PlannedDrawing[]
+  communications           ProjectCommunication[]
+  inspections              SiteInspection[]
+  drawingMarkups           DrawingMarkup[]
+  modelLinks               ModelObjectLink[]
+  documentTags             DocumentTag[]
+  distributionLists        DistributionList[]
+  punchItems               PunchItem[]
+  bimFederations           BimFederation[]
+  clashTests               ClashTest[]
+  smartViews               SmartView[]
+  requirementSets          BimRequirementSet[]
+  romEstimates             RomEstimate[]
 }
 
 model ProjectNode {
@@ -659,6 +714,7 @@ model ProjectNode {
 
 model ProjectMember {
   id                         String                     @id @default(uuid())
+  registerEntries            ProjectRegisterEntry[]
   projectId                  String
   project                    Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId                     String?
@@ -698,6 +754,10 @@ model ProjectMember {
   designCriteriaRaised       DesignCriterion[]
   createdAt                  DateTime                   @default(now())
   updatedAt                  DateTime                   @updatedAt
+  plannedDrawings            PlannedDrawing[]
+  inspectionsAssigned        SiteInspection[]           @relation("InspectionInspector")
+  distributionLists          DistributionListMember[]
+  punchItemsAssigned         PunchItem[]                @relation("PunchAssignee")
 
   @@index([projectId])
   @@index([contractorId])
@@ -923,6 +983,11 @@ model ProjectIssue {
   dueDate         DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+  inspectionId    String?
+  inspection      SiteInspection?    @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+  markups         DrawingMarkup[]
+  // BCF round trip: the topic GUID an issue was imported from or exported as.
+  bcfGuid         String?
 
   @@index([projectId])
   @@index([ownerId])
@@ -946,6 +1011,11 @@ enum CommentEntityType {
   PROJECT
   OPPORTUNITY
   SITE_PHOTO
+  COMMUNICATION
+  INSPECTION
+  CONSENT
+  PUNCH_ITEM
+  CLASH
 }
 
 model Comment {
@@ -1014,6 +1084,22 @@ enum NotificationType {
   ACTION_COMPLETED
   PHOTO_ADDED
   PHOTOS_SHARED
+  APPROVAL_DUE
+  APPROVAL_OVERDUE
+  DOCUMENT_APPROVAL_REQUESTED
+  DOCUMENT_APPROVAL_DECIDED
+  COMMUNICATION_RECEIVED
+  COMMUNICATION_AWAITING_ISSUE
+  COMMUNICATION_ANSWERED
+  INSPECTION_REQUESTED
+  INSPECTION_SCHEDULED
+  INSPECTION_COMPLETED
+  REGISTER_REVIEW_REQUESTED
+  REGISTER_REVIEWED
+  PUNCH_ITEM_ASSIGNED
+  PUNCH_ITEM_READY
+  PUNCH_ITEM_DECIDED
+  TEXT_EXTRACTED
 }
 
 model Notification {
@@ -1058,36 +1144,59 @@ model DocumentFolder {
 }
 
 model ProjectDocument {
-  id                 String             @id @default(uuid())
-  projectId          String
-  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  folderId           String?
-  folder             DocumentFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  name               String
-  description        String?
+  id                  String                  @id @default(uuid())
+  registerEntries     ProjectRegisterEntry[]
+  projectId           String
+  project             Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folderId            String?
+  folder              DocumentFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  name                String
+  description         String?
   // Free text, not a fixed enum — same reasoning as Contractor.disciplines:
   // the register lists example values (drawing/spec/report/contract/
   // correspondence) but doesn't confirm a closed taxonomy.
-  documentType       String?
-  discipline         String?
+  documentType        String?
+  discipline          String?
   // Meeting 3: Setjeka controls what the client sees. Only documents
   // switched on here appear in (and download from) the client portal.
-  clientVisible      Boolean            @default(false)
-  projectNodeId      String?
-  projectNode        ProjectNode?       @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
-  scheduleActivityId String?
-  scheduleActivity   ScheduleActivity?  @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
-  createdById        String
-  createdBy          User               @relation(fields: [createdById], references: [id])
-  revisions          DocumentRevision[]
-  rfis               Rfi[]
-  submittals         Submittal[]
-  rfqs               Rfq[]
-  quotes             Quote[]
-  informationItems   InformationItem[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  clientVisible       Boolean                 @default(false)
+  projectNodeId       String?
+  projectNode         ProjectNode?            @relation(fields: [projectNodeId], references: [id], onDelete: SetNull)
+  scheduleActivityId  String?
+  scheduleActivity    ScheduleActivity?       @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  createdById         String
+  createdBy           User                    @relation(fields: [createdById], references: [id])
+  revisions           DocumentRevision[]
+  rfis                Rfi[]
+  submittals          Submittal[]
+  rfqs                Rfq[]
+  quotes              Quote[]
+  informationItems    InformationItem[]
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  // A drawing's number as it appears on the originator's own sheet (the
+  // user's decision, 26 Oct 2026: read it from the title block rather than
+  // allocate one). drawingKey is the number normalised for matching, so
+  // "ARC-101" and "arc 101" are the same drawing and revisions attach to it.
+  drawingNumber       String?
+  drawingKey          String?
+  drawingNumberSource String?
+  originator          String?
+  plannedDrawings     PlannedDrawing[]
+  communications      CommunicationDocument[]
+  consentEvents       ConsentEvent[]
+  markups             DrawingMarkup[]
+  modelLinks          ModelObjectLink[]
+  // Recycle bin (admins only): a deleted document keeps its row and files
+  // until an admin restores or purges it.
+  deletedAt           DateTime?
+  deletedById         String?
+  deletedBy           User?                   @relation("DocumentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  tags                DocumentTagLink[]
+  punchItems          PunchItem[]
+  bimElements         BimElement[]
 
+  @@unique([projectId, drawingKey])
   @@index([projectId])
   @@index([folderId])
   @@index([projectNodeId])
@@ -1102,28 +1211,43 @@ enum DocumentRevisionStatus {
 }
 
 model DocumentRevision {
-  id               String                 @id @default(uuid())
-  documentId       String
-  document         ProjectDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  id                String                    @id @default(uuid())
+  documentId        String
+  document          ProjectDocument           @relation(fields: [documentId], references: [id], onDelete: Cascade)
   // Free text ("A", "1", "P01") — numbering conventions differ by
   // discipline/client; "current" is never stored, it's computed at read
   // time as the most-recently-uploaded revision for a document, the same
   // convention Schedule's SUMMARY-row logic already uses, so it can never
   // go stale relative to what's actually been uploaded.
-  revisionNumber   String
-  storedFilename   String
-  originalFilename String
-  mimeType         String
-  fileSize         Int
-  uploadedById     String
-  uploadedBy       User                   @relation("DocumentRevisionUploadedBy", fields: [uploadedById], references: [id])
-  uploadedAt       DateTime               @default(now())
-  reviewStatus     DocumentRevisionStatus @default(PENDING)
-  reviewedById     String?
-  reviewedBy       User?                  @relation("DocumentRevisionReviewedBy", fields: [reviewedById], references: [id])
-  reviewedAt       DateTime?
-  accessLogs       DocumentAccessLog[]
-  transmittalItems TransmittalItem[]
+  revisionNumber    String
+  storedFilename    String
+  originalFilename  String
+  mimeType          String
+  fileSize          Int
+  uploadedById      String
+  uploadedBy        User                      @relation("DocumentRevisionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedAt        DateTime                  @default(now())
+  reviewStatus      DocumentRevisionStatus    @default(PENDING)
+  reviewedById      String?
+  reviewedBy        User?                     @relation("DocumentRevisionReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  accessLogs        DocumentAccessLog[]
+  transmittalItems  TransmittalItem[]
+  clientApprovals   DocumentApprovalRequest[]
+  // Why this revision was issued (Meeting 3: not every drawing is for
+  // construction), and what was read from the sheet's title block.
+  purpose           IssuePurpose?
+  revisionDate      DateTime?
+  titleBlock        Json?
+  markups           DrawingMarkup[]
+  // Full-text search: the text of each page, from the PDF itself or by OCR.
+  textStatus        String?
+  pageTexts         DocumentPageText[]
+  calibrations      DrawingCalibration[]
+  punchItems        PunchItem[]
+  bimElements       BimElement[]
+  bimProcessing     BimProcessing?
+  requirementChecks BimRequirementCheck[]
 
   @@index([documentId])
 }
@@ -1157,7 +1281,7 @@ model Transmittal {
   id                String                 @id @default(uuid())
   projectId         String
   project           Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  transmittalNumber String                 @unique
+  transmittalNumber String
   purpose           String?
   fromMemberId      String?
   fromMember        ProjectMember?         @relation(fields: [fromMemberId], references: [id], onDelete: SetNull)
@@ -1169,6 +1293,8 @@ model Transmittal {
   items             TransmittalItem[]
   createdAt         DateTime               @default(now())
 
+  // Numbered per project, so every project starts at 0001.
+  @@unique([projectId, transmittalNumber])
   @@index([projectId])
 }
 
@@ -1250,7 +1376,7 @@ model Rfi {
   id                          String           @id @default(uuid())
   projectId                   String
   project                     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  rfiNumber                   String           @unique
+  rfiNumber                   String
   title                       String
   question                    String?
   officialResponse            String?
@@ -1279,6 +1405,8 @@ model Rfi {
   updatedAt                   DateTime         @updatedAt
   variations                  Variation[]
 
+  // Numbered per project, so every project starts at 0001.
+  @@unique([projectId, rfiNumber])
   @@index([projectId])
   @@index([raisedById])
   @@index([assignedToId])
@@ -1302,7 +1430,7 @@ model Submittal {
   id              String                   @id @default(uuid())
   projectId       String
   project         Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  submittalNumber String                   @unique
+  submittalNumber String
   title           String
   specSection     String?
   submittalType   String?
@@ -1318,6 +1446,8 @@ model Submittal {
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
+  // Numbered per project, so every project starts at 0001.
+  @@unique([projectId, submittalNumber])
   @@index([projectId])
   @@index([submittedById])
   @@index([reviewerId])
@@ -1431,6 +1561,10 @@ model StageTransition {
   decidedBy       User?                 @relation("StageTransitionDecidedBy", fields: [decidedById], references: [id])
   decisionComment String?
   decidedAt       DateTime?
+  // App Review, 17 Oct 2026: the four responses, and when the client is
+  // asked to respond by.
+  decisionOutcome ApprovalOutcome?
+  responseDueAt   DateTime?
   createdAt       DateTime              @default(now())
 
   @@index([projectId])
@@ -1564,7 +1698,7 @@ model PurchaseOrder {
   id               String                          @id @default(uuid())
   projectId        String
   project          Project                         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  poNumber         String                          @unique
+  poNumber         String
   contractorId     String
   contractor       Contractor                      @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   quoteId          String?
@@ -1590,6 +1724,8 @@ model PurchaseOrder {
   createdAt        DateTime                        @default(now())
   updatedAt        DateTime                        @updatedAt
 
+  // Numbered per project, so every project starts at 0001.
+  @@unique([projectId, poNumber])
   @@index([projectId])
   @@index([contractorId])
   @@index([quoteId])
@@ -1735,6 +1871,7 @@ model Opportunity {
   updatedAt           DateTime                  @updatedAt
   estimates           Estimate[]
   notes               Comment[]
+  romEstimates        RomEstimate[]
 
   @@index([clientId])
 }
@@ -1808,6 +1945,9 @@ enum LandAcquisitionStatus {
   TRANSFERRED
   LEASED
   WITHDRAWN
+  // The client already owns the land (App Review, 17 Oct 2026). It is
+  // still registered as the site, and counts as secured.
+  CLIENT_OWNED
 }
 
 // The four kinds of land right PROCSA 0.5 names: zoning, environmental,
@@ -2272,30 +2412,33 @@ enum ConsentStatus {
   APPROVED
   REJECTED
   NOT_REQUIRED
+  RETURNED_WITH_COMMENTS
 }
 
 // PM 1.7 "Facilitate a schedule of the required consents and approvals".
 // Stage 0 authority approvals are copied in when an opportunity converts.
 model ConsentApproval {
-  id                String               @id @default(uuid())
-  projectId         String
-  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title             String
-  authority         String?
-  category          String?
-  responsibleId     String?
-  responsible       ProjectMember?       @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
-  requiredByStage   ProjectStage         @default(CONCEPT)
-  plannedSubmission DateTime?
-  submittedAt       DateTime?
-  approvedAt        DateTime?
-  status            ConsentStatus        @default(NOT_STARTED)
-  reference         String?
-  notes             String?
-  sourceApprovalId  String?
-  sourceApproval    OpportunityApproval? @relation(fields: [sourceApprovalId], references: [id], onDelete: SetNull)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  id                 String               @id @default(uuid())
+  projectId          String
+  project            Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String
+  authority          String?
+  category           String?
+  responsibleId      String?
+  responsible        ProjectMember?       @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  requiredByStage    ProjectStage         @default(CONCEPT)
+  plannedSubmission  DateTime?
+  submittedAt        DateTime?
+  approvedAt         DateTime?
+  status             ConsentStatus        @default(NOT_STARTED)
+  reference          String?
+  notes              String?
+  sourceApprovalId   String?
+  sourceApproval     OpportunityApproval? @relation(fields: [sourceApprovalId], references: [id], onDelete: SetNull)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  expectedDecisionAt DateTime?
+  events             ConsentEvent[]
 
   @@index([projectId])
 }
@@ -2481,6 +2624,10 @@ model StageDeliverable {
   decidedBy       User?                   @relation("DeliverableDecidedBy", fields: [decidedById], references: [id])
   decidedAt       DateTime?
   decisionComment String?
+  // App Review, 17 Oct 2026: the four responses, and when the client is
+  // asked to respond by.
+  decisionOutcome ApprovalOutcome?
+  responseDueAt   DateTime?
   events          StageDeliverableEvent[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -2846,35 +2993,41 @@ enum VariationReason {
 // approve it - Setjeka may never approve on the client's behalf (Meeting 3
 // hard rule), whatever the permission matrix or admin role says.
 model Variation {
-  id              String           @id @default(uuid())
+  id              String                @id @default(uuid())
   projectId       String
-  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project         Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   number          String
   title           String
   description     String?
-  reason          VariationReason  @default(CLIENT_INSTRUCTION)
+  reason          VariationReason       @default(CLIENT_INSTRUCTION)
   rfiId           String?
-  rfi             Rfi?             @relation(fields: [rfiId], references: [id], onDelete: SetNull)
+  rfi             Rfi?                  @relation(fields: [rfiId], references: [id], onDelete: SetNull)
   costCodeId      String?
-  costCode        CostCode?        @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
+  costCode        CostCode?             @relation(fields: [costCodeId], references: [id], onDelete: SetNull)
   // Negative for an omission. In the project's currency.
-  estimatedValue  Float            @default(0)
+  estimatedValue  Float                 @default(0)
   assessedValue   Float?
   timeImpactDays  Int?
-  status          VariationStatus  @default(DRAFT)
+  status          VariationStatus       @default(DRAFT)
   raisedById      String
-  raisedBy        User             @relation("VariationRaisedBy", fields: [raisedById], references: [id])
+  raisedBy        User                  @relation("VariationRaisedBy", fields: [raisedById], references: [id])
   assessedById    String?
-  assessedBy      User?            @relation("VariationAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
+  assessedBy      User?                 @relation("VariationAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
   assessedAt      DateTime?
   submittedAt     DateTime?
   decidedById     String?
-  decidedBy       User?            @relation("VariationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedBy       User?                 @relation("VariationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
   decidedAt       DateTime?
   decisionComment String?
+  // App Review, 17 Oct 2026: the four responses, and when the client is
+  // asked to respond by.
+  decisionOutcome ApprovalOutcome?
+  responseDueAt   DateTime?
   events          VariationEvent[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  communicationId String?
+  communication   ProjectCommunication? @relation(fields: [communicationId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, number])
   @@index([projectId])
@@ -3012,9 +3165,860 @@ model SitePhoto {
   uploadedBy         User              @relation(fields: [uploadedById], references: [id])
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  inspectionId       String?
+  inspection         SiteInspection?   @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+  punchItemId        String?
+  punchItem          PunchItem?        @relation(fields: [punchItemId], references: [id], onDelete: SetNull)
 
   @@index([projectId, takenAt])
   @@index([issueId])
   @@index([taskId])
   @@index([scheduleActivityId])
+}
+
+// The site's weather, one row per day for the life of the project (App
+// Review, 17 Oct 2026: "if I wanted to know the weather two weeks ago").
+// Recorded by SiteWeatherService from Open-Meteo; stops when the project
+// is completed or archived.
+model SiteWeatherDay {
+  id              String   @id @default(uuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // The calendar day at the site (stored as midnight UTC of that date).
+  date            DateTime @db.Date
+  weatherCode     Int?
+  tempMaxC        Float?
+  tempMinC        Float?
+  precipitationMm Float?
+  windMaxKmh      Float?
+  latitude        Float
+  longitude       Float
+  // False while the day is still in progress; refreshed until it's over.
+  isComplete      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([projectId, date])
+}
+
+// App Review, 17 Oct 2026: an approval comes back as one of four responses.
+enum ApprovalOutcome {
+  APPROVED
+  APPROVED_WITH_COMMENTS
+  REJECTED
+  REJECTED_WITH_COMMENTS
+}
+
+// How the approver signed. ACCEPTED is approval by acceptance alone, with
+// no signature image (kept as an option); the others carry an image that
+// is added to the signed document.
+enum SignatureMethod {
+  ACCEPTED
+  DRAWN
+  TYPED
+  UPLOADED
+}
+
+enum ApprovalSubject {
+  STAGE_DELIVERABLE
+  VARIATION
+  STAGE_TRANSITION
+  DOCUMENT_REVISION
+  // An architect's review of a delivery register entry (2026-10-26):
+  // a payment valuation, a completion certificate, O&M documents.
+  REGISTER_ENTRY
+}
+
+enum DocumentApprovalStatus {
+  PENDING
+  DECIDED
+  WITHDRAWN
+}
+
+// The evidence of one decision: who decided what, how they signed, and the
+// signed document the system produced (the original drawing with the
+// approval stamp, or a sign-off certificate for records that aren't files).
+// Never edited after it's written.
+model ApprovalRecord {
+  id                String          @id @default(uuid())
+  projectId         String
+  project           Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subject           ApprovalSubject
+  subjectId         String
+  // What was decided, as it read at the time, e.g. "Project brief (v2)".
+  title             String
+  outcome           ApprovalOutcome
+  comment           String?
+  method            SignatureMethod
+  signatureFilename String?
+  signerId          String
+  signer            User            @relation(fields: [signerId], references: [id])
+  signerName        String
+  signerRole        String?
+  signedAt          DateTime        @default(now())
+  ipAddress         String?
+  userAgent         String?
+  signedFilename    String?
+  // SHA-256 of the signed PDF, so a copy can be checked against the record.
+  signedSha256      String?
+
+  @@index([projectId])
+  @@index([subject, subjectId])
+}
+
+// A person's saved signature, offered the next time they sign.
+model UserSignature {
+  userId    String          @id
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method    SignatureMethod
+  filename  String
+  updatedAt DateTime        @updatedAt
+}
+
+// A document revision sent to the client for approval (App Review, 17 Oct
+// 2026: the client signs off the drawing or document itself).
+model DocumentApprovalRequest {
+  id            String                 @id @default(uuid())
+  projectId     String
+  project       Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  revisionId    String
+  revision      DocumentRevision       @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User                   @relation("DocumentApprovalRequestedBy", fields: [requestedById], references: [id])
+  message       String?
+  responseDueAt DateTime?
+  status        DocumentApprovalStatus @default(PENDING)
+  outcome       ApprovalOutcome?
+  comment       String?
+  decidedById   String?
+  decidedBy     User?                  @relation("DocumentApprovalDecidedBy", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  createdAt     DateTime               @default(now())
+
+  @@index([projectId])
+  @@index([revisionId])
+}
+
+// The delivery registers that PROCSA Stages 2 to 6 call for and the earlier
+// modules don't cover: insurance, payment certificates, handover and
+// completion certificates, defects, handover documents, claims, final
+// accounts, cash flow, project finance, sales and leasing, project
+// procedures and authority service agreements. One table, one engine
+// (delivery/registers.ts declares each register's fields and statuses), the
+// same approach as the Stage 1 registers.
+model ProjectRegisterEntry {
+  id            String           @id @default(uuid())
+  projectId     String
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  register      String
+  title         String?
+  category      String?
+  status        String?
+  reference     String?
+  location      String?
+  partyName     String?
+  contractorId  String?
+  contractor    Contractor?      @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  responsibleId String?
+  responsible   ProjectMember?   @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  documentId    String?
+  document      ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  amount        Float?
+  amount2       Float?
+  currency      Currency?
+  days          Int?
+  date          DateTime?
+  dueDate       DateTime?
+  completedAt   DateTime?
+  notes         String?
+  createdById   String
+  createdBy     User             @relation(fields: [createdById], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([projectId, register])
+}
+
+enum ReportKind {
+  PROGRESS_PPTX
+  SUMMARY_PDF
+  EXCEL_EXPORT
+  CLOSEOUT_PDF
+}
+
+// A generated report (Meeting 3 §2.9: Excel for programme and tabular data,
+// PDF for a summary without tables, PowerPoint for the client-facing
+// progress report). Kept so it can be downloaded again and shared with the
+// client.
+model ProjectReport {
+  id            String     @id @default(uuid())
+  projectId     String
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind          ReportKind
+  title         String
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  filename      String
+  mimeType      String
+  sizeBytes     Int
+  clientVisible Boolean    @default(false)
+  generatedById String
+  generatedBy   User       @relation(fields: [generatedById], references: [id])
+  createdAt     DateTime   @default(now())
+
+  @@index([projectId])
+}
+
+// ---- Architect role (2026-10-26) ------------------------------------------
+// PROCSA Architect Stages 2 to 6: the documentation programme and drawing
+// register, authority submissions, instructions and correspondence routed
+// through Setjeka, and site inspections with checklists.
+
+// Meeting 3: drawings are issued for different purposes and the purpose
+// must be visible.
+enum IssuePurpose {
+  FOR_INFORMATION
+  FOR_COMMENT
+  FOR_COORDINATION
+  FOR_CLIENT_APPROVAL
+  FOR_AUTHORITY_SUBMISSION
+  FOR_PROCUREMENT
+  FOR_CONSTRUCTION
+  AS_BUILT
+}
+
+// Architect 2.1 / 3.1 "Agree the documentation programme": the drawings
+// planned, the purpose each is due for, and when. A planned row is matched
+// to the drawing once one with the same number is uploaded.
+model PlannedDrawing {
+  id            String           @id @default(uuid())
+  projectId     String
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  drawingNumber String?
+  drawingKey    String?
+  title         String
+  discipline    String?
+  stage         ProjectStage
+  purpose       IssuePurpose
+  plannedDate   DateTime
+  responsibleId String?
+  responsible   ProjectMember?   @relation(fields: [responsibleId], references: [id], onDelete: SetNull)
+  documentId    String?
+  document      ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  notes         String?
+  createdById   String
+  createdBy     User             @relation(fields: [createdById], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([projectId, plannedDate])
+}
+
+enum ConsentEventKind {
+  SUBMITTED
+  COMMENTS_RECEIVED
+  RESUBMITTED
+  APPROVED
+  REJECTED
+  NOTE
+}
+
+// Each round with the authority: submissions, the authority's comments,
+// resubmissions and the decision, with the documents that went or came back.
+model ConsentEvent {
+  id          String           @id @default(uuid())
+  consentId   String
+  consent     ConsentApproval  @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  kind        ConsentEventKind
+  date        DateTime
+  note        String?
+  documentId  String?
+  document    ProjectDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdById String
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+
+  @@index([consentId, date])
+}
+
+// The user's decision (26 Oct 2026): the client reaches the architect only
+// through Setjeka's PM and DM, and all of it happens on the platform.
+//   CLIENT_REQUEST        client -> Setjeka (DM and PM)
+//   SETJEKA_INSTRUCTION   Setjeka -> a consultant or contractor
+//   CONTRACT_INSTRUCTION  drafted by the architect, issued by Setjeka to the
+//                         contractor (Architect 5.3 / 5.11)
+//   CORRESPONDENCE        a letter; outside parties write to Setjeka only
+enum CommunicationKind {
+  CLIENT_REQUEST
+  SETJEKA_INSTRUCTION
+  CONTRACT_INSTRUCTION
+  CORRESPONDENCE
+}
+
+enum CommunicationStatus {
+  DRAFT
+  AWAITING_ISSUE
+  ISSUED
+  RESPONDED
+  CLOSED
+  CANCELLED
+}
+
+model ProjectCommunication {
+  id            String                   @id @default(uuid())
+  projectId     String
+  project       Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind          CommunicationKind
+  sequence      Int
+  number        String
+  subject       String
+  body          String
+  status        CommunicationStatus      @default(DRAFT)
+  authorId      String
+  author        User                     @relation("CommunicationAuthor", fields: [authorId], references: [id])
+  issuedById    String?
+  issuedBy      User?                    @relation("CommunicationIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+  issuedAt      DateTime?
+  // A Setjeka instruction passing on a client request, or a reply.
+  parentId      String?
+  parent        ProjectCommunication?    @relation("CommunicationThread", fields: [parentId], references: [id], onDelete: SetNull)
+  children      ProjectCommunication[]   @relation("CommunicationThread")
+  responseDueAt DateTime?
+  costImpact    Boolean                  @default(false)
+  timeImpact    Boolean                  @default(false)
+  closedAt      DateTime?
+  recipients    CommunicationRecipient[]
+  documents     CommunicationDocument[]
+  variations    Variation[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@unique([projectId, kind, sequence])
+  @@index([projectId, createdAt])
+}
+
+model CommunicationRecipient {
+  id              String               @id @default(uuid())
+  communicationId String
+  communication   ProjectCommunication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  acknowledgedAt  DateTime?
+  response        String?
+  respondedAt     DateTime?
+
+  @@unique([communicationId, userId])
+  @@index([userId])
+}
+
+model CommunicationDocument {
+  communicationId String
+  communication   ProjectCommunication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  documentId      String
+  document        ProjectDocument      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([communicationId, documentId])
+}
+
+// Register QHSE rows 66-67 (the user, 26 Oct 2026: build the checklists
+// now) and Architect 5.5 / 5.8 / 5.13 / 6.1.
+enum InspectionKind {
+  QUALITY
+  DESIGN_SUPERVISION
+  TEST_WITNESS
+  MOCK_UP
+  PRACTICAL_COMPLETION
+  DEFECTS_VERIFICATION
+}
+
+enum InspectionStatus {
+  REQUESTED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum InspectionOutcome {
+  CONFORMS
+  CONFORMS_WITH_COMMENTS
+  NON_CONFORMING
+}
+
+// Company-wide checklists by work type, kept by Setjeka.
+model InspectionTemplate {
+  id          String           @id @default(uuid())
+  name        String
+  workType    String?
+  kind        InspectionKind?
+  items       String[]
+  active      Boolean          @default(true)
+  createdById String?
+  createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  inspections SiteInspection[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model SiteInspection {
+  id                 String              @id @default(uuid())
+  projectId          String
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  kind               InspectionKind
+  title              String
+  workType           String?
+  location           String?
+  projectNodeId      String?
+  scheduleActivityId String?
+  status             InspectionStatus    @default(REQUESTED)
+  requestedById      String
+  requestedBy        User                @relation("InspectionRequester", fields: [requestedById], references: [id])
+  requestedFor       DateTime?
+  inspectorId        String?
+  inspector          ProjectMember?      @relation("InspectionInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  scheduledFor       DateTime?
+  templateId         String?
+  template           InspectionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  // [{ text, result: PASS | FAIL | NA | null, note }]
+  checklist          Json                @default("[]")
+  outcome            InspectionOutcome?
+  summary            String?
+  completedAt        DateTime?
+  completedById      String?
+  completedBy        User?               @relation("InspectionCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  issues             ProjectIssue[]
+  photos             SitePhoto[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+// ---- Drawing markup and the model viewer (2026-10-26) ----------------------
+// Register DOC row 51 "Document markup" (saved separately from the original
+// file), FIELD row 65 (markups linked to site issues), and BIM rows 55-61.
+
+enum MarkupKind {
+  PEN
+  RECTANGLE
+  CLOUD
+  ARROW
+  TEXT
+  PIN
+  // A review stamp, a measured length and a measured area (26 Oct 2026).
+  STAMP
+  MEASURE
+  AREA
+}
+
+// One annotation on one page of a drawing revision. Coordinates are
+// fractions of the page (0..1), so they hold at any zoom and on any screen.
+model DrawingMarkup {
+  id           String           @id @default(uuid())
+  projectId    String
+  project      Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documentId   String
+  document     ProjectDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  revisionId   String
+  revision     DocumentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  page         Int              @default(1)
+  kind         MarkupKind
+  // PEN: { points: [x, y][] }; RECTANGLE / CLOUD: { x, y, w, h };
+  // ARROW: { from: [x, y], to: [x, y] }; TEXT / PIN: { x, y }.
+  geometry     Json
+  color        String           @default("#dc2626")
+  text         String?
+  authorId     String
+  author       User             @relation("MarkupAuthor", fields: [authorId], references: [id])
+  issueId      String?
+  issue        ProjectIssue?    @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?            @relation("MarkupResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([revisionId, page])
+  @@index([projectId])
+}
+
+// A model object (by its IFC GlobalId) linked to a project record: an issue
+// raised against it, or an RFI, document, photo, inspection or submittal it
+// relates to (register BIM rows 59 and 61).
+model ModelObjectLink {
+  id          String          @id @default(uuid())
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documentId  String
+  document    ProjectDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  globalId    String
+  expressId   Int?
+  ifcType     String?
+  name        String?
+  entityType  String
+  entityId    String
+  // The camera when the link was made: { position: [x,y,z], target: [x,y,z] }.
+  viewpoint   Json?
+  createdById String
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+
+  @@unique([documentId, globalId, entityType, entityId])
+  @@index([projectId, entityType, entityId])
+}
+
+// ---- Documents, drawings, BIM and costs from OpenConstructionERP (2026-10-26)
+// The user chose these from the donor app for the architect: file versions,
+// transmittals, full-text search, tags, an admin recycle bin, the BIM hub,
+// federation and coordination, smart views, BIM requirements, the rough cost
+// estimate, plus clash detection, BCF, drawing index checks, stamps and scale,
+// a DWG viewer, punch items on drawings and distribution lists.
+
+model DocumentTag {
+  id        String            @id @default(uuid())
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  color     String            @default("#64748b")
+  links     DocumentTagLink[]
+  createdAt DateTime          @default(now())
+
+  @@unique([projectId, name])
+}
+
+model DocumentTagLink {
+  documentId String
+  document   ProjectDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        DocumentTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+}
+
+// The text of one page, for full-text search (searched with Postgres
+// to_tsvector at query time).
+model DocumentPageText {
+  id         String           @id @default(uuid())
+  revisionId String
+  revision   DocumentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  page       Int
+  text       String
+  // TEXT: from the PDF's own text; OCR: read off a scan.
+  source     String
+
+  @@unique([revisionId, page])
+}
+
+// A saved set of recipients for issuing drawings and documents.
+model DistributionList {
+  id          String                   @id @default(uuid())
+  projectId   String
+  project     Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  members     DistributionListMember[]
+  createdById String
+  createdBy   User                     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([projectId, name])
+}
+
+model DistributionListMember {
+  listId          String
+  list            DistributionList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  projectMemberId String
+  projectMember   ProjectMember    @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
+
+  @@id([listId, projectMemberId])
+}
+
+// A drawing page's scale, set by measuring a known length on it. x1..y2 are
+// page fractions (as markups); realLength is in metres.
+model DrawingCalibration {
+  id          String           @id @default(uuid())
+  revisionId  String
+  revision    DocumentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  page        Int
+  x1          Float
+  y1          Float
+  x2          Float
+  y2          Float
+  realLength  Float
+  createdById String
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+
+  @@unique([revisionId, page])
+}
+
+enum PunchStatus {
+  OPEN
+  READY_FOR_INSPECTION
+  CLOSED
+}
+
+// A snag pinned to a drawing (Architect 5.13, 6.1): the contractor puts it
+// right and says so; the architect inspects and closes it or sends it back.
+model PunchItem {
+  id           String            @id @default(uuid())
+  projectId    String
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence     Int
+  number       String
+  title        String
+  description  String?
+  category     String?
+  location     String?
+  priority     SchedulePriority  @default(MEDIUM)
+  status       PunchStatus       @default(OPEN)
+  documentId   String?
+  document     ProjectDocument?  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  revisionId   String?
+  revision     DocumentRevision? @relation(fields: [revisionId], references: [id], onDelete: SetNull)
+  page         Int?
+  x            Float?
+  y            Float?
+  assigneeId   String?
+  assignee     ProjectMember?    @relation("PunchAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  dueDate      DateTime?
+  raisedById   String
+  raisedBy     User              @relation("PunchRaiser", fields: [raisedById], references: [id])
+  readyAt      DateTime?
+  readyNote    String?
+  closedAt     DateTime?
+  closedById   String?
+  closedBy     User?             @relation("PunchCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  rejectedNote String?
+  photos       SitePhoto[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+  @@index([revisionId])
+}
+
+// ---- BIM hub -----------------------------------------------------------------
+
+// Server-side reading of one IFC model revision into elements.
+model BimProcessing {
+  id           String           @id @default(uuid())
+  revisionId   String           @unique
+  revision     DocumentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  status       String
+  elementCount Int              @default(0)
+  storeys      String[]         @default([])
+  schema       String?
+  error        String?
+  startedAt    DateTime         @default(now())
+  finishedAt   DateTime?
+}
+
+// One model element. Coordinates are web-ifc's (Y up, metres), as the
+// browser viewer draws them; BCF converts to IFC's Z up.
+model BimElement {
+  id         String           @id @default(uuid())
+  projectId  String
+  documentId String
+  document   ProjectDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  revisionId String
+  revision   DocumentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  expressId  Int
+  globalId   String
+  ifcType    String
+  name       String?
+  typeName   String?
+  storey     String?
+  material   String?
+  // { "Pset_WallCommon.FireRating": "60", ... }
+  properties Json             @default("{}")
+  // { "Qto_WallBaseQuantities.NetSideArea": 12.3, ... }
+  quantities Json             @default("{}")
+  minX       Float?
+  minY       Float?
+  minZ       Float?
+  maxX       Float?
+  maxY       Float?
+  maxZ       Float?
+  // Changes between revisions are found by comparing these.
+  propsHash  String
+
+  @@unique([revisionId, globalId])
+  @@index([revisionId, ifcType])
+  @@index([projectId])
+}
+
+// A saved set of models opened together.
+model BimFederation {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  documentIds String[]
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, name])
+}
+
+enum ClashStatus {
+  NEW
+  ACTIVE
+  RESOLVED
+  APPROVED
+}
+
+// Two element sets checked against each other, e.g. architecture against
+// structure. Selections: { documentIds?, ifcTypes?, storeys?, conditions? }.
+model ClashTest {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  selectionA  Json
+  selectionB  Json
+  // Overlap below this many metres is ignored.
+  tolerance   Float     @default(0.01)
+  lastRunAt   DateTime?
+  lastRunMs   Int?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  clashes     Clash[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Clash {
+  id          String      @id @default(uuid())
+  testId      String
+  test        ClashTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  projectId   String
+  // The pair, sorted, so a re-run finds the same clash again.
+  key         String
+  aDocumentId String
+  aGlobalId   String
+  aName       String?
+  aType       String
+  bDocumentId String
+  bGlobalId   String
+  bName       String?
+  bType       String
+  // Centre of the overlap, and its depth in metres.
+  centre      Json
+  overlap     Float
+  status      ClashStatus @default(NEW)
+  issueId     String?
+  note        String?
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+  resolvedAt  DateTime?
+
+  @@unique([testId, key])
+  @@index([projectId, status])
+}
+
+// A rule-based view: re-evaluated each time, so new elements that match
+// are coloured, hidden or isolated too.
+// rules: [{ name, conditions: [{ field, op, value }], action, color }]
+model SmartView {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  rules       Json
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, name])
+}
+
+// Information requirements, imported from IDS, Excel/CSV or written here.
+// requirements: [{ id, description, ifcTypes, property: { set, name },
+//   rule: EXISTS | EQUALS | IN | PATTERN | RANGE, value }]
+model BimRequirementSet {
+  id           String                @id @default(uuid())
+  projectId    String
+  project      Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String
+  source       String
+  fileName     String?
+  requirements Json
+  createdById  String
+  createdBy    User                  @relation(fields: [createdById], references: [id])
+  checks       BimRequirementCheck[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model BimRequirementCheck {
+  id         String            @id @default(uuid())
+  setId      String
+  set        BimRequirementSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  revisionId String
+  revision   DocumentRevision  @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  // [{ requirementId, applicable, passed, failed, failing: [{ globalId, name, value }] }]
+  results    Json
+  score      Float
+  ranAt      DateTime          @default(now())
+
+  @@index([setId, ranAt])
+}
+
+// ---- Rough cost estimate (ROM) ----------------------------------------------
+
+// Setjeka's own rates per m2 by building type and quality, kept current by
+// its QS. Seeded with indicative figures to be replaced.
+model RomRate {
+  id           String   @id @default(uuid())
+  buildingType String
+  label        String
+  quality      String
+  ratePerM2    Float
+  currency     Currency @default(ZAR)
+  updatedById  String?
+  updatedBy    User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([buildingType, quality])
+}
+
+model RomRegionFactor {
+  id        String   @id @default(uuid())
+  region    String   @unique
+  factor    Float
+  updatedAt DateTime @updatedAt
+}
+
+model RomEstimate {
+  id             String       @id @default(uuid())
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunityId  String?
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  name           String
+  buildingType   String
+  quality        String
+  region         String
+  gfa            Float
+  baseRate       Float
+  regionFactor   Float
+  escalationPct  Float        @default(0)
+  contingencyPct Float        @default(10)
+  total          Float
+  currency       Currency     @default(ZAR)
+  // [{ element, pct, amount }]
+  breakdown      Json
+  notes          String?
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
 }
