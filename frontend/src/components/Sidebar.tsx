@@ -24,6 +24,8 @@ export function Sidebar({ open }: { open: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab');
+  // Commercial's own sub-tabs (bills, contracts) have menu entries too.
+  const currentCtab = searchParams.get('ctab');
   const { currentProject } = useCurrentProject();
   const { user } = useAuth();
   const visibleNav = NAV.flatMap((entry): NavEntry[] => {
@@ -141,12 +143,13 @@ export function Sidebar({ open }: { open: boolean }) {
                           : child.href;
                       const [hrefPath, hrefQuery] = href.split('?');
                       const hrefTab = hrefQuery ? new URLSearchParams(hrefQuery).get('tab') : null;
+                      const hrefCtab = hrefQuery ? new URLSearchParams(hrefQuery).get('ctab') : null;
                       // Query-based entries (e.g. Documents, ?tab=documents, or a
                       // non-project page like Administration's own tabs) only
                       // highlight when that exact tab is active; path-based
                       // entries (e.g. Schedule, its own route) just match the path.
                       const active = hrefTab
-                        ? pathname === hrefPath && currentTab === hrefTab
+                        ? pathname === hrefPath && currentTab === hrefTab && currentCtab === hrefCtab
                         : pathname === hrefPath && (!child.requiresProject || hrefPath !== child.href) && !currentTab;
                       const ChildIcon = child.icon;
                       return (

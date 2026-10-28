@@ -152,12 +152,16 @@ export const NAV: NavEntry[] = [
   {
     label: 'Commercial',
     icon: Coins,
-    audience: 'internal',
+    // The QS (an outside firm) works here too since 28 Oct 2026; Setjeka's
+    // own price data and estimates stay internal. The project page itself
+    // hides Commercial from those with no access to it.
     children: [
-      { label: 'Cost database', href: '/cost-database', icon: Database },
-      { label: 'Estimates', href: '/estimates', icon: Calculator },
-      { label: 'Rough estimates', href: '/rough-estimates', icon: Calculator },
       { label: 'Project commercials', href: '/projects', icon: Coins, requiresProject: true, projectPathSuffix: '?tab=commercial' },
+      { label: 'Bills & cost plans', href: '/projects', icon: Calculator, requiresProject: true, projectPathSuffix: '?tab=commercial&ctab=bills' },
+      { label: 'Contracts & valuations', href: '/projects', icon: FileSignature, requiresProject: true, projectPathSuffix: '?tab=commercial&ctab=contracts' },
+      { label: 'Cost database', href: '/cost-database', icon: Database, audience: 'internal' },
+      { label: 'Estimates', href: '/estimates', icon: Calculator, audience: 'internal' },
+      { label: 'Rough estimates', href: '/rough-estimates', icon: Calculator, audience: 'internal' },
     ],
   },
   {
