@@ -226,6 +226,38 @@ export async function progressDeck(d: ReportData): Promise<Buffer> {
     }
   }
 
+  // 5b. Contracts and payment certificates (the QS's valuations)
+  if (d.contracts.length) {
+    const s = pptx.addSlide({ masterName: 'SETJEKA' });
+    header(s, 'Contracts & Payment Certificates');
+    const money = (n: number) => Math.round(n).toLocaleString('en-ZA');
+    const fa: Record<string, string> = { NOT_STARTED: 'Not started', IN_PREPARATION: 'In preparation', SUBMITTED: 'Submitted', AGREED: 'Agreed' };
+    const st: Record<string, string> = { CERTIFIED: 'with the client', APPROVED: 'approved', PAID: 'paid' };
+    const rows = [
+      [{ ...th('CONTRACT'), options: { ...th('').options, align: 'left' } }, th('SUM'), th('VARIATIONS'), th('CERTIFIED'), th('RETENTION'), th('PAID'), th('LATEST CERTIFICATE'), th('FINAL ACCOUNT')],
+      ...d.contracts.slice(0, 10).map((c) => [
+        { text: `${c.title}\n${c.contractor}`, options: { align: 'left' } },
+        money(c.contractSum),
+        money(c.approvedVariations),
+        money(c.certifiedNet),
+        money(c.retentionHeld),
+        money(c.paid),
+        c.lastCertificate ? `${c.lastCertificate.number}, ${st[c.lastCertificate.status] ?? c.lastCertificate.status.toLowerCase()}` : '—',
+        fa[c.finalAccountStatus] ?? c.finalAccountStatus,
+      ]),
+    ];
+    s.addTable(rows as TableRow[], { x: 0.5, y: 1.5, w: 12.3, colW: [3.1, 1.3, 1.2, 1.3, 1.2, 1.3, 1.6, 1.3], ...tableStyle, fontSize: 9, rowH: 0.42, align: 'right' });
+    s.addText(`Amounts ${d.contracts[0].currency}, certified and retention excluding VAT, paid including VAT. Certificates are prepared by the QS, reviewed by the architect, issued by Setjeka and approved by the client.`, {
+      x: 0.5,
+      y: 6.7,
+      w: 12.3,
+      h: 0.35,
+      fontFace: BODY,
+      fontSize: 9,
+      color: C.muted,
+    });
+  }
+
   // 6. Variations
   if (d.variations.length) {
     const s = pptx.addSlide({ masterName: 'SETJEKA' });

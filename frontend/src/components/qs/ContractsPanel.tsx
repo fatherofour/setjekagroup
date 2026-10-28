@@ -37,8 +37,8 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
   const [v, setV] = useState<Valuation | null>(null);
   const [pct, setPct] = useState<Record<string, string>>({});
   const [extra, setExtra] = useState({ materialsOnSite: '', retentionReleasePct: '0', valuationDate: '' });
-  const [reason, setReason] = useState('');
   const [due, setDue] = useState(defaultDueDate());
+  const [certifying, setCertifying] = useState(false);
   const [payRef, setPayRef] = useState('');
   const [deciding, setDeciding] = useState(false);
   const [signed, setSigned] = useState(0);
@@ -275,20 +275,16 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
         {v.status === 'SUBMITTED' && !can.certify && <p className="text-xs text-slate-500">With the architect to review, then Setjeka&apos;s Project Manager issues the certificate.</p>}
         {can.certify && (
           <div className="flex flex-wrap items-end gap-2">
-            <p className="w-full text-xs text-slate-500">Issue the payment certificate once the architect has approved the valuation. The client then approves payment.</p>
+            <p className="w-full text-xs text-slate-500">Once the architect has approved the valuation, approve and sign to issue the payment certificate; the client then approves payment. Reject it, with your comments, to send it back to the QS.</p>
             <div>
               <label className={labelClass} htmlFor="cert-due">
                 Client to respond by
               </label>
               <input id="cert-due" type="date" min={todayInput()} className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
-            <button type="button" disabled={busy} onClick={() => run(() => authedFetch(`${base}/certify`, { method: 'POST', body: { responseDueAt: due } }))} className={primaryButton}>
+            <button type="button" disabled={busy} onClick={() => setCertifying(true)} className={primaryButton}>
               <FileCheck2 size={14} />
-              Issue the certificate
-            </button>
-            <input aria-label="Why it is returned" className={`${inputClass} w-56`} placeholder="Reason to return it to the QS" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <button type="button" disabled={busy || !reason.trim()} onClick={() => run(() => authedFetch(`${base}/return`, { method: 'POST', body: { reason } }))} className={secondaryButton}>
-              Return to the QS
+              Decide and sign the certificate
             </button>
           </div>
         )}
@@ -316,13 +312,28 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
             Revise the valuation
           </button>
         )}
-        {(v.status === 'APPROVED' || v.status === 'REJECTED' || v.status === 'PAID') && <SignedCopies projectId={projectId} subjectId={v.id} refresh={signed} />}
+        {(v.certificateNumber || v.returnedReason) && <SignedCopies projectId={projectId} subjectId={v.id} refresh={signed} />}
       </div>
 
       <div className={cardClass}>
         <CommentThread projectId={projectId} entityType="VALUATION" entityId={v.id} />
       </div>
 
+      {certifying && (
+        <DecisionDialog
+          projectId={projectId}
+          title={`Payment certificate for valuation ${v.number}: ${v.contract.contractor.name}`}
+          context={`${money(v.amountDue, c)} due, including VAT · gross ${money(v.grossValuation)} · retention held ${money(v.retention)}`}
+          endpoint={`${base}/certify`}
+          extraBody={{ responseDueAt: due }}
+          subjectId={v.id}
+          onClose={() => setCertifying(false)}
+          onDecided={() => {
+            setSigned((n) => n + 1);
+            run(() => authedFetch<Valuation>(base));
+          }}
+        />
+      )}
       {deciding && (
         <DecisionDialog
           projectId={projectId}

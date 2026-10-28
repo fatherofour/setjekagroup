@@ -201,6 +201,15 @@ export async function summaryPdf(d: ReportData): Promise<Buffer> {
     w.heading('Principal risks');
     w.bullets(d.risks.slice(0, 5).map((r) => `${r.title} (${r.score >= 15 ? 'high' : r.score >= 8 ? 'medium' : 'low'})${r.mitigation ? `. Mitigation: ${r.mitigation.replace(/\.$/, '')}` : ''}${r.ownerName ? `. Owner: ${r.ownerName}` : ''}.`));
   }
+  if (d.contracts.length) {
+    w.heading('Contracts and payment certificates');
+    w.bullets(
+      d.contracts.map(
+        (c) =>
+          `${c.title} (${c.contractor}): contract sum ${fmtMoney(c.contractSum, c.currency)}${c.approvedVariations ? `, approved variations ${fmtMoney(c.approvedVariations, c.currency)}` : ''}; certified ${fmtMoney(c.certifiedNet, c.currency)} excluding VAT${c.retentionHeld ? `, retention held ${fmtMoney(c.retentionHeld, c.currency)}` : ''}${c.lastCertificate ? `; latest certificate ${c.lastCertificate.number}` : '; no certificate yet'}.`,
+      ),
+    );
+  }
   if (d.waiting.length) {
     w.heading('Decisions required from the client');
     w.bullets(d.waiting.map((x) => `${x.title}${x.dueAt ? `, by ${fmtDate(x.dueAt)}` : ''}.`));

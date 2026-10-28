@@ -19,6 +19,7 @@ export function DecisionDialog({
   dueAt,
   endpoint,
   method = 'POST',
+  extraBody,
   subjectId,
   children,
   onClose,
@@ -31,6 +32,8 @@ export function DecisionDialog({
   /** The decide endpoint, e.g. /projects/:id/commercial/variations/:vid/decide */
   endpoint: string;
   method?: 'POST' | 'PATCH';
+  /** Sent with the decision, e.g. the date the client is to respond by. */
+  extraBody?: Record<string, unknown>;
   /** The approval record's subject id, to find the signed copy afterwards. */
   subjectId: string;
   /** What's being decided: a summary, or a link to view the document. */
@@ -62,7 +65,7 @@ export function DecisionDialog({
     setBusy(true);
     setError(null);
     try {
-      await authedFetch(endpoint, { method, body: { outcome, comment: comment.trim() || undefined, signature } });
+      await authedFetch(endpoint, { method, body: { ...extraBody, outcome, comment: comment.trim() || undefined, signature } });
       const records = await authedFetch<ApprovalRecord[]>(`/projects/${projectId}/approval-records?subjectId=${subjectId}`).catch(() => [] as ApprovalRecord[]);
       setRecord(records[0] ?? null);
       onDecided();

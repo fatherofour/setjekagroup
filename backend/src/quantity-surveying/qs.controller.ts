@@ -256,8 +256,8 @@ export class QsController {
 
   @Post('valuations/:id/certify')
   @RequirePermission('COMMERCIAL', 'EDIT')
-  certifyValuation(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: CertifyValuationDto, @CurrentUser() user: JwtPayload) {
-    return this.valuations.certify(projectId, user.sub, id, dto.responseDueAt);
+  certifyValuation(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: CertifyValuationDto, @CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.valuations.certify(projectId, user.sub, id, dto, requestMeta(req));
   }
 
   // APPROVE in the matrix, and the service also insists on the client.

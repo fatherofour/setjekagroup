@@ -129,6 +129,47 @@ export async function loadReportData(
     tracker = null;
   }
 
+  // The QS's contracts and payment certificates (2026-10-28).
+  const [contractRows, valuationRows] = await Promise.all([
+    prisma.projectContract.findMany({ where: { projectId }, include: { contractor: { select: { name: true } } }, orderBy: { createdAt: 'asc' } }),
+    prisma.valuation.findMany({ where: { projectId }, orderBy: [{ contractId: 'asc' }, { number: 'asc' }], include: { contract: { select: { title: true, currency: true, contractor: { select: { name: true } } } } } }),
+  ]);
+  const CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'];
+  const contracts = contractRows.map((c) => {
+    const vals = valuationRows.filter((v) => v.contractId === c.id);
+    const last = [...vals].reverse().find((v) => CERTIFIED.includes(v.status));
+    return {
+      title: c.title,
+      contractor: c.contractor.name,
+      currency: c.currency,
+      contractSum: c.contractSum,
+      approvedVariations: variations.filter((v) => v.contractId === c.id && v.status === 'APPROVED').reduce((s, v) => s + (v.assessedValue ?? v.estimatedValue), 0),
+      certifiedNet: last?.cumulativeNet ?? 0,
+      retentionHeld: last?.retention ?? 0,
+      paid: vals.filter((v) => v.status === 'PAID').reduce((s, v) => s + v.amountDue, 0),
+      lastCertificate: last ? { number: last.certificateNumber, status: last.status, amountDue: last.amountDue, certifiedAt: last.certifiedAt } : null,
+      finalAccountStatus: c.finalAccountStatus,
+    };
+  });
+  const certificates = valuationRows
+    .filter((v) => v.certificateNumber)
+    .map((v) => ({
+      number: v.certificateNumber!,
+      contract: v.contract.title,
+      contractor: v.contract.contractor.name,
+      currency: v.contract.currency,
+      valuationDate: v.valuationDate,
+      grossValuation: v.grossValuation,
+      retention: v.retention,
+      netDue: v.netDue,
+      vat: v.vat,
+      amountDue: v.amountDue,
+      status: v.status,
+      isFinal: v.isFinal,
+      certifiedAt: v.certifiedAt,
+      paidAt: v.paidAt,
+    }));
+
   const score = (r: { probability: number; impact: number }) => r.probability * r.impact;
   const sortedRisks = [...risks].sort((a, b) => score(b) - score(a));
   const waiting = [
@@ -136,6 +177,7 @@ export async function loadReportData(
     ...deliverables.map((d) => ({ title: `${INCEPTION_DELIVERABLES.find((x) => x.key === d.key)?.title ?? d.key} (v${d.version})`, kind: 'Stage 1 document', dueAt: d.responseDueAt })),
     ...variations.filter((v) => v.status === 'SUBMITTED').map((v) => ({ title: `Variation ${v.number}: ${v.title}`, kind: 'Variation', dueAt: v.responseDueAt })),
     ...docApprovals.map((r) => ({ title: `${r.revision.document.name} (Rev ${r.revision.revisionNumber})`, kind: 'Document', dueAt: r.responseDueAt })),
+    ...valuationRows.filter((v) => v.status === 'CERTIFIED').map((v) => ({ title: `Payment certificate ${v.certificateNumber}: ${v.contract.contractor.name}`, kind: 'Payment certificate', dueAt: v.responseDueAt })),
   ];
 
   const actions = [
@@ -167,6 +209,8 @@ export async function loadReportData(
     milestones: ms,
     commercial: summary,
     variations,
+    contracts,
+    certificates,
     risks: sortedRisks.map((r) => ({ ...r, score: score(r), ownerName: person(r.owner) })),
     issues: issues.map((i) => ({ ...i, ownerName: person(i.owner) })),
     rfis,

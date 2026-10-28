@@ -1,16 +1,16 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { writeFileSync } from 'node:fs';
+import { copyFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { round } from '../cost-database/pricing.js';
-import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js';
+import { SignoffService, signoffRootDir, type RequestMeta } from '../signoff/signoff.service.js';
 import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue, type DecisionDto } from '../signoff/dto/decision.dto.js';
 import { generateStoredName, uploadRootDir } from '../project-documents/upload.util.js';
 import { QsAccessService } from './qs-access.service.js';
 import { ContractsService } from './contracts.service.js';
 import { valuationFigures } from './qs-math.js';
 import { valuationPdf } from './valuation-pdf.js';
-import type { CreateValuationDto, PayValuationDto, UpdateValuationDto } from './dto/qs.dto.js';
+import type { CertifyValuationDto, CreateValuationDto, PayValuationDto, UpdateValuationDto } from './dto/qs.dto.js';
 
 const CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'] as const;
 const CLIENT_SEES = ['CERTIFIED', 'APPROVED', 'REJECTED', 'PAID'] as const;
@@ -239,6 +239,27 @@ export class ValuationsService {
     return { bytes: await valuationPdf(sheet), filename: `${sheet.number} ${v.contract.title}.pdf`.replace(/[\\/:*?"<>|]/g, '-') };
   }
 
+  /** The latest file on the valuation's register entry: what the next
+   * signature is stamped onto. */
+  private async currentFile(registerEntryId: string | null) {
+    if (!registerEntryId) return { documentId: null, source: undefined };
+    const entry = await this.prisma.projectRegisterEntry.findUnique({ where: { id: registerEntryId }, include: { document: { include: { revisions: { orderBy: { uploadedAt: 'desc' }, take: 1 } } } } });
+    const rev = entry?.document?.revisions[0];
+    return { documentId: entry?.documentId ?? null, source: rev ? { path: join(uploadRootDir(), rev.storedFilename), mimeType: rev.mimeType } : undefined };
+  }
+
+  /** A signed copy becomes the document's next revision, so the next
+   * signature goes on top of it. */
+  private async fileSigned(documentId: string, signedFilename: string, name: string, userId: string) {
+    const storedFilename = generateStoredName(`${name}.pdf`);
+    const to = join(uploadRootDir(), storedFilename);
+    copyFileSync(join(signoffRootDir('signed'), signedFilename), to);
+    const count = await this.prisma.documentRevision.count({ where: { documentId } });
+    await this.prisma.documentRevision.create({
+      data: { documentId, revisionNumber: String.fromCharCode(65 + Math.min(count, 25)), storedFilename, originalFilename: `${name} (signed).pdf`.replace(/[\\/:*?"<>|]/g, '-'), mimeType: 'application/pdf', fileSize: statSync(to).size, uploadedById: userId },
+    });
+  }
+
   /** Save the statement (or certificate) as a revision of the valuation's
    * document, so the architect's and the client's signatures stamp it. */
   private async fileSheet(projectId: string, userId: string, id: string, documentId: string | null) {
@@ -318,21 +339,37 @@ export class ValuationsService {
   }
 
   /** Setjeka's Project Manager issues the certificate (the user's decision,
-   * 28 Oct 2026). Where the project has an architect, their signed approval
-   * of the valuation comes first (Architect 5.7). */
-  async certify(projectId: string, userId: string, id: string, responseDueAt?: string) {
+   * 28 Oct 2026), signing it as the architect and the client sign theirs.
+   * Where the project has an architect, their signed approval of the
+   * valuation comes first (Architect 5.7). A rejection returns it to the QS
+   * with the PM's comment. */
+  async certify(projectId: string, userId: string, id: string, dto: CertifyValuationDto = {}, meta: RequestMeta = {}) {
     const a = await this.access.of(projectId, userId);
     this.access.setjeka(a, 'issues payment certificates');
     const v = await this.load(projectId, id);
     if (v.status !== 'SUBMITTED') throw new BadRequestException('Only a submitted valuation can be certified');
     if (!v.registerEntryId) throw new BadRequestException('Submit the valuation again; it has no register entry');
+    const { outcome, comment } = resolveOutcome({ ...dto, outcome: dto.outcome ?? (dto.approve === undefined ? 'APPROVED' : undefined) });
+    const facts: [string, string][] = [
+      ['Valuation', `No. ${v.number}${v.isFinal ? ' (final)' : ''}`],
+      ['Contractor', v.contract.contractor.name],
+      ['Gross valuation', money(v.contract.currency, v.grossValuation)],
+      ['Retention held', money(v.contract.currency, v.retention)],
+      ['Amount due (incl. VAT)', money(v.contract.currency, v.amountDue)],
+    ];
+    if (!isApproval(outcome)) {
+      if (!comment) throw new BadRequestException('Say why the valuation goes back to the QS');
+      const { source } = await this.currentFile(v.registerEntryId);
+      await this.signoff.sign({ projectId, subject: 'PAYMENT_CERTIFICATE', subjectId: id, title: `Valuation ${v.number}: ${v.contract.title}`, kind: 'Payment valuation, returned to the QS', outcome, comment, signature: dto.signature, signerId: userId, meta, facts, source });
+      return this.returnToQs(projectId, userId, id, comment);
+    }
     const architects = await this.access.usersIn(projectId, [...ARCHITECTS]);
     if (architects.length) {
       const review = await this.prisma.approvalRecord.findFirst({ where: { subject: 'REGISTER_ENTRY', subjectId: v.registerEntryId, signedAt: { gte: v.submittedAt ?? v.createdAt } }, orderBy: { signedAt: 'desc' } });
       if (!review) throw new BadRequestException("The architect reviews the valuation before it is certified (PROCSA Architect 5.7)");
       if (!isApproval(review.outcome)) throw new BadRequestException(`The architect's review was "${OUTCOME_LABEL[review.outcome]}". Return the valuation to the QS to revise.`);
     }
-    const due = responseDue(responseDueAt);
+    const due = responseDue(dto.responseDueAt);
     let certificateNumber = v.certificateNumber;
     if (!certificateNumber) {
       const issued = await this.prisma.valuation.count({ where: { projectId, certificateNumber: { not: null } } });
@@ -341,8 +378,25 @@ export class ValuationsService {
     await this.prisma.valuation.update({ where: { id }, data: { status: 'CERTIFIED', certificateNumber, certifiedById: userId, certifiedAt: new Date(), responseDueAt: due } });
     const fresh = await this.load(projectId, id);
     const entry = await this.prisma.projectRegisterEntry.findUniqueOrThrow({ where: { id: v.registerEntryId } });
-    await this.fileSheet(projectId, userId, id, entry.documentId);
-    await this.prisma.projectRegisterEntry.update({ where: { id: entry.id }, data: this.entryData(fresh, 'ISSUED', certificateNumber) });
+    const documentId = await this.fileSheet(projectId, userId, id, entry.documentId);
+    await this.prisma.projectRegisterEntry.update({ where: { id: entry.id }, data: { ...this.entryData(fresh, 'ISSUED', certificateNumber), documentId } });
+    // The PM signs the certificate; the signed copy is what the client signs.
+    const { source } = await this.currentFile(entry.id);
+    const record = await this.signoff.sign({
+      projectId,
+      subject: 'PAYMENT_CERTIFICATE',
+      subjectId: id,
+      title: `Payment certificate ${certificateNumber}: ${v.contract.title}`,
+      kind: 'Payment certificate, issued',
+      outcome,
+      comment,
+      signature: dto.signature,
+      signerId: userId,
+      meta,
+      facts: [['Certificate', certificateNumber], ...facts],
+      source,
+    });
+    if (record.signedFilename) await this.fileSigned(documentId, record.signedFilename, `${certificateNumber} ${v.contract.title}`, userId);
     await this.access.tell(
       projectId,
       await this.access.usersIn(projectId, ['CLIENT']),
@@ -364,8 +418,8 @@ export class ValuationsService {
     const v = await this.load(projectId, id);
     if (v.status !== 'CERTIFIED') throw new BadRequestException('This certificate is not waiting for a decision');
     const { outcome, comment } = resolveOutcome(dto);
-    const entry = v.registerEntryId ? await this.prisma.projectRegisterEntry.findUnique({ where: { id: v.registerEntryId }, include: { document: { include: { revisions: { orderBy: { uploadedAt: 'desc' }, take: 1 } } } } }) : null;
-    const rev = entry?.document?.revisions[0];
+    const entry = v.registerEntryId ? await this.prisma.projectRegisterEntry.findUnique({ where: { id: v.registerEntryId } }) : null;
+    const { source } = await this.currentFile(v.registerEntryId);
     await this.signoff.sign({
       projectId,
       subject: 'PAYMENT_CERTIFICATE',
@@ -384,7 +438,7 @@ export class ValuationsService {
         ['Retention held', money(v.contract.currency, v.retention)],
         ['Amount due (incl. VAT)', money(v.contract.currency, v.amountDue)],
       ],
-      source: rev ? { path: join(uploadRootDir(), rev.storedFilename), mimeType: rev.mimeType } : undefined,
+      source,
     });
     const approve = isApproval(outcome);
     await this.prisma.valuation.update({ where: { id }, data: { status: approve ? 'APPROVED' : 'REJECTED', decidedById: userId, decidedAt: new Date(), decisionOutcome: outcome, decisionComment: comment } });

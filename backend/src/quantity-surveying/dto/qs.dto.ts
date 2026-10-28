@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { ContractForm, CostPlanItemType, CostPlanKind, Currency } from '../../generated/prisma/enums.js';
+import { DecisionDto } from '../../signoff/dto/decision.dto.js';
 
 export class CreateCostPlanDto {
   @IsString() @MinLength(1) @MaxLength(200) title!: string;
@@ -129,7 +130,9 @@ export class ReturnValuationDto {
   @IsString() @MinLength(1) @MaxLength(2000) reason!: string;
 }
 
-export class CertifyValuationDto {
+/** The PM's signed decision on a valuation: approving issues the
+ * certificate, rejecting returns it to the QS with the comment. */
+export class CertifyValuationDto extends DecisionDto {
   @IsOptional() @IsDateString() responseDueAt?: string;
 }
 

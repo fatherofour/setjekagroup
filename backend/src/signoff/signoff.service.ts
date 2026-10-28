@@ -194,7 +194,7 @@ export class SignoffService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
     if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return null;
     if (await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } })) return null;
-    return ['DOCUMENT_REVISION', 'STAGE_TRANSITION', 'REGISTER_ENTRY'];
+    return ['DOCUMENT_REVISION', 'STAGE_TRANSITION', 'REGISTER_ENTRY', 'PAYMENT_CERTIFICATE'];
   }
 
   async list(projectId: string, userId: string, subject?: ApprovalSubject, subjectId?: string) {

@@ -137,6 +137,40 @@ export async function workbook(d: ReportData): Promise<Buffer> {
   }
 
   sheet(
+    'Contracts',
+    [
+      { header: 'Contract', key: 'title', width: 32 },
+      { header: 'Contractor', key: 'contractor', width: 26 },
+      { header: 'Contract sum', key: 'sum', width: 16, type: 'money' },
+      { header: 'Approved variations', key: 'vars', width: 18, type: 'money' },
+      { header: 'Certified (excl. VAT)', key: 'cert', width: 18, type: 'money' },
+      { header: 'Retention held', key: 'ret', width: 16, type: 'money' },
+      { header: 'Paid (incl. VAT)', key: 'paid', width: 16, type: 'money' },
+      { header: 'Latest certificate', key: 'last', width: 18 },
+      { header: 'Final account', key: 'fa', width: 16 },
+    ],
+    d.contracts.map((c) => ({ title: c.title, contractor: c.contractor, sum: c.contractSum, vars: c.approvedVariations, cert: c.certifiedNet, ret: c.retentionHeld, paid: c.paid, last: c.lastCertificate?.number ?? '', fa: c.finalAccountStatus.replace(/_/g, ' ').toLowerCase() })),
+  );
+  sheet(
+    'Valuations',
+    [
+      { header: 'Certificate', key: 'number', width: 12 },
+      { header: 'Contract', key: 'contract', width: 30 },
+      { header: 'Contractor', key: 'contractor', width: 24 },
+      { header: 'Valuation date', key: 'date', width: 14, type: 'date' },
+      { header: 'Gross valuation', key: 'gross', width: 16, type: 'money' },
+      { header: 'Retention', key: 'ret', width: 14, type: 'money' },
+      { header: 'Due excl. VAT', key: 'net', width: 16, type: 'money' },
+      { header: 'VAT', key: 'vat', width: 14, type: 'money' },
+      { header: 'Amount due', key: 'due', width: 16, type: 'money' },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Certified', key: 'certified', width: 13, type: 'date' },
+      { header: 'Paid', key: 'paid', width: 13, type: 'date' },
+    ],
+    d.certificates.map((c) => ({ number: `${c.number}${c.isFinal ? ' (final)' : ''}`, contract: c.contract, contractor: c.contractor, date: c.valuationDate, gross: c.grossValuation, ret: c.retention, net: c.netDue, vat: c.vat, due: c.amountDue, status: c.status.toLowerCase(), certified: c.certifiedAt, paid: c.paidAt })),
+  );
+
+  sheet(
     'Variations',
     [
       { header: 'No.', key: 'number', width: 9 },

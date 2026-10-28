@@ -2608,6 +2608,28 @@ Built on 2026-10-28. The user asked what the QS can do according to the requirem
 - **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems) and the guide (18/18) all still pass.
 - **Not tested:** the portal page for a client-organisation login. The run's client is a team member, who decides from the Commercial tab.
 
+**Gaps closed the same day** (the user: "fix the gaps")
+- **The PM signs the certificate.** Certifying now goes through the same decision and signature dialog the architect and client use (`DecisionDialog`, which gained `extraBody` for the response date).
+  - Approving issues the certificate and stamps the PM's signature on it. That signed copy becomes the document's latest revision, so the client's signature goes on top.
+  - Rejecting, with comments, returns the valuation to the QS, also signed.
+  - Consultants and contractors can open the signed certificates (`PAYMENT_CERTIFICATE` added to what they see).
+- **Reports.** All three formats now carry the contracts and certificates:
+  - the progress PowerPoint has a Contracts & Payment Certificates slide;
+  - the PDF summary describes each contract in sentences;
+  - the Excel export has Contracts and Valuations sheets.
+
+  "This period" lists certificates issued and paid, and certificates waiting for the client count as client decisions.
+- **Menu.** Commercial now shows to the QS, with entries straight to Bills & cost plans and Contracts & valuations. The cost database and estimates stay internal.
+- **Tested:**
+  - the QS journey, now 92/92, with the client as a client-company login using the portal;
+  - the PM signing in the browser (4/4), the QS screens (13/13) and the menu (8/8);
+  - and still the architect journey (58/58), the per-role screen sweep (0 problems) and the guide (18/18).
+- **Deferred until every role is built** (the user's instruction):
+  - the form of contract driving titles, terms and time limits;
+  - dayworks and site measurement sheets;
+  - price-escalation indices;
+  - enforcing the minimum number of quotes.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
