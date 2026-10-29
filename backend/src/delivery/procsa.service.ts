@@ -8,6 +8,9 @@ import { DELIVERY_STAGES, findDeliveryItem, type DeliveryEvidence, type Delivery
 import { REGISTER_BY_KEY } from './registers.js';
 
 const HS_RE = /health\s*(and|&)\s*safety|h\s*&\s*s\b|\bshe\b/i;
+// Setjeka's own roles: evidence for them is anyone's work on the project.
+// Every consultant's items count only their own work.
+const LEADS = ['DEVELOPMENT_MANAGER', 'PROJECT_MANAGER'];
 
 /** What's on file for a project, loaded once per request and read by every
  * evidence rule. */
@@ -51,8 +54,11 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     tenders,
     contracts,
     valuations,
+    criteria,
+    investigations,
+    advice,
   ] = await Promise.all([
-    prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true } }),
+    prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true, createdById: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
     prisma.projectDocument.findMany({ where: { deletedAt: null, projectId }, select: { name: true, documentType: true, description: true } }),
     prisma.transmittal.count({ where: { projectId, status: 'ISSUED' } }),
@@ -83,7 +89,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.transmittalItem.count({ where: { transmittal: { projectId, status: 'ISSUED' }, documentRevision: { document: { drawingKey: { not: null } } } } }),
     prisma.projectCommunication.findMany({ where: { projectId, status: { in: ['AWAITING_ISSUE', 'ISSUED', 'RESPONDED', 'CLOSED'] } }, select: { kind: true, status: true, authorId: true } }),
     prisma.siteInspection.findMany({ where: { projectId, status: 'COMPLETED' }, select: { kind: true, inspectorId: true, completedById: true } }),
-    prisma.consentEvent.findMany({ where: { consent: { projectId } }, select: { kind: true, consent: { select: { category: true, title: true } } } }),
+    prisma.consentEvent.findMany({ where: { consent: { projectId } }, select: { kind: true, createdById: true, consent: { select: { category: true, title: true } } } }),
     prisma.meetingAttendee.findMany({ where: { meeting: { projectId, status: { not: 'CANCELLED' } }, present: true }, select: { projectMemberId: true, meeting: { select: { meetingType: true } } } }),
     prisma.transmittal.findMany({ where: { projectId, status: 'ISSUED' }, select: { fromMemberId: true } }),
     prisma.approvalRecord.findMany({ where: { projectId, subject: 'REGISTER_ENTRY' }, select: { subjectId: true, signerId: true } }),
@@ -93,6 +99,9 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.rfq.findMany({ where: { projectId, costPlanId: { not: null } }, select: { status: true } }),
     prisma.projectContract.count({ where: { projectId } }),
     prisma.valuation.findMany({ where: { projectId }, select: { status: true, isFinal: true, preparedById: true } }),
+    prisma.designCriterion.findMany({ where: { projectId }, select: { raisedById: true } }),
+    prisma.siteInvestigation.findMany({ where: { projectId }, select: { recommendedById: true } }),
+    prisma.consultantAdvice.findMany({ where: { projectId }, select: { topic: true, authorId: true } }),
   ]);
   return {
     entries,
@@ -133,6 +142,9 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     tenders,
     contracts,
     valuations,
+    criteria,
+    investigations,
+    advice,
   };
 }
 
@@ -155,7 +167,7 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
       return null;
     case 'register': {
       const r = REGISTER_BY_KEY.get(e.register);
-      const rows = f.entries.filter((x) => x.register === e.register && (!e.category || e.category.includes(x.category ?? '')) && (!e.status || e.status.includes(x.status ?? '')));
+      const rows = f.entries.filter((x) => x.register === e.register && (!e.category || e.category.includes(x.category ?? '')) && (!e.status || e.status.includes(x.status ?? '')) && (!e.byRole || mine(x.createdById)));
       return rows.length >= (e.min ?? 1) ? `${plural(rows.length, 'entry', 'entries')} in ${r?.label ?? e.register}` : null;
     }
     case 'registerAllDone': {
@@ -264,7 +276,7 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
       return rows.length ? `${plural(rows.length, 'inspection')} completed` : null;
     }
     case 'consentRounds': {
-      const rows = f.consentEvents.filter((c) => e.events.includes(c.kind) && (!e.category || e.category.test(`${c.consent.category ?? ''} ${c.consent.title}`)));
+      const rows = f.consentEvents.filter((c) => e.events.includes(c.kind) && (!e.category || e.category.test(`${c.consent.category ?? ''} ${c.consent.title}`)) && (!e.byRole || mine(c.createdById)));
       return rows.length ? `${plural(rows.length, 'round')} with the authority recorded` : null;
     }
     case 'meetingsAttended': {
@@ -309,6 +321,18 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
     case 'valuations': {
       const n = f.valuations.filter((v) => e.status.includes(v.status) && (!e.final || v.isFinal) && (!e.byRole || mine(v.preparedById))).length;
       return n ? `${plural(n, e.final ? 'final valuation' : 'valuation')} ${e.status.includes('SUBMITTED') ? 'prepared' : 'certified'}` : null;
+    }
+    case 'designCriteria': {
+      const n = f.criteria.filter((c) => !who || (c.raisedById ? who.memberIds.has(c.raisedById) : false)).length;
+      return n ? `${plural(n, 'design criterion', 'design criteria')} set` : null;
+    }
+    case 'investigations': {
+      const n = f.investigations.filter((c) => !who || (c.recommendedById ? who.memberIds.has(c.recommendedById) : false)).length;
+      return n ? `${plural(n, 'investigation')} recommended` : null;
+    }
+    case 'advice': {
+      const n = f.advice.filter((x) => e.topics.includes(x.topic) && mine(x.authorId)).length;
+      return n ? `${plural(n, 'piece', 'pieces')} of written advice` : null;
     }
     case 'any': {
       for (const x of e.of) {
@@ -377,7 +401,7 @@ export class ProcsaService {
     const holders = (key: string) => members.filter((m) => memberRolesOf(key).includes(m.role));
     const people = (key: string) => holders(key).map((m) => m.user?.fullName ?? m.externalName ?? '—');
     const whoFor = (key: string): RoleHolders | null =>
-      key === 'ARCHITECT' || key === 'QUANTITY_SURVEYOR' ? { memberIds: new Set(holders(key).map((m) => m.id)), userIds: new Set(holders(key).flatMap((m) => (m.userId ? [m.userId] : []))) } : null;
+      !LEADS.includes(key) ? { memberIds: new Set(holders(key).map((m) => m.id)), userIds: new Set(holders(key).flatMap((m) => (m.userId ? [m.userId] : []))) } : null;
     const summarise = (items: TrackerItem[]) => ({ done: items.filter((i) => i.done).length, total: items.length });
 
     // Stage 0, from the opportunity the project came from.
@@ -462,7 +486,7 @@ export class ProcsaService {
     await this.projects.findOneForOwner(projectId, userId);
     const me = await this.viewer(projectId, userId);
     const role = DELIVERY_STAGES.flatMap((s) => s.roles).find((r) => r.key === roleKey);
-    const ownItem = (roleKey === 'ARCHITECT' || roleKey === 'QUANTITY_SURVEYOR') && Boolean(role?.memberRoles.some((r) => me.roles.includes(r)));
+    const ownItem = !LEADS.includes(roleKey) && Boolean(role?.memberRoles.some((r) => me.roles.includes(r)));
     if (!me.internal && !ownItem) throw new ForbiddenException('Only Setjeka staff, or the role-holder for their own items, sign off PROCSA responsibilities');
     const item = findDeliveryItem(stage, roleKey, code);
     if (!item) throw new NotFoundException('Unknown PROCSA responsibility');

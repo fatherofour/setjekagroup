@@ -1,4 +1,4 @@
-import type { CommunicationKind, ConsentEventKind, CostPlanKind, InspectionKind, IssuePurpose, ProjectMemberRole, ProjectStage, ReportKind } from '../generated/prisma/enums.js';
+import type { AdviceTopic, CommunicationKind, ConsentEventKind, CostPlanKind, InspectionKind, IssuePurpose, ProjectMemberRole, ProjectStage, ReportKind } from '../generated/prisma/enums.js';
 
 /** PROCSA Stages 2 to 6 for the Development Manager and the Project Manager
  * (the user's direction, 25 Oct 2026: make sure both roles' responsibilities
@@ -8,7 +8,7 @@ import type { CommunicationKind, ConsentEventKind, CostPlanKind, InspectionKind,
  * off by hand with a note. */
 
 export type DeliveryEvidence =
-  | { kind: 'register'; register: string; category?: string[]; status?: string[]; min?: number }
+  | { kind: 'register'; register: string; category?: string[]; status?: string[]; min?: number; byRole?: boolean }
   | { kind: 'registerAllDone'; register: string; category: string[]; doneStatus: string[] }
   | { kind: 'meetings'; types: string[]; minutes?: boolean }
   | { kind: 'document'; match: RegExp }
@@ -38,7 +38,7 @@ export type DeliveryEvidence =
   | { kind: 'drawingRegister' }
   | { kind: 'communications'; kinds: CommunicationKind[]; byRole?: boolean }
   | { kind: 'inspections'; kinds: InspectionKind[]; byRole?: boolean }
-  | { kind: 'consentRounds'; events: ConsentEventKind[]; category?: RegExp }
+  | { kind: 'consentRounds'; events: ConsentEventKind[]; category?: RegExp; byRole?: boolean }
   | { kind: 'meetingsAttended'; types: string[] }
   | { kind: 'transmittalsByRole' }
   | { kind: 'registerReviewed'; register: string; category?: string[] }
@@ -50,6 +50,10 @@ export type DeliveryEvidence =
   | { kind: 'tenders'; status: string[] }
   | { kind: 'contracts' }
   | { kind: 'valuations'; status: string[]; final?: boolean; byRole?: boolean }
+  // The engineers' own work (2026-10-29): Stage 1 registers carried on.
+  | { kind: 'designCriteria' }
+  | { kind: 'investigations' }
+  | { kind: 'advice'; topics: AdviceTopic[] }
   | { kind: 'any'; of: DeliveryEvidence[] }
   | { kind: 'all'; of: DeliveryEvidence[] }
   | { kind: 'manual' };
@@ -71,7 +75,7 @@ export interface DeliveryItem {
 }
 
 export interface DeliveryRole {
-  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR';
+  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR' | 'CIVIL_ENGINEER';
   label: string;
   memberRoles: ProjectMemberRole[];
   items: DeliveryItem[];
@@ -447,11 +451,85 @@ const QS_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
   ],
 };
 
+// PROCSA Civil Engineer, Stages 2 to 6 (the user, 29 Oct 2026: the
+// engineers one at a time, civil first). Text as in the client's PROCSA
+// Responsibility Matrix. Most of it is the architect's kind of work for the
+// civil works; the rest ticks from the Stage 1 registers carried on (design
+// criteria, investigations, advice), the service connections and the final
+// accounts of civil works.
+const CIVIL_ROLES: ProjectMemberRole[] = ['CIVIL_ENGINEER', 'ARCHITECT_ENGINEER'];
+const ENG_LIAISE: DeliveryEvidence = { kind: 'any', of: [{ kind: 'transmittalsByRole' }, { kind: 'communications', kinds: ['CORRESPONDENCE', 'CONTRACT_INSTRUCTION'], byRole: true }] };
+const SUPPORT = tab('inception', 'Supporting registers');
+const COMPLETION_CERTS: DeliveryEvidence = { kind: 'registerReviewed', register: 'certificates', category: ['PRACTICAL_COMPLETION', 'WORKS_COMPLETION', 'FINAL_COMPLETION'] };
+
+const CIVIL_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
+  CONCEPT: [
+    { code: '2.1', text: 'Agree documentation programme with principal consultant and other consultants', evidence: { kind: 'docProgramme' }, tickedBy: 'Drawings planned on the documentation programme', go: DRAWINGS },
+    { code: '2.2', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '2.3', text: 'Establish concept design criteria', evidence: { kind: 'designCriteria' }, tickedBy: 'A design criterion set by the civil engineer', go: SUPPORT },
+    { code: '2.4', text: 'Prepare initial concept design and related documentation', evidence: { kind: 'drawings', purposes: ['FOR_INFORMATION', 'FOR_COMMENT'], byRole: true }, tickedBy: 'Concept drawings on the register', go: DRAWINGS },
+    { code: '2.5', text: 'Advise client regarding further surveys, analyses, tests and investigations which may be required', evidence: { kind: 'any', of: [{ kind: 'investigations' }, { kind: 'advice', topics: ['SURVEYS_INVESTIGATIONS'] }] }, tickedBy: 'An investigation recommended, or written advice on surveys', go: SUPPORT },
+    { code: '2.6', text: 'Refine and assess concept design to ensure conformance with all regulatory requirements and consents', evidence: { kind: 'any', of: [{ kind: 'advice', topics: ['RIGHTS_CONSTRAINTS_CONSENTS'] }, { kind: 'drawings', purposes: ['FOR_AUTHORITY_SUBMISSION'], byRole: true }] }, tickedBy: 'Advice on consents, or drawings issued for the authority', go: SUPPORT },
+    { code: '2.7', text: "Establish regulatory authorities' requirements and incorporate into the design", evidence: { kind: 'consentRounds', events: ['SUBMITTED', 'NOTE', 'COMMENTS_RECEIVED'], byRole: true }, tickedBy: 'A round with an authority recorded by the civil engineer', go: AUTHORITIES },
+    { code: '2.8', text: 'Establish access, utilities, services and connections required for the design', evidence: { kind: 'register', register: 'service-agreements', byRole: true }, tickedBy: 'Service connections on the register', go: reg('service-agreements', 'Service connections') },
+    { code: '2.9', text: 'Coordinate design interfaces with other consultants', evidence: { kind: 'any', of: [{ kind: 'drawings', purposes: ['FOR_COORDINATION'], byRole: true }, { kind: 'meetingsAttended', types: ['CONSULTANTS'] }] }, tickedBy: 'Drawings issued for co-ordination, or a consultants meeting attended', go: DRAWINGS },
+    { code: '2.10', text: 'Prepare preliminary designs and related documentation for approval by authorities and client and suitable for costing', evidence: { kind: 'drawings', purposes: ['FOR_CLIENT_APPROVAL', 'FOR_AUTHORITY_SUBMISSION'], byRole: true }, tickedBy: 'Preliminary designs issued for approval', go: DRAWINGS },
+    { code: '2.11', text: 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants', evidence: ENG_LIAISE, tickedBy: 'A transmittal or letter from the civil engineer', go: tab('documents', 'Transmittals') },
+  ],
+  DESIGN: [
+    { code: '3.1', text: 'Review documentation programme with principal consultant and other consultants', evidence: { kind: 'docProgramme' }, tickedBy: 'Drawings planned on the documentation programme', go: DRAWINGS },
+    { code: '3.2', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '3.3', text: "Incorporate client's and authorities' detailed requirements into design", evidence: { kind: 'any', of: [{ kind: 'consentRounds', events: ['COMMENTS_RECEIVED'], byRole: true }, { kind: 'clientDocApprovals', approvedOnly: true }] }, tickedBy: "The authority's comments recorded, or a design approved by the client", go: AUTHORITIES },
+    { code: '3.4', text: "Incorporate other consultants' designs and requirements into design", evidence: { kind: 'drawings', purposes: ['FOR_COORDINATION'], byRole: true }, tickedBy: 'Drawings issued for co-ordination', go: DRAWINGS },
+    { code: '3.5', text: 'Prepare design development drawings including draft technical details and specifications', evidence: { kind: 'drawings', purposes: ['FOR_COMMENT', 'FOR_CLIENT_APPROVAL', 'FOR_COORDINATION'], byRole: true }, tickedBy: 'Design development drawings on the register', go: DRAWINGS },
+    { code: '3.6', text: 'Liaise, co-operate and provide necessary information to principal consultant and other consultants', evidence: ENG_LIAISE, tickedBy: 'A transmittal or letter from the civil engineer', go: tab('documents', 'Transmittals') },
+    { code: '3.7', text: 'Submit necessary design documentation to local authorities for approval', evidence: { kind: 'any', of: [{ kind: 'consentRounds', events: ['SUBMITTED', 'RESUBMITTED'], byRole: true }, { kind: 'drawings', purposes: ['FOR_AUTHORITY_SUBMISSION'], byRole: true }] }, tickedBy: 'Design documents submitted to the authority', go: AUTHORITIES },
+  ],
+  DOCUMENTATION_PROCUREMENT: [
+    { code: '4.1', text: "Attend design and consultants' meetings", evidence: DESIGN_MEETINGS, tickedBy: 'Marked present at a design or consultants meeting', go: MEET },
+    { code: '4.2', text: 'Prepare specifications for scope of works and agree preambles with quantity surveyor', evidence: { kind: 'document', match: /specification|preamble/i }, tickedBy: 'A specification on file', go: tab('documents', 'Documents') },
+    { code: '4.3', text: 'Accommodate services design', evidence: { kind: 'drawings', purposes: ['FOR_COORDINATION'], byRole: true }, tickedBy: 'Services co-ordination drawings issued', go: DRAWINGS },
+    { code: '4.4', text: 'Check cost estimate with quantity surveyor and adjust documents if necessary to remain within budget', evidence: { kind: 'any', of: [{ kind: 'costPlans', kinds: ['PRE_TENDER'] }, { kind: 'estimateFinal' }, { kind: 'budgetLocked' }] }, tickedBy: "The QS's pre-tender estimate, a final estimate, or the budget locked", go: tab('commercial', 'Commercial') },
+    { code: '4.5', text: 'Provide working drawings to quantity surveyor for preparation of procurement documentation', evidence: { kind: 'drawings', purposes: ['FOR_PROCUREMENT'], byRole: true }, tickedBy: 'Drawings issued for procurement', go: DRAWINGS },
+    { code: '4.6', text: 'Liaise, co-operate and provide necessary information to principal consultant and other consultants', evidence: ENG_LIAISE, tickedBy: 'A transmittal or letter from the civil engineer', go: tab('documents', 'Transmittals') },
+    { code: '4.7', text: 'Assist with evaluation of tenders', evidence: { kind: 'rfqs', status: ['AWARDED'] }, tickedBy: 'A tender evaluated and awarded', go: tab('procurement', 'Procurement') },
+    { code: '4.8', text: 'Assist with preparation of contract documentation for signature', evidence: { kind: 'any', of: [{ kind: 'contracts' }, { kind: 'document', match: /contract|agreement/i }] }, tickedBy: 'A contract set up, or contract documentation on file', go: tab('documents', 'Documents') },
+    { code: '4.9', text: 'Assess samples and products for compliance and design intent', evidence: { kind: 'any', of: [{ kind: 'submittalsReviewed', byRole: true }, { kind: 'inspections', kinds: ['MOCK_UP'], byRole: true }] }, tickedBy: 'A sample submittal reviewed, or a mock-up inspected', go: tab('technical', 'Submittals') },
+  ],
+  CONSTRUCTION: [
+    { code: '5.1', text: 'Attend site handover', evidence: { kind: 'register', register: 'certificates', category: ['SITE_HANDOVER'] }, tickedBy: 'The site handover recorded', go: reg('certificates', 'Handover and completion') },
+    { code: '5.2', text: 'Issue construction documentation in accordance with the documentation schedule', evidence: { kind: 'drawings', purposes: ['FOR_CONSTRUCTION'], byRole: true }, tickedBy: 'Drawings issued for construction', go: DRAWINGS },
+    { code: '5.3', text: 'Carry out contract administration', evidence: { kind: 'communications', kinds: ['CONTRACT_INSTRUCTION'], byRole: true }, tickedBy: 'A contract instruction drafted by the civil engineer', go: tab('instructions', 'Instructions') },
+    { code: '5.4', text: 'Attend regular site, technical and progress meetings', evidence: { kind: 'meetingsAttended', types: ['SITE'] }, tickedBy: 'Marked present at a site meeting', go: MEET },
+    { code: '5.5', text: 'Inspect works for conformity to contract documentation', evidence: { kind: 'inspections', kinds: ['DESIGN_SUPERVISION', 'QUALITY'], byRole: true }, tickedBy: 'A site inspection completed by the civil engineer', go: tab('inspections', 'Inspections') },
+    { code: '5.6', text: 'Assist in the resolution of contractual claims by the contractor', evidence: { kind: 'register', register: 'claims' }, tickedBy: 'Claims on the register', go: reg('claims', 'Contractual claims') },
+    { code: '5.7', text: 'Clarify details and descriptions during construction as required', evidence: { kind: 'rfisAnswered', byRole: true }, tickedBy: 'An RFI answered', go: tab('technical', 'RFIs') },
+    { code: '5.8', text: 'Receive, comment and approve interim payment valuations', evidence: { kind: 'registerReviewed', register: 'payment-certificates' }, tickedBy: 'A valuation reviewed and signed by the civil engineer', go: reg('payment-certificates', 'Payment certificates') },
+    { code: '5.9', text: 'Witnessing and review of all tests and mock ups carried out both on and off site', evidence: { kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, tickedBy: 'A test or mock-up witnessed by the civil engineer', go: tab('inspections', 'Inspections') },
+    { code: '5.10', text: 'Check and approve subcontract shop drawings for design intent', evidence: { kind: 'submittalsReviewed', byRole: true }, tickedBy: 'A shop drawing submittal reviewed', go: tab('technical', 'Submittals') },
+    { code: '5.11', text: 'Update and issue drawings register', evidence: { kind: 'drawingRegister' }, tickedBy: 'Numbered drawings on the register, issued on a transmittal', go: DRAWINGS },
+    { code: '5.12', text: 'Issue contract instructions as and when required', evidence: { kind: 'communications', kinds: ['CONTRACT_INSTRUCTION'], byRole: true }, tickedBy: 'A contract instruction from the civil engineer', go: tab('instructions', 'Instructions') },
+    { code: '5.13', text: 'Prepare final account(s) for the works on a progressive basis', evidence: { kind: 'register', register: 'final-accounts', byRole: true }, tickedBy: 'A final account for the civil works in preparation', go: reg('final-accounts', 'Final accounts') },
+    { code: '5.14', text: 'Review and comment on operation and maintenance manuals, guarantee certificates and warranties', evidence: { kind: 'registerReviewed', register: 'handover-documents', category: ['O_AND_M_MANUAL', 'WARRANTY', 'GUARANTEE', 'STATUTORY_CERTIFICATE'] }, tickedBy: 'An O&M manual, guarantee or warranty reviewed by the civil engineer', go: reg('handover-documents', 'Handover documents') },
+    { code: '5.15', text: 'Inspect the works and issue practical completion and defects lists', evidence: { kind: 'any', of: [{ kind: 'punchItems' }, { kind: 'inspections', kinds: ['PRACTICAL_COMPLETION'], byRole: true }, { kind: 'register', register: 'defects', category: ['PRACTICAL_COMPLETION_LIST'], byRole: true }] }, tickedBy: 'Punch items, a practical completion inspection, or the practical completion list', go: tab('inspections', 'Inspections') },
+    { code: '5.16', text: 'Assist in obtaining statutory certificates', evidence: { kind: 'any', of: [{ kind: 'consentRounds', events: ['SUBMITTED', 'APPROVED'], category: STATUTORY }, { kind: 'register', register: 'handover-documents', category: ['STATUTORY_CERTIFICATE'] }] }, tickedBy: 'A statutory certificate applied for or received', go: AUTHORITIES },
+  ],
+  CLOSEOUT: [
+    { code: '6.1', text: 'Inspect and verify rectification of defects', evidence: { kind: 'any', of: [{ kind: 'punchItems', closed: true }, { kind: 'inspections', kinds: ['DEFECTS_VERIFICATION'], byRole: true }, { kind: 'register', register: 'defects', status: ['VERIFIED'], byRole: true }] }, tickedBy: 'Punch items closed, a defects verification inspection, or defects verified', go: tab('inspections', 'Inspections') },
+    { code: '6.2', text: 'Receive, comment and approve relevant payment valuations and completion certificates', evidence: { kind: 'any', of: [COMPLETION_CERTS, { kind: 'registerReviewed', register: 'payment-certificates' }] }, tickedBy: 'A completion certificate or valuation reviewed by the civil engineer', go: reg('certificates', 'Handover and completion') },
+    { code: '6.3', text: 'Prepare and/or procure operations and maintenance manuals, guarantees and warranties', evidence: { kind: 'register', register: 'handover-documents', category: ['O_AND_M_MANUAL', 'WARRANTY', 'GUARANTEE'], status: ['RECEIVED', 'DISTRIBUTED'], byRole: true }, tickedBy: 'O&M manuals, guarantees or warranties received', go: reg('handover-documents', 'Handover documents') },
+    { code: '6.4', text: 'Prepare and/or procure as-built drawings and documentation', evidence: { kind: 'any', of: [{ kind: 'drawings', purposes: ['AS_BUILT'], byRole: true }, { kind: 'register', register: 'handover-documents', category: ['AS_BUILT'], status: ['RECEIVED', 'DISTRIBUTED'], byRole: true }] }, tickedBy: 'As-built drawings on the register', go: DRAWINGS },
+    { code: '6.5', text: 'Conclude final account(s)', evidence: { kind: 'register', register: 'final-accounts', status: ['AGREED'], byRole: true }, tickedBy: 'A final account for the civil works agreed', go: reg('final-accounts', 'Final accounts') },
+  ],
+};
+
 for (const s of DELIVERY_STAGES) {
   const items = ARCHITECT_ITEMS[s.stage];
   if (items) s.roles.push({ key: 'ARCHITECT', label: 'Architect', memberRoles: ARCH_ROLES, items });
   const qs = QS_ITEMS[s.stage];
   if (qs) s.roles.push({ key: 'QUANTITY_SURVEYOR', label: 'Quantity Surveyor', memberRoles: QS_ROLES, items: qs });
+  const civil = CIVIL_ITEMS[s.stage];
+  if (civil) s.roles.push({ key: 'CIVIL_ENGINEER', label: 'Civil Engineer', memberRoles: CIVIL_ROLES, items: civil });
 }
 
 export function findDeliveryItem(stage: string, roleKey: string, code: string) {

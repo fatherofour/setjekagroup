@@ -4192,6 +4192,10 @@ model ProjectContract {
   costPlan            CostPlan?          @relation(fields: [costPlanId], references: [id], onDelete: SetNull)
   rfqId               String?
   rfq                 Rfq?               @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  // The consultant who reviews its valuations and administers it: the
+  // architect as principal agent, or the engineer for engineering works
+  // (PROCSA Civil Engineer 5.8, 5.13; 2026-10-29).
+  reviewerRole        ProjectMemberRole  @default(ARCHITECT)
   retentionPct        Float              @default(10)
   // Retention stops growing at this share of the contract sum.
   retentionLimitPct   Float?             @default(5)

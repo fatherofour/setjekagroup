@@ -57,6 +57,16 @@ export const FINAL_ACCOUNT_STATUS: Record<FinalAccountStatus, string> = {
   AGREED: 'Agreed',
 };
 
+/** Who reviews a contract's valuations (PROCSA Architect 5.7, Civil 5.8). */
+export const REVIEWER_OPTIONS = [
+  { value: 'ARCHITECT', label: 'The architect' },
+  { value: 'CIVIL_ENGINEER', label: 'The civil engineer' },
+  { value: 'STRUCTURAL_ENGINEER', label: 'The structural engineer' },
+  { value: 'ELECTRICAL_ENGINEER', label: 'The electrical engineer' },
+  { value: 'MECHANICAL_ENGINEER', label: 'The mechanical engineer' },
+];
+export const reviewerTitle = (role: string | null | undefined) => (REVIEWER_OPTIONS.find((o) => o.value === role)?.label ?? 'The architect').replace(/^The /, '');
+
 export const CONTRACT_FORMS = [
   { value: '', label: 'As the project' },
   { value: 'JBCC', label: 'JBCC' },
@@ -156,6 +166,7 @@ export interface Contract {
   startDate: string | null;
   completionDate: string | null;
   finalAccountStatus: FinalAccountStatus;
+  reviewerRole: string;
   contractor: { id: string; name: string };
   costPlan: { id: string; number: string; title: string } | null;
   rfq: { id: string; rfqNumber: string } | null;
@@ -201,7 +212,7 @@ export interface Valuation {
   paidAt: string | null;
   paymentReference: string | null;
   contractId: string;
-  contract: { id: string; title: string; currency: string; contractSum: number; retentionPct: number; vatPct: number; contractor: { name: string } };
+  contract: { id: string; title: string; currency: string; contractSum: number; retentionPct: number; vatPct: number; reviewerRole?: string; contractor: { name: string } };
   preparedBy: { fullName: string };
   certifiedBy?: { fullName: string } | null;
   decidedBy?: { fullName: string } | null;

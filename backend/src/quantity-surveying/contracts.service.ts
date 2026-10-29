@@ -172,6 +172,7 @@ export class ContractsService {
         currency: q.currency,
         costPlanId,
         rfqId: rfq.id,
+        reviewerRole: dto.reviewerRole ?? 'ARCHITECT',
         retentionPct: dto.retentionPct ?? 10,
         retentionLimitPct: dto.retentionLimitPct === undefined ? 5 : dto.retentionLimitPct,
         vatPct: rfq.costPlan?.vatPct ?? 15,
@@ -187,7 +188,7 @@ export class ContractsService {
     await this.contract(projectId, id);
     await this.checkPlan(projectId, dto.costPlanId);
     const certified = await this.prisma.valuation.count({ where: { contractId: id, status: { in: [...CERTIFIED] } } });
-    if (certified && (dto.contractSum !== undefined || dto.retentionPct !== undefined || dto.retentionLimitPct !== undefined || dto.vatPct !== undefined)) {
+    if (certified && (dto.contractSum !== undefined || dto.retentionPct !== undefined || dto.retentionLimitPct !== undefined || dto.vatPct !== undefined || dto.reviewerRole !== undefined)) {
       throw new BadRequestException('Certificates have been issued on this contract, so its sum and retention terms are fixed. Changes come through variations.');
     }
     await this.prisma.projectContract.update({

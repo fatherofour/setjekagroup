@@ -1,4 +1,5 @@
 import type { ProjectMemberRole } from '../generated/prisma/enums.js';
+import { DESIGN_CONSULTANTS } from '../common/consultants.js';
 
 /** The delivery registers PROCSA Stages 2 to 6 need that the other modules
  * don't already cover. Each declares its fields (stored in the shared
@@ -74,6 +75,11 @@ export interface DeliveryRegister {
 const ARCHITECT: ProjectMemberRole[] = ['ARCHITECT', 'ARCHITECT_ENGINEER'];
 // The QS keeps the money registers with Setjeka (2026-10-28).
 const QS: ProjectMemberRole[] = ['QUANTITY_SURVEYOR'];
+// The engineers review and keep the same registers as the architect, each
+// for their own works (2026-10-29); the civil engineer also keeps the
+// service connections and the final accounts of civil works.
+const CONSULTANTS = DESIGN_CONSULTANTS;
+const CIVIL: ProjectMemberRole[] = ['CIVIL_ENGINEER'];
 
 const opt = (...pairs: [string, string][]) => Object.fromEntries(pairs);
 
@@ -180,8 +186,9 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'service-agreements',
     label: 'Authority service agreements',
-    procsa: 'DM 4.13',
-    description: 'Service connections agreed with the authorities, and the deposits paid.',
+    procsa: 'DM 4.13 · Civil 2.8',
+    description: 'Access, utilities and service connections agreed with the authorities, and the deposits paid. The civil engineer establishes what the design needs.',
+    editableBy: CIVIL,
     fields: [
       { column: 'title', label: 'Service', type: 'text', required: true, inList: true, hint: 'e.g. Bulk water connection' },
       { column: 'partyName', label: 'Authority', type: 'text', inList: true },
@@ -230,7 +237,8 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
     procsa: 'DM 5.9 · PM 5.14, 6.5 · QS 5.8, 6.1',
     description: "Interim and final payment certificates: the QS's valuation, the amount certified and payment. Valuations made under Commercial, Contracts & valuations come here by themselves.",
     contractorsSee: true,
-    review: { roles: ARCHITECT, label: "Architect's review", procsa: 'Architect 5.7, 6.2' },
+    // Each valuation is reviewed by the consultant named on its contract.
+    review: { roles: CONSULTANTS, label: "Consultant's review", procsa: 'Architect 5.7, 6.2 · Civil 5.8, 6.2' },
     fields: [
       { column: 'reference', label: 'Certificate no.', type: 'text', required: true, inList: true },
       { column: 'contractorId', label: 'Contractor', type: 'contractor', inList: true },
@@ -282,7 +290,7 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
     procsa: 'DM 5.2, 6.1 · PM 5.1, 5.18, 6.6',
     description: 'Site handover to the contractor, practical completion, works completion, final completion and occupation.',
     contractorsSee: true,
-    review: { roles: ARCHITECT, label: "Architect's review", procsa: 'Architect 6.2', categories: ['PRACTICAL_COMPLETION', 'WORKS_COMPLETION', 'FINAL_COMPLETION', 'OCCUPATION'] },
+    review: { roles: CONSULTANTS, label: "Consultant's review", procsa: 'Architect 6.2 · Civil 6.2', categories: ['PRACTICAL_COMPLETION', 'WORKS_COMPLETION', 'FINAL_COMPLETION', 'OCCUPATION'] },
     fields: [
       {
         column: 'category',
@@ -311,9 +319,9 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
     key: 'defects',
     label: 'Defects',
     procsa: 'DM 6.6, 6.8 · PM 5.18, 6.1',
-    description: 'Practical completion lists, defects in the defects liability period, and latent defects reported by end users. The architect issues the lists and verifies each defect is put right.',
+    description: 'Practical completion lists, defects in the defects liability period, and latent defects reported by end users. The architect and the engineers issue the lists for their works and verify each defect is put right.',
     contractorsSee: true,
-    editableBy: ARCHITECT,
+    editableBy: CONSULTANTS,
     fields: [
       { column: 'title', label: 'Defect', type: 'text', required: true, inList: true },
       {
@@ -338,8 +346,8 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
     procsa: 'DM 6.2-6.5 · PM 6.2-6.4',
     description: 'As-built drawings, operations and maintenance manuals, warranties, guarantees, statutory certificates and the health and safety file: received, reviewed by the architect and passed on.',
     contractorsSee: true,
-    editableBy: ARCHITECT,
-    review: { roles: ARCHITECT, label: "Architect's review", procsa: 'Architect 5.12, 6.3, 6.4' },
+    editableBy: CONSULTANTS,
+    review: { roles: CONSULTANTS, label: "Consultant's review", procsa: 'Architect 5.12, 6.3, 6.4 · Civil 5.14, 6.3, 6.4' },
     fields: [
       {
         column: 'category',
@@ -369,10 +377,10 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'final-accounts',
     label: 'Final accounts',
-    procsa: 'DM 6.7 · PM 6.7 · QS 5.9, 6.2',
+    procsa: 'DM 6.7 · PM 6.7 · QS 5.9, 6.2 · Civil 5.13, 6.5',
     description: "Each contractor's final account, from preparation to agreement. The QS prepares it from the contract under Commercial, Contracts & valuations, which keeps this register up to date.",
     contractorsSee: true,
-    editableBy: QS,
+    editableBy: [...QS, ...CIVIL],
     fields: [
       { column: 'contractorId', label: 'Contractor', type: 'contractor', inList: true },
       { column: 'title', label: 'Contract', type: 'text', required: true, inList: true },

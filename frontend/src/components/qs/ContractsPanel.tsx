@@ -11,7 +11,7 @@ import { CommentThread } from '@/components/project/CommentThread';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
-import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, VALUATION_STATUS, download, money, type Contract, type Valuation } from '@/lib/qs';
+import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation } from '@/lib/qs';
 
 type Option = { value: string; label: string };
 
@@ -241,7 +241,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
 
       {(v.reviews?.length ?? 0) > 0 && (
         <div className={cardClass}>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Architect&apos;s review</h3>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">The {reviewerTitle(v.contract.reviewerRole)}&apos;s review</h3>
           <ul className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-300">
             {v.reviews!.map((r) => (
               <li key={r.id}>
@@ -257,7 +257,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Next step</h3>
         {can.submit && (
           <div className="flex flex-wrap items-center gap-2">
-            <p className="flex-1 text-xs text-slate-500">Submitting puts it on the payment certificates register for the architect to review, and tells Setjeka&apos;s Project Manager.</p>
+            <p className="flex-1 text-xs text-slate-500">Submitting puts it on the payment certificates register for the {reviewerTitle(v.contract.reviewerRole)} to review, and tells Setjeka&apos;s Project Manager.</p>
             <button type="button" disabled={busy || changed} onClick={() => run(() => authedFetch(`${base}/submit`, { method: 'POST' }))} className={primaryButton}>
               <Send size={14} />
               Submit the valuation
@@ -272,10 +272,10 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
             )}
           </div>
         )}
-        {v.status === 'SUBMITTED' && !can.certify && <p className="text-xs text-slate-500">With the architect to review, then Setjeka&apos;s Project Manager issues the certificate.</p>}
+        {v.status === 'SUBMITTED' && !can.certify && <p className="text-xs text-slate-500">With the {reviewerTitle(v.contract.reviewerRole)} to review, then Setjeka&apos;s Project Manager issues the certificate.</p>}
         {can.certify && (
           <div className="flex flex-wrap items-end gap-2">
-            <p className="w-full text-xs text-slate-500">Once the architect has approved the valuation, approve and sign to issue the payment certificate; the client then approves payment. Reject it, with your comments, to send it back to the QS.</p>
+            <p className="w-full text-xs text-slate-500">Once the {reviewerTitle(v.contract.reviewerRole)} has approved the valuation, approve and sign to issue the payment certificate; the client then approves payment. Reject it, with your comments, to send it back to the QS.</p>
             <div>
               <label className={labelClass} htmlFor="cert-due">
                 Client to respond by
@@ -412,7 +412,7 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
         <h2 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">{contract.title}</h2>
         <p className="mt-1 text-xs text-slate-500">
           {contract.contractor.name}
-          {contract.contractForm && ` · ${contract.contractForm}`} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
+          {contract.contractForm && ` · ${contract.contractForm}`} · valuations reviewed by the {reviewerTitle(contract.reviewerRole)} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
           {contract.costPlan && ` · priced bill ${contract.costPlan.number}`}
           {contract.rfq && ` · from ${contract.rfq.rfqNumber}`}
         </p>
@@ -588,7 +588,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
   const [contractors, setContractors] = useState<Option[]>([]);
   const [plans, setPlans] = useState<Option[]>([]);
   const [awarded, setAwarded] = useState<Option[]>([]);
-  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '' });
+  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT' });
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -634,7 +634,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
         mode === 'award'
           ? await authedFetch<Contract>(`/projects/${projectId}/qs/contracts/from-award`, {
               method: 'POST',
-              body: { rfqId: form.rfqId, title: form.title.trim() || undefined, contractForm: form.contractForm || undefined, retentionPct: Number(form.retentionPct), retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct) },
+              body: { rfqId: form.rfqId, title: form.title.trim() || undefined, contractForm: form.contractForm || undefined, reviewerRole: form.reviewerRole, retentionPct: Number(form.retentionPct), retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct) },
             })
           : await authedFetch<Contract>(`/projects/${projectId}/qs/contracts`, {
               method: 'POST',
@@ -644,12 +644,13 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
                 contractSum: Number(form.contractSum),
                 contractForm: form.contractForm || undefined,
                 costPlanId: form.costPlanId || undefined,
+                reviewerRole: form.reviewerRole,
                 retentionPct: Number(form.retentionPct),
                 retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct),
               },
             });
       setMode('none');
-      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '' });
+      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT' });
       changed();
       setOpen(c.id);
     } catch (err) {
@@ -723,6 +724,12 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
                 </div>
               </>
             )}
+            <div>
+              <label className={labelClass} htmlFor="ct-reviewer">
+                Valuations reviewed by
+              </label>
+              <Select id="ct-reviewer" className={inputClass} value={form.reviewerRole} onChange={(v) => setForm({ ...form, reviewerRole: v })} options={REVIEWER_OPTIONS} />
+            </div>
             <div>
               <label className={labelClass} htmlFor="ct-form">
                 Form of contract

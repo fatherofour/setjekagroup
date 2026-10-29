@@ -2630,6 +2630,64 @@ Built on 2026-10-28. The user asked what the QS can do according to the requirem
   - price-escalation indices;
   - enforcing the minimum number of quotes.
 
+### 2.26 The civil engineer — PROCSA Stages 2 to 6, and the engineers' groundwork
+
+Built on 2026-10-29. The user's direction: "break down the Engineers … starting with Civil Engineer". Structural, electrical and mechanical follow, one at a time.
+
+**Sources**
+- **PROCSA:** the civil engineer has 48 items across Stages 2 to 6. Stage 1 was built in §2.13a. Most of them are the architect's kind of work, done for the civil works. Four are the civil engineer's own:
+  - 2.3, concept design criteria;
+  - 2.5, advising on further surveys and investigations;
+  - 2.8, access, utilities, services and connections;
+  - 5.13 and 6.5, preparing and concluding the final account for the civil works.
+- **The register's User Roles sheet:** "Architect/Civil eng/Structural eng — models, federation, coordination, model issues". These were already open to the engineers. Test records are marked "No (standby)".
+
+**Groundwork for every engineer** (`common/consultants.ts`)
+- **Who reviews a contract's valuations.** Each contract names the consultant who reviews its valuations (`ProjectContract.reviewerRole`): the architect by default, or the civil, structural, electrical or mechanical engineer for their own works. Migration `20261029090000_contract_reviewer`.
+  - A submitted valuation alerts that consultant only, and only they can review it on the payment certificates register. Anyone else gets "This valuation is reviewed by the civil engineer named on its contract".
+  - The PM can certify only once that consultant's signed approval is on record.
+  - Register entries now carry `reviewer` and `canReviewThis`, so the screen offers the review button only to the right person.
+- **Registers.**
+  - The engineers review payment valuations (for contracts that name them), completion certificates and handover documents.
+  - They keep defects and handover documents for their works.
+  - The civil engineer also keeps the authority service agreements (now "access, utilities and service connections") and the final accounts.
+  - The reviews are now headed "Consultant's review".
+- **PROCSA evidence.**
+  - Every consultant's items count only their own work. Only the DM and PM lists count anyone's.
+  - Any consultant can sign their own items off by hand.
+  - New evidence kinds: design criteria raised, investigations recommended, written advice by topic, register entries and authority rounds recorded by the role.
+- **Already open to engineers before this build:** drafting instructions, the punch list, inspections, drawings, models, the BIM hub and authorities.
+
+**The civil engineer's list** (`procsa-delivery.ts`)
+
+| Items | Ticks from the civil engineer's own work |
+|---|---|
+| 2.3 | A design criterion in the Stage 1 register |
+| 2.5 | An investigation recommended, or advice on surveys |
+| 2.6 | Advice on consents, or drawings issued for the authority |
+| 2.7, 3.3, 3.7 | Rounds with the authority |
+| 2.8 | A service connection on the register |
+| 5.8 | A valuation they reviewed |
+| 5.13, 6.5 | A final account in the register, started by them and later agreed |
+| 5.14, 6.2 | Handover documents and completion certificates they reviewed |
+
+The rest tick like the architect's:
+- drawings by purpose, the documentation programme and meetings attended;
+- transmittals and letters, contract instructions, inspections and tests;
+- RFIs and submittals, punch items and defects.
+
+**The guide.** The engineer persona starts on the PROCSA list. Its Registers and PROCSA tips and its Stage 2 to 6 journey now cover the engineers' work.
+
+**Verified**
+- **Civil journey (API), 25 of 25 checks.** One project from Stage 2 to 6, with the civil engineer, architect, QS, client, contractor and Setjeka each signed in as themselves:
+  - **Every civil item ticks:** Stages 2 (11), 3 (7), 4 (9), 5 (16) and 6 (5).
+  - **Only the civil engineer's own work counts:** the architect's design criterion doesn't tick the civil engineer's 2.3.
+  - **Registers:** the civil engineer keeps service connections but not the architect's finishes schedule.
+  - **The civil works contract names the civil engineer.** Only the civil engineer is alerted to review its valuation. The architect is refused, and so is the PM before the civil review. After it, the certificate is issued.
+  - **Final account:** the civil engineer keeps the final account; Setjeka records it agreed.
+  - **Access:** the civil engineer sees only their own PROCSA list and has no commercial access.
+- **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), the QS journey (92/92), and the QS browser checks (13/13), PM signing (4/4) and menu (8/8) all still pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

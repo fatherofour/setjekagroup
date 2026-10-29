@@ -910,6 +910,16 @@ that step gets skipped.
   database stay internal; the client approves certificates from the
   project's Commercial tab or the portal.
 
+- **29 Oct 2026 — the civil engineer, Stages 2–6 (document.md §2.26).** The
+  user: do the engineers one at a time, civil first. Choices made here: each
+  contract names the consultant who reviews its valuations (architect by
+  default, or the engineer for engineering works), and the PM's certificate
+  needs that consultant's signed approval; every consultant's PROCSA items
+  count only their own work; the civil engineer keeps service connections
+  and civil final accounts in the registers (no commercial access). The
+  engineers' groundwork is generic, so structural, electrical and mechanical
+  are mostly item lists.
+
 ## Local dev environment
 
 - **After `prisma generate`, delete `backend/tsconfig.build.tsbuildinfo`

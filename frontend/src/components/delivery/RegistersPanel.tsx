@@ -51,6 +51,9 @@ type Entry = Record<string, unknown> & {
   responsible: { id: string; externalName: string | null; user: { fullName: string } | null } | null;
   document: { id: string; name: string } | null;
   reviewable?: boolean;
+  /** Set when one consultant in particular reviews it (a valuation names its contract's). */
+  reviewer?: string | null;
+  canReviewThis?: boolean;
   reviews?: Review[];
 };
 type Option = { value: string; label: string };
@@ -343,11 +346,11 @@ export function RegistersPanel({ projectId, initial }: { projectId: string; init
                                 </span>
                               </span>
                             ) : r.reviewable ? (
-                              <span className="text-slate-400">Not yet reviewed</span>
+                              <span className="text-slate-400">Not yet reviewed{r.reviewer ? ` (for the ${r.reviewer})` : ''}</span>
                             ) : (
                               <span className="text-slate-300 dark:text-slate-600">—</span>
                             )}
-                            {rights.canReview && r.reviewable && (
+                            {rights.canReview && r.reviewable && r.canReviewThis !== false && (
                               <button type="button" onClick={() => setReviewing(r)} className="mt-1 flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400">
                                 <PenLine size={12} /> {r.reviews?.length ? 'Review again' : 'Review and sign'}
                               </button>

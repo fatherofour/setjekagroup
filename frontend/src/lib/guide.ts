@@ -46,7 +46,7 @@ export function screenKey(pathname: string, tab: string | null): string | null {
 const MENU: Record<GuidePersona, string> = {
   setjeka: 'Opportunities, clients and every project live here. Project screens open for the project chosen at the top.',
   architect: 'Your work is under Design & site: drawings, models, the BIM hub, authorities, instructions, inspections and the punch list. Your PROCSA list is under Projects.',
-  engineer: 'Your work is under Design & site: drawings, models and the BIM hub for coordination, plus inspections. Your responsibilities sit under Projects.',
+  engineer: 'Your work is under Design & site: drawings, models, the BIM hub, authorities, instructions, inspections and the punch list. Your PROCSA list and the registers you keep are under Projects.',
   qs: "Your work is in each project's Commercial tab: bills and cost plans, variations, contracts, valuations and final accounts. Your PROCSA list is under Projects.",
   contractor: 'Instructions, inspections, RFIs and submittals, the punch list and site photos are your day to day.',
   client: 'Your projects, what is waiting for your approval, drawings, photos and your requests to Setjeka.',
@@ -94,7 +94,7 @@ export function welcomeTour(persona: GuidePersona, firstName: string): GuideStep
 export const START: Record<GuidePersona, { text: string; screen: string; tab?: string; href?: string }> = {
   setjeka: { text: 'Start with My Day: your actions and what is due. Then open a project.', screen: 'my-day', href: '/my-day' },
   architect: { text: 'Start with your PROCSA list on a project: it shows what is expected of you at each stage, and ticks itself as you work.', screen: 'project.procsa', tab: 'procsa' },
-  engineer: { text: 'Start with your responsibilities on a project, then the drawings and models.', screen: 'project.procsa', tab: 'procsa' },
+  engineer: { text: 'Start with your PROCSA list on a project: it shows what is expected of you at each stage, and ticks itself as you work.', screen: 'project.procsa', tab: 'procsa' },
   qs: { text: 'Start with your PROCSA list on a project: what is expected of you at each stage. It ticks itself as your bills, valuations and final accounts go in.', screen: 'project.procsa', tab: 'procsa' },
   contractor: { text: 'Start with the instructions issued to you, then inspections and the punch list.', screen: 'project.instructions', tab: 'instructions' },
   client: { text: 'Start with your project: anything waiting for your approval is at the top.', screen: 'portal', href: '/portal' },
@@ -188,6 +188,14 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       steps: [
         s('What is expected of you', 'Every architect responsibility from Stage 1 to 6, by stage. Your current stage is open.'),
         s('It ticks itself', 'Each item ticks when your work shows it: drawings with the right purpose, a submission to the authority, an inspection done, a signed review. The note says what counts.'),
+        s('Sign off by hand', 'If you did something outside the platform, sign the item off yourself with a note.'),
+      ],
+    },
+    engineer: {
+      title: 'Your PROCSA list',
+      steps: [
+        s('What is expected of you', 'Every responsibility of your discipline from Stage 1 to 6, by stage. Your current stage is open.'),
+        s('It ticks itself', 'Each item ticks when your own work shows it: design criteria and investigations you recommend, drawings with the right purpose, a round with the authority, an inspection done, a valuation you reviewed. The note says what counts.'),
         s('Sign off by hand', 'If you did something outside the platform, sign the item off yourself with a note.'),
       ],
     },
@@ -429,6 +437,13 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
         s('Yours to review', "Payment valuations and completion certificates wait for your signed review. Setjeka can't sign it for you."),
       ],
     },
+    engineer: {
+      title: 'Registers',
+      steps: [
+        s('Yours to review', 'Valuations on contracts that name you as the reviewing consultant, completion certificates and O&M documents wait for your signed review. Setjeka cannot sign it for you.'),
+        s('Yours to keep', 'Defects and handover documents for your works. The civil engineer also keeps the service connections and the final accounts of civil works.'),
+      ],
+    },
     qs: {
       title: 'Registers',
       steps: [
@@ -599,19 +614,37 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
     },
   ],
   engineer: [
-    GETTING_STARTED([tab('procsa', 'Your responsibilities', 'What is expected of you, by stage.')]),
+    GETTING_STARTED([tab('procsa', 'Your PROCSA list', 'What is expected of you, by stage.')]),
     {
-      title: 'Design',
+      title: 'Stage 2 - Concept',
       items: [
-        tab('drawings', 'Your drawings', 'Upload and issue with a purpose.'),
-        tab('models', 'Your model', 'Upload your IFC.'),
-        tab('bim', 'Coordination', 'Clashes against the architecture.'),
-        tab('meetings', 'Consultants meetings', 'Attend and pick up actions.'),
+        tab('inception', 'Design criteria and investigations', 'Set your criteria; recommend surveys and tests.'),
+        tab('drawings', 'Concept drawings', 'Plan them on the programme, then upload with a purpose.'),
+        tab('authorities', 'Authority requirements', "Record each authority's requirements and your submissions."),
+        tab('registers', 'Service connections', 'Access, utilities and connections (civil).'),
+        tab('meetings', 'Design meetings', 'Attend and pick up your actions.'),
       ],
     },
     {
-      title: 'Construction',
-      items: [tab('instructions', 'Instructions', 'Draft; Setjeka issues.'), tab('inspections', 'Inspections', 'Inspect and complete checklists.'), tab('technical', 'RFIs and submittals', 'Answer and review.')],
+      title: 'Stage 3 - Design development',
+      items: [tab('models', 'Your model', 'Upload your IFC.'), tab('bim', 'Coordination', 'Clashes against the architecture.'), tab('drawings', 'Co-ordination drawings', 'Issue for co-ordination and comment.')],
+    },
+    {
+      title: 'Stage 4 - Documentation',
+      items: [tab('documents', 'Specification', 'Your specification and preambles.'), tab('drawings', 'Tender drawings', 'Issue for procurement to the QS.')],
+    },
+    {
+      title: 'Stage 5 - Construction',
+      items: [
+        tab('instructions', 'Contract instructions', 'Draft; Setjeka issues.'),
+        tab('inspections', 'Inspections and tests', 'Inspect the works; witness the tests.'),
+        tab('technical', 'RFIs and submittals', 'Answer and review shop drawings.'),
+        tab('registers', 'Valuations to review', 'For contracts that name you.'),
+      ],
+    },
+    {
+      title: 'Stage 6 - Close-out',
+      items: [tab('punch', 'Defects', 'Issue the lists; verify each fix.'), tab('registers', 'Handover and final accounts', 'O&M manuals, as-builts, final accounts (civil).')],
     },
   ],
   qs: [

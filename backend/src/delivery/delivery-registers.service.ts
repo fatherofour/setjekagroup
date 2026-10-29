@@ -8,6 +8,7 @@ import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js'
 import { resolveOutcome, type DecisionDto } from '../signoff/dto/decision.dto.js';
 import { uploadRootDir } from '../project-documents/upload.util.js';
 import { DELIVERY_REGISTERS, REGISTER_BY_KEY, type DeliveryRegister, type RegisterField } from './registers.js';
+import { ROLE_TITLE, holdersOf } from '../common/consultants.js';
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -77,24 +78,40 @@ export class DeliveryRegistersService {
 
   async list(projectId: string, userId: string, key: string) {
     const r = this.register(key);
-    const { contractor } = await this.access(projectId, userId);
-    if (contractor && !r.contractorsSee) throw new ForbiddenException('This register is not shared with contractors');
+    const a = await this.access(projectId, userId);
+    if (a.contractor && !r.contractorsSee) throw new ForbiddenException('This register is not shared with contractors');
     const rows = await this.prisma.projectRegisterEntry.findMany({ where: { projectId, register: key }, include: INCLUDE, orderBy: [{ date: 'desc' }, { createdAt: 'desc' }] });
-    return this.withReviews(r, rows);
+    return this.withReviews(r, rows, a.roles);
   }
 
-  /** Each entry with its signed reviews, newest first, and whether it's one
-   * the register's reviewer looks at. */
-  private async withReviews<T extends { id: string; category: string | null; document: { revisions: unknown[] } | null }>(r: DeliveryRegister, rows: T[]) {
+  /** Entries reviewed by one consultant in particular: a payment valuation
+   * goes to the consultant named on its contract (2026-10-29). */
+  private async entryReviewers(r: DeliveryRegister, ids: string[]) {
+    const out = new Map<string, { roles: ProjectMemberRole[]; title: string }>();
+    if (r.key !== 'payment-certificates' || !ids.length) return out;
+    const valuations = await this.prisma.valuation.findMany({ where: { registerEntryId: { in: ids } }, select: { registerEntryId: true, contract: { select: { reviewerRole: true } } } });
+    for (const v of valuations) out.set(v.registerEntryId!, { roles: holdersOf(v.contract.reviewerRole), title: ROLE_TITLE[v.contract.reviewerRole] ?? 'consultant' });
+    return out;
+  }
+
+  /** Each entry with its signed reviews, newest first, whether it's one the
+   * register's reviewers look at, and whether this caller is the one to. */
+  private async withReviews<T extends { id: string; category: string | null; document: { revisions: unknown[] } | null }>(r: DeliveryRegister, rows: T[], myRoles: ProjectMemberRole[] = []) {
     const reviews = r.review
       ? await this.prisma.approvalRecord.findMany({ where: { subject: 'REGISTER_ENTRY', subjectId: { in: rows.map((x) => x.id) } }, select: REVIEW_SELECT, orderBy: { signedAt: 'desc' } })
       : [];
-    return rows.map((x) => ({
-      ...x,
-      document: x.document ? { ...x.document, revisions: undefined } : null,
-      reviewable: Boolean(r.review && (!r.review.categories || r.review.categories.includes(x.category ?? ''))),
-      reviews: reviews.filter((v) => v.subjectId === x.id),
-    }));
+    const named = await this.entryReviewers(r, rows.map((x) => x.id));
+    return rows.map((x) => {
+      const roles = named.get(x.id)?.roles ?? r.review?.roles ?? [];
+      return {
+        ...x,
+        document: x.document ? { ...x.document, revisions: undefined } : null,
+        reviewable: Boolean(r.review && (!r.review.categories || r.review.categories.includes(x.category ?? ''))),
+        reviewer: named.get(x.id)?.title ?? null,
+        canReviewThis: roles.some((role) => myRoles.includes(role)),
+        reviews: reviews.filter((v) => v.subjectId === x.id),
+      };
+    });
   }
 
   private label(r: DeliveryRegister, e: { title: string | null; reference: string | null; category: string | null; location: string | null }) {
@@ -126,9 +143,11 @@ export class DeliveryRegistersService {
     const r = this.register(key);
     const a = await this.access(projectId, userId);
     if (!r.review) throw new BadRequestException('This register has no review step');
-    if (!this.canReview(r, a)) throw new ForbiddenException(`Only the ${r.review.label.replace(/'s review$/, '').toLowerCase()} reviews this register`);
+    if (!this.canReview(r, a)) throw new ForbiddenException('Only the architect and the engineers review this register');
     const entry = await this.prisma.projectRegisterEntry.findFirst({ where: { id, projectId, register: key }, include: INCLUDE });
     if (!entry) throw new NotFoundException('Entry not found');
+    const named = (await this.entryReviewers(r, [id])).get(id);
+    if (named && !named.roles.some((role) => a.roles.includes(role))) throw new ForbiddenException(`This valuation is reviewed by the ${named.title} named on its contract`);
     if (r.review.categories && !r.review.categories.includes(entry.category ?? '')) throw new BadRequestException('This entry is not one for review');
     const { outcome, comment } = resolveOutcome(dto);
     const rev = entry.document?.revisions[0];
@@ -178,7 +197,7 @@ export class DeliveryRegistersService {
         link: `/projects/${projectId}?tab=registers&register=${key}`,
       });
     }
-    const [row] = await this.withReviews(r, [entry]);
+    const [row] = await this.withReviews(r, [entry], a.roles);
     return row;
   }
 
@@ -248,7 +267,7 @@ export class DeliveryRegistersService {
     }
     const entry = await this.prisma.projectRegisterEntry.create({ data: { ...data, projectId, register: key, createdById: userId }, include: INCLUDE });
     await this.askReview(projectId, userId, r, entry);
-    const [row] = await this.withReviews(r, [entry]);
+    const [row] = await this.withReviews(r, [entry], a.roles);
     return row;
   }
 
@@ -263,7 +282,7 @@ export class DeliveryRegistersService {
     // A completion certificate created as a draft and later made one for
     // review still reaches the architect.
     if (existing.category !== entry.category) await this.askReview(projectId, userId, r, entry);
-    const [row] = await this.withReviews(r, [entry]);
+    const [row] = await this.withReviews(r, [entry], a.roles);
     return row;
   }
 

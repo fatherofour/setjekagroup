@@ -9,13 +9,14 @@ import { generateStoredName, uploadRootDir } from '../project-documents/upload.u
 import { QsAccessService } from './qs-access.service.js';
 import { ContractsService } from './contracts.service.js';
 import { valuationFigures } from './qs-math.js';
+import { ROLE_TITLE, holdersOf } from '../common/consultants.js';
 import { valuationPdf } from './valuation-pdf.js';
 import type { CertifyValuationDto, CreateValuationDto, PayValuationDto, UpdateValuationDto } from './dto/qs.dto.js';
 
 const CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'] as const;
 const CLIENT_SEES = ['CERTIFIED', 'APPROVED', 'REJECTED', 'PAID'] as const;
 const PERSON = { select: { fullName: true } } as const;
-const ARCHITECTS = ['ARCHITECT', 'ARCHITECT_ENGINEER'] as const;
+const reviewerTitle = (role: string) => ROLE_TITLE[role as keyof typeof ROLE_TITLE] ?? 'consultant';
 const money = (currency: string, n: number) => `${currency} ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const INCLUDE = {
@@ -322,7 +323,7 @@ export class ValuationsService {
 
     const who = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fullName: true } });
     const what = `valuation ${v.number} on ${v.contract.title} (${v.contract.contractor.name}): ${money(v.contract.currency, v.amountDue)} due`;
-    await this.access.tell(projectId, await this.access.usersIn(projectId, [...ARCHITECTS]), userId, 'REGISTER_REVIEW_REQUESTED', `Payment certificates: ${who.fullName}'s ${what} is ready for your review`, `/projects/${projectId}?tab=registers&register=payment-certificates`);
+    await this.access.tell(projectId, await this.access.usersIn(projectId, holdersOf(v.contract.reviewerRole)), userId, 'REGISTER_REVIEW_REQUESTED', `Payment certificates: ${who.fullName}'s ${what} is ready for your review`, `/projects/${projectId}?tab=registers&register=payment-certificates`);
     await this.access.tell(projectId, await this.access.usersIn(projectId, ['PROJECT_MANAGER', 'DEVELOPMENT_MANAGER']), userId, 'VALUATION_SUBMITTED', `${who.fullName} submitted ${what}`, this.link(projectId));
     return this.get(projectId, userId, id);
   }
@@ -363,11 +364,15 @@ export class ValuationsService {
       await this.signoff.sign({ projectId, subject: 'PAYMENT_CERTIFICATE', subjectId: id, title: `Valuation ${v.number}: ${v.contract.title}`, kind: 'Payment valuation, returned to the QS', outcome, comment, signature: dto.signature, signerId: userId, meta, facts, source });
       return this.returnToQs(projectId, userId, id, comment);
     }
-    const architects = await this.access.usersIn(projectId, [...ARCHITECTS]);
-    if (architects.length) {
-      const review = await this.prisma.approvalRecord.findFirst({ where: { subject: 'REGISTER_ENTRY', subjectId: v.registerEntryId, signedAt: { gte: v.submittedAt ?? v.createdAt } }, orderBy: { signedAt: 'desc' } });
-      if (!review) throw new BadRequestException("The architect reviews the valuation before it is certified (PROCSA Architect 5.7)");
-      if (!isApproval(review.outcome)) throw new BadRequestException(`The architect's review was "${OUTCOME_LABEL[review.outcome]}". Return the valuation to the QS to revise.`);
+    // The consultant named on the contract (the architect, or the engineer
+    // for engineering works) approves the valuation first, where the
+    // project has one (Architect 5.7, Civil Engineer 5.8).
+    const who = reviewerTitle(v.contract.reviewerRole);
+    const reviewers = await this.access.usersIn(projectId, holdersOf(v.contract.reviewerRole));
+    if (reviewers.length) {
+      const review = await this.prisma.approvalRecord.findFirst({ where: { subject: 'REGISTER_ENTRY', subjectId: v.registerEntryId, signerId: { in: reviewers }, signedAt: { gte: v.submittedAt ?? v.createdAt } }, orderBy: { signedAt: 'desc' } });
+      if (!review) throw new BadRequestException(`The ${who} named on the contract reviews the valuation before it is certified`);
+      if (!isApproval(review.outcome)) throw new BadRequestException(`The ${who}'s review was "${OUTCOME_LABEL[review.outcome]}". Return the valuation to the QS to revise.`);
     }
     const due = responseDue(dto.responseDueAt);
     let certificateNumber = v.certificateNumber;

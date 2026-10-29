@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
-import { ContractForm, CostPlanItemType, CostPlanKind, Currency } from '../../generated/prisma/enums.js';
+import { ContractForm, CostPlanItemType, CostPlanKind, Currency, type ProjectMemberRole } from '../../generated/prisma/enums.js';
+import { CONTRACT_REVIEWERS } from '../../common/consultants.js';
 import { DecisionDto } from '../../signoff/dto/decision.dto.js';
 
 export class CreateCostPlanDto {
@@ -68,6 +69,7 @@ export class CreateContractDto {
   @IsNumber() @Min(0) contractSum!: number;
   @IsOptional() @IsEnum(Currency) currency?: Currency;
   @IsOptional() @IsUUID() costPlanId?: string;
+  @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
@@ -80,6 +82,7 @@ export class UpdateContractDto {
   @IsOptional() @IsEnum(ContractForm) contractForm?: ContractForm | null;
   @IsOptional() @IsNumber() @Min(0) contractSum?: number;
   @IsOptional() @IsUUID() costPlanId?: string | null;
+  @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
@@ -91,6 +94,7 @@ export class ContractFromAwardDto {
   @IsUUID() rfqId!: string;
   @IsOptional() @IsString() @MaxLength(200) title?: string;
   @IsOptional() @IsEnum(ContractForm) contractForm?: ContractForm;
+  @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
 }
