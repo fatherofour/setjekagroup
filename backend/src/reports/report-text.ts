@@ -92,6 +92,9 @@ export function thisPeriod(d: ReportData): string[] {
   for (const c of d.certificates.filter((x) => within(x.certifiedAt)).slice(0, 4)) out.push(`Payment certificate ${c.number} issued to ${c.contractor}: ${fmtMoney(c.amountDue, c.currency)} including VAT${c.isFinal ? ' (final)' : ''}.`);
   const paidNow = d.certificates.filter((x) => within(x.paidAt));
   if (paidNow.length) out.push(`${plural(paidNow.length, 'certificate')} paid: ${paidNow.map((c) => c.number).join(', ')}.`);
+  const ncrsRaised = d.ncrs.filter((n) => within(n.createdAt)).length;
+  const ncrsClosed = d.ncrs.filter((n) => within(n.closedAt)).length;
+  if (ncrsRaised || ncrsClosed) out.push(`${plural(ncrsRaised, 'NCR')} raised and ${ncrsClosed} closed; ${d.ncrs.filter((n) => n.status !== 'CLOSED').length} still open.`);
   const rfisRaised = d.rfis.filter((r) => r.createdAt >= d.period.start && r.createdAt <= d.period.end).length;
   if (rfisRaised) out.push(`${plural(rfisRaised, 'RFI')} raised.`);
   if (d.weather.days.length) out.push(`Site weather: ${plural(d.weather.rainDays, 'day')} of rain (${d.weather.totalRainMm} mm in total) over ${plural(d.weather.days.length, 'recorded day')}.`);

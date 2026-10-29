@@ -28,7 +28,8 @@ type CommentEntityType =
   | 'CLASH'
   | 'COST_PLAN'
   | 'PROJECT_CONTRACT'
-  | 'VALUATION';
+  | 'VALUATION'
+  | 'NCR';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

@@ -51,6 +51,12 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   PAYMENT_CERTIFICATE_DECIDED: 'APPROVALS',
   // An RFI with a cost impact brings the QS in (Feature Register Review).
   RFI_COST_IMPACT: 'ACTIONS',
+  // An NCR issued is the contractor's to answer; an answer or a fix is the
+  // raiser's to decide.
+  NCR_ISSUED: 'ASSIGNMENTS',
+  NCR_RESPONDED: 'APPROVALS',
+  NCR_READY: 'APPROVALS',
+  NCR_DECIDED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

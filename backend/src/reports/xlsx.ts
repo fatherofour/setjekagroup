@@ -171,6 +171,24 @@ export async function workbook(d: ReportData): Promise<Buffer> {
   );
 
   sheet(
+    'NCRs',
+    [
+      { header: 'NCR', key: 'number', width: 10 },
+      { header: 'Title', key: 'title', width: 36 },
+      { header: 'Type', key: 'kind', width: 14 },
+      { header: 'Severity', key: 'severity', width: 10 },
+      { header: 'Location', key: 'location', width: 20 },
+      { header: 'Raised by', key: 'raisedBy', width: 20 },
+      { header: 'Issued to', key: 'assignee', width: 20 },
+      { header: 'Raised', key: 'raised', width: 13, type: 'date' },
+      { header: 'Due', key: 'due', width: 13, type: 'date' },
+      { header: 'Status', key: 'status', width: 22 },
+      { header: 'Closed', key: 'closed', width: 13, type: 'date' },
+    ],
+    d.ncrs.map((n) => ({ number: n.number, title: n.title, kind: n.kind.toLowerCase(), severity: n.severity.toLowerCase(), location: n.location ?? '', raisedBy: n.raisedBy, assignee: n.assignee ?? '', raised: n.createdAt, due: n.dueDate, status: n.status.replace(/_/g, ' ').toLowerCase(), closed: n.closedAt })),
+  );
+
+  sheet(
     'Variations',
     [
       { header: 'No.', key: 'number', width: 9 },

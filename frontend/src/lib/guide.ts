@@ -338,6 +338,23 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
     },
     all: { title: 'Instructions and letters', steps: [s('On the record', 'Instructions and letters to and from you, with receipts and replies.')] },
   },
+  'project.ncrs': {
+    contractor: {
+      title: 'NCRs',
+      steps: [
+        s('Issued to you', 'Work or materials found not to conform. Give the root cause and how you will put it right, by the date asked.'),
+        s('Put it right', 'Once your corrective action is agreed, fix it and mark it ready. The consultant verifies it on site and closes it.'),
+      ],
+    },
+    all: {
+      title: 'NCRs',
+      steps: [
+        s('Raise an NCR', 'When work or materials do not conform, raise an NCR to the contractor, or straight from a failed inspection.'),
+        s('Agree the fix', "The contractor answers with the root cause and corrective action. Agree it, or send it back with your comments."),
+        s('Verify and close', 'When the contractor says it is put right, check it on site and close it, or send it back.'),
+      ],
+    },
+  },
   'project.inspections': {
     architect: {
       title: 'Inspections',

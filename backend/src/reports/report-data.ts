@@ -129,11 +129,18 @@ export async function loadReportData(
     tracker = null;
   }
 
-  // The QS's contracts and payment certificates (2026-10-28).
-  const [contractRows, valuationRows] = await Promise.all([
+  // The QS's contracts and payment certificates (2026-10-28), and the
+  // non-conformance reports (2026-10-29).
+  const [contractRows, valuationRows, ncrRows] = await Promise.all([
     prisma.projectContract.findMany({ where: { projectId }, include: { contractor: { select: { name: true } } }, orderBy: { createdAt: 'asc' } }),
     prisma.valuation.findMany({ where: { projectId }, orderBy: [{ contractId: 'asc' }, { number: 'asc' }], include: { contract: { select: { title: true, currency: true, contractor: { select: { name: true } } } } } }),
+    prisma.nonConformance.findMany({
+      where: { projectId, status: { not: 'VOID' } },
+      orderBy: { sequence: 'asc' },
+      select: { number: true, title: true, kind: true, severity: true, status: true, location: true, dueDate: true, createdAt: true, closedAt: true, raisedBy: { select: { fullName: true } }, assignee: { select: { externalName: true, user: { select: { fullName: true } } } } },
+    }),
   ]);
+  const ncrs = ncrRows.map((n) => ({ ...n, raisedBy: n.raisedBy.fullName, assignee: n.assignee?.user?.fullName ?? n.assignee?.externalName ?? null }));
   const CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'];
   const contracts = contractRows.map((c) => {
     const vals = valuationRows.filter((v) => v.contractId === c.id);
@@ -211,6 +218,7 @@ export async function loadReportData(
     variations,
     contracts,
     certificates,
+    ncrs,
     risks: sortedRisks.map((r) => ({ ...r, score: score(r), ownerName: person(r.owner) })),
     issues: issues.map((i) => ({ ...i, ownerName: person(i.owner) })),
     rfis,

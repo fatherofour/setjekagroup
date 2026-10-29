@@ -2688,6 +2688,62 @@ The rest tick like the architect's:
   - **Access:** the civil engineer sees only their own PROCSA list and has no commercial access.
 - **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), the QS journey (92/92), and the QS browser checks (13/13), PM signing (4/4) and menu (8/8) all still pass.
 
+### 2.27 Non-conformance reports (NCRs)
+
+Built on 2026-10-29. The user asked what in OpenConstructionERP the civil engineer would need, and chose NCRs from four options. The register lists them under QHSE, "Non-conformance reports", marked **Required: Yes**; there were none until now. The donor's `ncr` module was rebuilt natively.
+
+**Not chosen this time:** measured valuations, test results (the register marks these "No (standby)"), and an interfaces and hidden-works register. Also not offered: GIS, point clouds, temporary works and the daily diary.
+
+**The cycle** (project tab **NCRs**, under Design & site; `ncrs/`)
+1. **Raise.** Setjeka, a design consultant (architect or engineer), the QA/QC manager or the site manager raises an NCR to a contractor on the team. It records:
+   - type (material, workmanship, design, documentation or other);
+   - severity (minor, major or critical);
+   - location, an answer-by date, and any cost and time impact.
+
+   A failed inspection offers **Raise an NCR for this**, which starts the NCR from what the inspection found. NCRs are numbered NCR-001 per project.
+2. **Answer.** The contractor gives a root cause (a category plus their explanation), the corrective action and, optionally, the preventive action.
+3. **Agree or send back.** The raiser (or Setjeka) agrees it, or sends it back with a reason.
+4. **Fix.** The contractor puts it right and marks it ready to verify.
+5. **Close.** The raiser verifies it on site and closes it, or sends it back. An NCR can only be closed with a corrective action on record.
+6. **Void.** Setjeka or the raiser can void an open NCR, with a reason.
+
+Every step is kept in the NCR's history.
+
+**Who sees what**
+- **Contractors** see only the NCRs issued to them or to their firm.
+- **The client** sees none, as with inspections.
+- **The permissions** sit with Inspections in the matrix. The service decides who raises, answers and closes.
+
+**Also**
+- **Alerts:**
+  - issued → the contractor (`NCR_ISSUED`);
+  - answered or ready to verify → the raiser (`NCR_RESPONDED`, `NCR_READY`);
+  - each decision → the contractor (`NCR_DECIDED`).
+- **Notes and actions** on each NCR (`NCR`), hidden from the client.
+- **PROCSA:**
+  - raising an NCR counts toward inspecting the works for conformity (Architect and Civil Engineer 5.5);
+  - the PM's quality assurance item (5.10) now needs the agreed QA procedure plus inspections or NCRs showing it in use.
+- **Reports:** an NCRs sheet in the Excel export. The "this period" text gives NCRs raised and closed, and how many are still open.
+- Migration `20261029110000_ncrs`.
+
+**Verified**
+- **API, 22 of 22 checks:**
+  - **Refused, as they should be:**
+    - the contractor can't raise an NCR;
+    - an NCR can only be issued to a contractor;
+    - the client and another contractor see none;
+    - the architect can't decide on the civil engineer's NCR;
+    - the civil engineer can't answer for the contractor.
+  - **The full cycle:**
+    - raised from a failed inspection;
+    - answered, sent back, answered again and agreed;
+    - marked ready, sent back after the site check, then closed with all 9 history steps.
+  - **Closed means closed:** a closed NCR can't be changed.
+  - **Notes, voiding and Excel:** notes work and are hidden from the client; voiding needs a reason; the Excel sheet leaves out void NCRs.
+- **Browser, 4 of 4 checks, no console errors:**
+  - the civil engineer raises one from the failed inspection, with the form pre-filled;
+  - the contractor answers it on a phone in dark mode, with no sideways scroll.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

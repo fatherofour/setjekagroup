@@ -920,6 +920,13 @@ that step gets skipped.
   engineers' groundwork is generic, so structural, electrical and mechanical
   are mostly item lists.
 
+- **29 Oct 2026 — NCRs (document.md §2.27).** Asked what the donor app
+  offers the civil engineer, the user chose only non-conformance reports
+  (register QHSE NCR, Required: Yes). Not chosen: measured valuations, test
+  results (register: standby), interfaces/hidden works; these are on the
+  "after all roles" list. NCRs sit with Inspections in the permission
+  matrix; contractors see only their own, the client none.
+
 ## Local dev environment
 
 - **After `prisma generate`, delete `backend/tsconfig.build.tsbuildinfo`

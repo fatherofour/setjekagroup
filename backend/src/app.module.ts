@@ -40,6 +40,7 @@ import { BimModule } from './bim/bim.module.js';
 import { RomModule } from './rom/rom.module.js';
 import { GuideModule } from './guide/guide.module.js';
 import { QsModule } from './quantity-surveying/qs.module.js';
+import { NcrsModule } from './ncrs/ncrs.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -103,6 +104,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     RomModule,
     GuideModule,
     QsModule,
+    NcrsModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

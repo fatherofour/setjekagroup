@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, Camera, ClipboardCheck, ListChecks, Loader2, Plus, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
@@ -411,6 +412,11 @@ function InspectionDetail({
         <div className="text-right">
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${INSPECTION_STATUS[i.status].tone}`}>{INSPECTION_STATUS[i.status].label}</span>
           {i.outcome && <p className={`mt-1.5 text-sm font-semibold ${OUTCOME[i.outcome].tone}`}>{OUTCOME[i.outcome].label}</p>}
+          {i.outcome === 'NON_CONFORMING' && (
+            <Link href={`/projects/${projectId}?tab=ncrs&fromInspection=${i.id}`} className="mt-1 block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+              Raise an NCR for this
+            </Link>
+          )}
         </div>
       </div>
 

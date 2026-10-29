@@ -57,6 +57,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     criteria,
     investigations,
     advice,
+    ncrs,
   ] = await Promise.all([
     prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true, createdById: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
@@ -102,6 +103,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.designCriterion.findMany({ where: { projectId }, select: { raisedById: true } }),
     prisma.siteInvestigation.findMany({ where: { projectId }, select: { recommendedById: true } }),
     prisma.consultantAdvice.findMany({ where: { projectId }, select: { topic: true, authorId: true } }),
+    prisma.nonConformance.findMany({ where: { projectId, status: { not: 'VOID' } }, select: { status: true, raisedById: true } }),
   ]);
   return {
     entries,
@@ -145,6 +147,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     criteria,
     investigations,
     advice,
+    ncrs,
   };
 }
 
@@ -333,6 +336,10 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
     case 'advice': {
       const n = f.advice.filter((x) => e.topics.includes(x.topic) && mine(x.authorId)).length;
       return n ? `${plural(n, 'piece', 'pieces')} of written advice` : null;
+    }
+    case 'ncrs': {
+      const n = f.ncrs.filter((x) => mine(x.raisedById) && (!e.closed || x.status === 'CLOSED')).length;
+      return n ? `${plural(n, 'NCR')} ${e.closed ? 'closed' : 'raised'}` : null;
     }
     case 'any': {
       for (const x of e.of) {

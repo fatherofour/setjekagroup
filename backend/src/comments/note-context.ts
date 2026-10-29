@@ -26,6 +26,7 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   COST_PLAN: 'Bill / cost plan',
   PROJECT_CONTRACT: 'Contract',
   VALUATION: 'Valuation',
+  NCR: 'NCR',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -107,6 +108,9 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'VALUATION':
         put(type, (await prisma.valuation.findMany({ where, select: { id: true, number: true, contract: { select: { title: true } } } })).map((r) => ({ id: r.id, label: `No. ${r.number} · ${r.contract.title}` })));
+        break;
+      case 'NCR':
+        put(type, (await prisma.nonConformance.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
         break;
       case 'OPPORTUNITY':
         put(type, (await prisma.opportunity.findMany({ where, select: { id: true, name: true } })).map((r) => ({ id: r.id, label: r.name })));

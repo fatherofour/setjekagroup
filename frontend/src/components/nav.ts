@@ -146,6 +146,7 @@ export const NAV: NavEntry[] = [
       { label: 'Authorities', href: '/projects', icon: Landmark, requiresProject: true, projectPathSuffix: '?tab=authorities' },
       { label: 'Instructions', href: '/projects', icon: Mail, requiresProject: true, projectPathSuffix: '?tab=instructions' },
       { label: 'Inspections', href: '/projects', icon: SearchCheck, requiresProject: true, projectPathSuffix: '?tab=inspections' },
+      { label: 'NCRs', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=ncrs' },
       { label: 'Punch list', href: '/projects', icon: ListX, requiresProject: true, projectPathSuffix: '?tab=punch' },
     ],
   },
