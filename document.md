@@ -2744,6 +2744,29 @@ Every step is kept in the NCR's history.
   - the civil engineer raises one from the failed inspection, with the form pre-filled;
   - the contractor answers it on a phone in dark mode, with no sideways scroll.
 
+### 2.28 The structural engineer — PROCSA Stages 2 to 6
+
+Built on 2026-11-02, the second of the engineers (the user: "go ahead with the structural engineer").
+
+**The list** (`procsa-delivery.ts`, 47 items)
+- **Stage 1** was built in §2.13a.
+- **Stages 2 to 6** follow the PROCSA matrix's structural engineer: 11, 7, 9, 15 and 4 items.
+- **The same work as the civil engineer's.** It's evidenced the same way, from the structural engineer's own records: design criteria, investigations and advice; drawings by purpose, authority rounds and service connections; inspections, tests, NCRs, RFIs and submittals; and the valuations, certificates and handover documents they review.
+- **No final account.** Stage 5 runs to 5.15 and Stage 6 to 6.4, so their contract instructions, O&M review, practical completion lists and statutory certificates come one number earlier than the civil engineer's.
+- **Built from the civil list.** The structural list is derived from the civil engineer's items, with the structural wording from PROCSA, so the two can't drift apart in how they tick.
+
+**Also**
+- **Service connections.** The register (access, utilities, services and connections) is now kept by every engineer, not just the civil engineer: PROCSA gives each of them item 2.8.
+- **Final accounts** stay with the QS and the civil engineer.
+- **Valuations.** A contract can name the structural engineer to review its valuations (§2.26). The guide's engineer content already covers them.
+
+**Verified**
+- **Structural journey (API), 25 of 25 checks.** One project from Stage 2 to 6, with each person signed in as themselves:
+  - **Every structural item ticks** (11, 7, 9, 15, 4).
+  - **The valuation** on the contract naming the structural engineer: only they are asked to review it, the architect is refused, and the PM can't certify first.
+  - **Registers:** the structural engineer keeps service connections, but not the final accounts or the architect's finishes schedule.
+- **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), the civil journey (25/25), NCRs (22/22) and the QS journey (92/92) all still pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

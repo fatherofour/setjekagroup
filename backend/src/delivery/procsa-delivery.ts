@@ -76,7 +76,7 @@ export interface DeliveryItem {
 }
 
 export interface DeliveryRole {
-  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR' | 'CIVIL_ENGINEER';
+  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR' | 'CIVIL_ENGINEER' | 'STRUCTURAL_ENGINEER';
   label: string;
   memberRoles: ProjectMemberRole[];
   items: DeliveryItem[];
@@ -524,6 +524,76 @@ const CIVIL_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
   ],
 };
 
+// PROCSA Structural Engineer, Stages 2 to 6 (the user, 2 Nov 2026: the
+// engineers one at a time, structural second). The same work as the civil
+// engineer's, evidenced the same way from the structural engineer's own
+// records, but without the final account: Stage 5 runs to 5.15 and Stage 6
+// to 6.4. Text as in the client's PROCSA Responsibility Matrix.
+const STRUCTURAL_ROLES: ProjectMemberRole[] = ['STRUCTURAL_ENGINEER', 'ARCHITECT_ENGINEER'];
+const STRUCTURAL_TEXT: Record<string, string> = {
+  '2.1': 'Agree the documentation programme with the principal consultant and the other consultants',
+  '2.2': "Attend design and consultants' meetings",
+  '2.3': 'Establish concept design criteria',
+  '2.4': 'Prepare initial concept design and related documentation',
+  '2.5': 'Advise the client regarding further surveys, analyses, tests and investigations which may be required',
+  '2.6': 'Refine and assess concept design to ensure conformance with all regulatory requirements and consents',
+  '2.7': "Establish regulatory authorities' requirements and incorporate into the design",
+  '2.8': 'Establish access, utilities, services and connections required for the design',
+  '2.9': 'Co-ordinate design interfaces with other consultants',
+  '2.10': 'Prepare preliminary designs and related documentation for approval by authorities and the client and suitable for estimates of construction cost',
+  '2.11': 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants',
+  '3.1': 'Review the documentation programme with the principal consultant and the other consultants',
+  '3.2': "Attend design and consultants' meetings",
+  '3.3': "Incorporate the client's and authorities' detailed requirements into the design",
+  '3.4': "Incorporate the other consultants' designs and requirements into the design",
+  '3.5': 'Prepare design development drawings including draft technical details and specifications',
+  '3.6': 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants',
+  '3.7': 'Submit necessary design documentation to local authorities for approval',
+  '4.1': "Attend design and consultants' meetings",
+  '4.2': 'Prepare specifications for the works and agree preambles with the quantity surveyor',
+  '4.3': 'Accommodate services design',
+  '4.4': 'Check cost estimate with the quantity surveyor and adjust documents if necessary to remain within budget',
+  '4.5': 'Provide working drawings to the quantity surveyor for preparation of procurement documentation',
+  '4.6': 'Liaise, co-operate and provide necessary information to the principal consultant and the other consultants',
+  '4.7': 'Assist with evaluation of tenders',
+  '4.8': 'Assist with preparation of contract documentation for signature',
+  '4.9': 'Assess samples and products for compliance and design intent',
+  '5.1': 'Attend the site handover',
+  '5.2': 'Issue construction documentation in accordance with the documentation programme',
+  '5.3': 'Carry out contract administration procedures delegated by the principal agent in terms of the contract',
+  '5.4': 'Attend regular site, technical and progress meetings',
+  '5.5': 'Inspect the works for conformity to contract documentation',
+  '5.6': 'Assist in the resolution of contractual claims by the contractor',
+  '5.7': 'Clarify details and descriptions during construction as required',
+  '5.8': 'Receive, comment and approve interim payment valuations',
+  '5.9': 'Witness and review of all tests and mock-ups carried out both on and off the site',
+  '5.10': 'Check and approve subcontract shop drawings for design intent',
+  '5.11': 'Update and issue drawings register',
+  '5.12': 'Issue contract instructions as and when required',
+  '5.13': 'Review and comment on operation and maintenance manuals, guarantees, certificates and warranties',
+  '5.14': 'Inspect the works and issue practical completion and defects lists',
+  '5.15': 'Assist in obtaining statutory certificates',
+  '6.1': 'Inspect and verify rectification of defects',
+  '6.2': 'Receive, comment and approve relevant payment valuations and completion certificates',
+  '6.3': 'Prepare and/or procure operations and maintenance manuals, guarantees and warranties',
+  '6.4': 'Prepare and/or procure as-built drawings and documentation',
+};
+// The civil engineer's codes the structural engineer has no equivalent of
+// (the final account of the works), and where the later items move to.
+const CIVIL_ONLY = new Set(['5.13', '6.5']);
+const RENUMBER: Record<string, string> = { '5.14': '5.13', '5.15': '5.14', '5.16': '5.15' };
+const STRUCTURAL_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = Object.fromEntries(
+  Object.entries(CIVIL_ITEMS).map(([stage, items]) => [
+    stage,
+    (items ?? [])
+      .filter((i) => !CIVIL_ONLY.has(i.code))
+      .map((i) => {
+        const code = RENUMBER[i.code] ?? i.code;
+        return { ...i, code, text: STRUCTURAL_TEXT[code], tickedBy: i.tickedBy.replace(/civil engineer/g, 'structural engineer') };
+      }),
+  ]),
+);
+
 for (const s of DELIVERY_STAGES) {
   const items = ARCHITECT_ITEMS[s.stage];
   if (items) s.roles.push({ key: 'ARCHITECT', label: 'Architect', memberRoles: ARCH_ROLES, items });
@@ -531,6 +601,8 @@ for (const s of DELIVERY_STAGES) {
   if (qs) s.roles.push({ key: 'QUANTITY_SURVEYOR', label: 'Quantity Surveyor', memberRoles: QS_ROLES, items: qs });
   const civil = CIVIL_ITEMS[s.stage];
   if (civil) s.roles.push({ key: 'CIVIL_ENGINEER', label: 'Civil Engineer', memberRoles: CIVIL_ROLES, items: civil });
+  const structural = STRUCTURAL_ITEMS[s.stage];
+  if (structural) s.roles.push({ key: 'STRUCTURAL_ENGINEER', label: 'Structural Engineer', memberRoles: STRUCTURAL_ROLES, items: structural });
 }
 
 export function findDeliveryItem(stage: string, roleKey: string, code: string) {

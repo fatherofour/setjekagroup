@@ -458,7 +458,7 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       title: 'Registers',
       steps: [
         s('Yours to review', 'Valuations on contracts that name you as the reviewing consultant, completion certificates and O&M documents wait for your signed review. Setjeka cannot sign it for you.'),
-        s('Yours to keep', 'Defects and handover documents for your works. The civil engineer also keeps the service connections and the final accounts of civil works.'),
+        s('Yours to keep', 'Defects, handover documents and the service connections your design needs. The civil engineer also keeps the final accounts of civil works.'),
       ],
     },
     qs: {
@@ -638,7 +638,7 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
         tab('inception', 'Design criteria and investigations', 'Set your criteria; recommend surveys and tests.'),
         tab('drawings', 'Concept drawings', 'Plan them on the programme, then upload with a purpose.'),
         tab('authorities', 'Authority requirements', "Record each authority's requirements and your submissions."),
-        tab('registers', 'Service connections', 'Access, utilities and connections (civil).'),
+        tab('registers', 'Service connections', 'Access, utilities and connections your design needs.'),
         tab('meetings', 'Design meetings', 'Attend and pick up your actions.'),
       ],
     },

@@ -1,5 +1,5 @@
 import type { ProjectMemberRole } from '../generated/prisma/enums.js';
-import { DESIGN_CONSULTANTS } from '../common/consultants.js';
+import { DESIGN_CONSULTANTS, ENGINEERS } from '../common/consultants.js';
 
 /** The delivery registers PROCSA Stages 2 to 6 need that the other modules
  * don't already cover. Each declares its fields (stored in the shared
@@ -186,9 +186,9 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'service-agreements',
     label: 'Authority service agreements',
-    procsa: 'DM 4.13 · Civil 2.8',
-    description: 'Access, utilities and service connections agreed with the authorities, and the deposits paid. The civil engineer establishes what the design needs.',
-    editableBy: CIVIL,
+    procsa: 'DM 4.13 · Engineers 2.8',
+    description: 'Access, utilities and service connections agreed with the authorities, and the deposits paid. The engineers establish what their designs need.',
+    editableBy: ENGINEERS,
     fields: [
       { column: 'title', label: 'Service', type: 'text', required: true, inList: true, hint: 'e.g. Bulk water connection' },
       { column: 'partyName', label: 'Authority', type: 'text', inList: true },

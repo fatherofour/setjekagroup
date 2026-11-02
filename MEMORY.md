@@ -927,8 +927,20 @@ that step gets skipped.
   "after all roles" list. NCRs sit with Inspections in the permission
   matrix; contractors see only their own, the client none.
 
+- **2 Nov 2026 — the structural engineer, Stages 2–6 (document.md §2.28).**
+  Derived from the civil engineer's items with PROCSA's structural wording
+  and no final account (Stage 5 to 5.15, Stage 6 to 6.4). The service
+  connections register is now kept by every engineer (each has PROCSA 2.8);
+  final accounts stay with the QS and the civil engineer.
+
 ## Local dev environment
 
+- **After a reboot, start the database by hand on port 5434:**
+  `pg_ctl -D "C:/Program Files/PostgreSQL/18/data" -o "-p 5434" -l <logfile> start`.
+  It's the local PostgreSQL 18, not a Windows service, and its config says
+  5432, which Docker's `iroko-postgres` holds (leave that alone). The backend
+  swaps 5432 for 5434 in `DATABASE_URL`. If the database is down, the
+  backend starts and then exits on its first query (seen 2 Nov 2026).
 - **After `prisma generate`, delete `backend/tsconfig.build.tsbuildinfo`
   and `backend/dist/tsconfig.tsbuildinfo` before restarting the dev
   server.** Otherwise its incremental type-check keeps the old Prisma types
