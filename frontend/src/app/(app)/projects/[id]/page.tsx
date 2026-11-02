@@ -46,6 +46,7 @@ import { AuthoritiesPanel } from '@/components/design/AuthoritiesPanel';
 import { InstructionsPanel } from '@/components/design/InstructionsPanel';
 import { InspectionsPanel } from '@/components/design/InspectionsPanel';
 import { NcrPanel } from '@/components/design/NcrPanel';
+import { MeasurePanel } from '@/components/qs/MeasurePanel';
 import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
 import { BimHubPanel } from '@/components/bim/BimHubPanel';
@@ -69,6 +70,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'instructions', label: 'Instructions' },
   { value: 'inspections', label: 'Inspections' },
   { value: 'ncrs', label: 'NCRs' },
+  { value: 'measure', label: 'Site measurement' },
   { value: 'punch', label: 'Punch list' },
   { value: 'photos', label: 'Site photos' },
   { value: 'technical', label: 'RFIs & Submittals' },
@@ -136,7 +138,7 @@ export default function ProjectDetailPage() {
   const isClient = isExternal && (Boolean(user?.clientId) || clientByRole);
   // Until an outside party's role here is known, client-hidden screens wait.
   const roleKnown = !isExternal || Boolean(user?.clientId) || mine?.projectId === id;
-  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'ncrs' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
+  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'ncrs' && t.value !== 'measure' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -492,6 +494,7 @@ export default function ProjectDetailPage() {
       {tab === 'instructions' && <InstructionsPanel projectId={project.id} />}
       {tab === 'inspections' && roleKnown && !isClient && <InspectionsPanel projectId={project.id} />}
       {tab === 'ncrs' && roleKnown && !isClient && <NcrPanel projectId={project.id} />}
+      {tab === 'measure' && roleKnown && !isClient && <MeasurePanel projectId={project.id} />}
       {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}
       {tab === 'registers' && <RegistersPanel key={searchParams.get('register') ?? 'registers'} projectId={project.id} initial={searchParams.get('register') ?? undefined} />}

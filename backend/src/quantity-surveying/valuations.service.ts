@@ -135,18 +135,36 @@ export class ValuationsService {
       ? items.map((i) => ({ costPlanItemId: i.id, description: [i.ref, i.description].filter(Boolean).join(' ').slice(0, 300), contractAmount: i.amount, percentComplete: pctFor({ costPlanItemId: i.id }) }))
       : [{ description: 'Works under the contract', contractAmount: contract.contractSum, percentComplete: prev?.lines.find((l) => !l.costPlanItemId && !l.variationId)?.percentComplete ?? 0 }];
     const varLines = variations.map((x) => ({ variationId: x.id, description: `${x.number} ${x.title}`.slice(0, 300), contractAmount: x.assessedValue ?? x.estimatedValue, percentComplete: pctFor({ variationId: x.id }) }));
+    // A measured contract is paid on the quantity agreed on site to the
+    // valuation date, at the bill rate, never less than certified before.
+    const valuationDate = new Date(dto.valuationDate);
+    const agreed = contract.measured
+      ? await this.prisma.siteMeasurement.groupBy({ by: ['costPlanItemId'], where: { contractId: contract.id, status: 'AGREED', date: { lte: valuationDate } }, _sum: { quantity: true } })
+      : [];
+    const measuredLines = workLines.map((l) => {
+      const item = items.find((i) => 'costPlanItemId' in l && i.id === l.costPlanItemId);
+      if (!contract.measured || !item || item.quantity == null || item.type !== 'MEASURED') return { ...l, valueToDate: round((l.contractAmount * l.percentComplete) / 100) };
+      const rate = item.rate ?? (item.quantity ? item.amount / item.quantity : 0);
+      const before = prev?.lines.find((p) => p.costPlanItemId === item.id)?.quantityToDate ?? 0;
+      const quantityToDate = Math.max(before, agreed.find((g) => g.costPlanItemId === item.id)?._sum.quantity ?? 0);
+      const valueToDate = round(quantityToDate * rate);
+      return { ...l, rate, quantityToDate, valueToDate, percentComplete: l.contractAmount ? round((valueToDate / l.contractAmount) * 100) : 0 };
+    });
+    // Signed daywork sheets to the valuation date, in full.
+    const dayworks = await this.prisma.dayworkSheet.findMany({ where: { contractId: contract.id, status: 'SIGNED', date: { lte: valuationDate } }, orderBy: { sequence: 'asc' } });
+    const dayLines = dayworks.map((d) => ({ dayworkSheetId: d.id, description: `Daywork ${d.number}: ${d.description}`.slice(0, 300), contractAmount: d.total, percentComplete: 100, valueToDate: d.total }));
     const v = await this.prisma.valuation.create({
       data: {
         projectId,
         contractId: contract.id,
         number,
         isFinal: Boolean(dto.isFinal),
-        valuationDate: new Date(dto.valuationDate),
+        valuationDate,
         retentionReleasePct: dto.isFinal ? 100 : (prev?.retentionReleasePct ?? 0),
         materialsOnSite: 0,
         preparedById: userId,
         lines: {
-          create: [...workLines, ...varLines].map((l, k) => ({ ...l, sortOrder: k, valueToDate: round((l.contractAmount * l.percentComplete) / 100) })),
+          create: [...measuredLines, ...varLines.map((l) => ({ ...l, valueToDate: round((l.contractAmount * l.percentComplete) / 100) })), ...dayLines].map((l, k) => ({ ...l, sortOrder: k })),
         },
       },
     });
@@ -165,7 +183,18 @@ export class ValuationsService {
     for (const l of lines ?? []) {
       const line = v.lines.find((x) => x.id === l.id);
       if (!line) throw new BadRequestException('A line is not on this valuation');
-      const before = prev?.lines.find((p) => (line.costPlanItemId ? p.costPlanItemId === line.costPlanItemId : line.variationId ? p.variationId === line.variationId : !p.costPlanItemId && !p.variationId));
+      if (line.dayworkSheetId) continue;
+      const before = prev?.lines.find((p) => (line.costPlanItemId ? p.costPlanItemId === line.costPlanItemId : line.variationId ? p.variationId === line.variationId : !p.costPlanItemId && !p.variationId && !p.dayworkSheetId));
+      if (line.rate != null && l.quantityToDate !== undefined) {
+        // A measured line: the quantity to date, at the bill rate.
+        if (before?.quantityToDate != null && l.quantityToDate < before.quantityToDate - 0.0001) {
+          throw new BadRequestException(`"${line.description}" was certified at ${before.quantityToDate} before; a valuation can't take work back below that`);
+        }
+        const valueToDate = round(l.quantityToDate * line.rate);
+        ops.push(this.prisma.valuationLine.update({ where: { id: l.id }, data: { quantityToDate: l.quantityToDate, valueToDate, percentComplete: line.contractAmount ? round((valueToDate / line.contractAmount) * 100) : 0 } }));
+        continue;
+      }
+      if (l.percentComplete === undefined) continue;
       if (before && l.percentComplete < before.percentComplete - 0.0001 && !(line.contractAmount < 0)) {
         throw new BadRequestException(`"${line.description}" was certified at ${before.percentComplete}% before; a valuation can't take work back below that`);
       }
@@ -179,7 +208,7 @@ export class ValuationsService {
     return this.get(projectId, userId, id);
   }
 
-  /** Bring in variations approved since the valuation was started. */
+  /** Bring in variations approved, and dayworks signed, since the valuation was started. */
   async refresh(projectId: string, userId: string, id: string) {
     const a = await this.access.of(projectId, userId);
     this.access.preparer(a);
@@ -187,13 +216,19 @@ export class ValuationsService {
     if (v.status !== 'DRAFT') throw new BadRequestException('Only a draft valuation can be changed');
     const have = new Set(v.lines.map((l) => l.variationId).filter(Boolean));
     const missing = await this.prisma.variation.findMany({ where: { contractId: v.contractId, status: 'APPROVED', id: { notIn: [...have] as string[] } } });
-    if (missing.length) {
+    // And daywork sheets signed since, to the valuation date.
+    const haveDw = new Set(v.lines.map((l) => l.dayworkSheetId).filter(Boolean));
+    const newDw = await this.prisma.dayworkSheet.findMany({ where: { contractId: v.contractId, status: 'SIGNED', date: { lte: v.valuationDate }, id: { notIn: [...haveDw] as string[] } }, orderBy: { sequence: 'asc' } });
+    if (missing.length || newDw.length) {
       await this.prisma.valuationLine.createMany({
-        data: missing.map((x, k) => ({ valuationId: id, variationId: x.id, description: `${x.number} ${x.title}`.slice(0, 300), contractAmount: x.assessedValue ?? x.estimatedValue, sortOrder: v.lines.length + k })),
+        data: [
+          ...missing.map((x) => ({ valuationId: id, variationId: x.id, description: `${x.number} ${x.title}`.slice(0, 300), contractAmount: x.assessedValue ?? x.estimatedValue })),
+          ...newDw.map((d) => ({ valuationId: id, dayworkSheetId: d.id, description: `Daywork ${d.number}: ${d.description}`.slice(0, 300), contractAmount: d.total, percentComplete: 100, valueToDate: d.total })),
+        ].map((l, k) => ({ ...l, sortOrder: v.lines.length + k })),
       });
       await this.recompute(id);
     }
-    return { added: missing.length, valuation: await this.get(projectId, userId, id) };
+    return { added: missing.length + newDw.length, valuation: await this.get(projectId, userId, id) };
   }
 
   private async sheet(projectId: string, id: string) {

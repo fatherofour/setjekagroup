@@ -355,6 +355,23 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.measure': {
+    contractor: {
+      title: 'Site measurement',
+      steps: [
+        s('Agree the quantities', 'On a measured contract you are paid for the quantities agreed on site. Agree each measurement, or dispute it and say why.'),
+        s('Daywork sheets', 'Submit a daywork sheet for work done on dayworks, with the labour, plant and materials. Once signed, it is paid in the next valuation.'),
+      ],
+    },
+    all: {
+      title: 'Site measurement',
+      steps: [
+        s('Measure on site', 'On a measured contract, record the quantities measured against the bill items. The contractor agrees or disputes each one.'),
+        s('Paid on agreed quantities', 'The next valuation pays the agreed quantity to date at the bill rate. The QS can adjust the quantity there, but not below what was certified before.'),
+        s('Sign dayworks', 'Sign or reject the contractor\'s daywork sheets. Signed sheets are paid in full in the next valuation.'),
+      ],
+    },
+  },
   'project.inspections': {
     architect: {
       title: 'Inspections',

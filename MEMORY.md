@@ -940,6 +940,15 @@ that step gets skipped.
   and a final account (5.13, 6.5). Document evidence can now count only the
   role's own uploads. All PROCSA roles in the matrix are now built.
 
+- **2 Nov 2026 — measured valuations (document.md §2.32).** A contract can
+  be "measured": the QS, Setjeka or the contract's reviewing engineer record
+  site quantities per bill item, the contract's contractor agrees or
+  disputes them, and valuations pay agreed quantity to date x bill rate
+  (never below the previous valuation). Daywork sheets (DW-001, any
+  contract) are signed by a measurer and paid in full in the next valuation.
+  The final account adds remeasurement and dayworks. Next on the user's
+  list: price escalation, test results, interfaces & hidden works.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

@@ -70,6 +70,8 @@ export class CreateContractDto {
   @IsOptional() @IsEnum(Currency) currency?: Currency;
   @IsOptional() @IsUUID() costPlanId?: string;
   @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
+  /** Paid on quantities measured on site rather than % complete. */
+  @IsOptional() @IsBoolean() measured?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
@@ -86,6 +88,7 @@ export class UpdateContractDto {
   @IsOptional() @IsNumber() @Min(0) contractSum?: number;
   @IsOptional() @IsUUID() costPlanId?: string | null;
   @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
+  @IsOptional() @IsBoolean() measured?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
@@ -100,6 +103,7 @@ export class ContractFromAwardDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string;
   @IsOptional() @IsEnum(ContractForm) contractForm?: ContractForm;
   @IsOptional() @IsIn(CONTRACT_REVIEWERS) reviewerRole?: ProjectMemberRole;
+  @IsOptional() @IsBoolean() measured?: boolean;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
 }
@@ -123,7 +127,29 @@ export class CreateValuationDto {
 
 export class ValuationLineDto {
   @IsUUID() id!: string;
-  @IsNumber() @Min(0) @Max(100) percentComplete!: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) percentComplete?: number;
+  /** On a measured contract: the quantity measured to date (it can run past the bill). */
+  @IsOptional() @IsNumber() @Min(0) quantityToDate?: number;
+}
+
+export class CreateMeasurementDto {
+  @IsUUID() costPlanItemId!: string;
+  @IsDateString() date!: string;
+  @IsNumber() @Min(0) quantity!: number;
+  @IsOptional() @IsString() @MaxLength(300) location?: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
+}
+
+export class CreateDayworkDto {
+  @IsDateString() date!: string;
+  @IsString() @MinLength(1) @MaxLength(2000) description!: string;
+  @IsOptional() @IsNumber() @Min(0) labour?: number;
+  @IsOptional() @IsNumber() @Min(0) plant?: number;
+  @IsOptional() @IsNumber() @Min(0) materials?: number;
+}
+
+export class MeasureReasonDto {
+  @IsOptional() @IsString() @MaxLength(2000) reason?: string;
 }
 
 export class UpdateValuationDto {

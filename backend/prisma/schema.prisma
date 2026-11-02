@@ -358,6 +358,10 @@ model User {
   ncrsRaised                  NonConformance[]             @relation("NcrRaisedBy")
   ncrsClosed                  NonConformance[]             @relation("NcrClosedBy")
   ncrEvents                   NcrEvent[]                   @relation("NcrEventActor")
+  measurementsRecorded        SiteMeasurement[]            @relation("MeasurementRecordedBy")
+  measurementsResponded       SiteMeasurement[]            @relation("MeasurementRespondedBy")
+  dayworksSubmitted           DayworkSheet[]               @relation("DayworkSubmittedBy")
+  dayworksDecided             DayworkSheet[]               @relation("DayworkDecidedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -688,6 +692,8 @@ model Project {
   variations               Variation[]
   costPlans                CostPlan[]
   ncrs                     NonConformance[]
+  siteMeasurements         SiteMeasurement[]
+  dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
   valuations               Valuation[]
   supplierInvoices         SupplierInvoice[]
@@ -1037,6 +1043,7 @@ enum CommentEntityType {
   PROJECT_CONTRACT
   VALUATION
   NCR
+  DAYWORK
 }
 
 model Comment {
@@ -1131,6 +1138,10 @@ enum NotificationType {
   NCR_RESPONDED
   NCR_READY
   NCR_DECIDED
+  MEASUREMENT_RECORDED
+  MEASUREMENT_DISPUTED
+  DAYWORK_SUBMITTED
+  DAYWORK_DECIDED
 }
 
 model Notification {
@@ -4158,6 +4169,7 @@ model CostPlanItem {
   notes          String?
   rfqItems       RfqItem[]
   valuationLines ValuationLine[]
+  measurements   SiteMeasurement[]
 
   @@index([costPlanId])
 }
@@ -4224,6 +4236,10 @@ model ProjectContract {
   createdBy           User               @relation(fields: [createdById], references: [id])
   valuations          Valuation[]
   variations          Variation[]
+  // Paid on quantities measured on site (remeasurement), not % complete.
+  measured            Boolean            @default(false)
+  siteMeasurements    SiteMeasurement[]
+  dayworkSheets       DayworkSheet[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -4309,6 +4325,11 @@ model ValuationLine {
   contractAmount  Float
   percentComplete Float         @default(0)
   valueToDate     Float         @default(0)
+  // On a measured contract: the quantity measured to date, at the bill rate.
+  quantityToDate  Float?
+  rate            Float?
+  dayworkSheetId  String?
+  dayworkSheet    DayworkSheet? @relation(fields: [dayworkSheetId], references: [id], onDelete: SetNull)
 
   @@index([valuationId])
 }
@@ -4396,4 +4417,76 @@ model NcrEvent {
   createdAt  DateTime       @default(now())
 
   @@index([ncrId])
+}
+
+// ---- Measured contracts: site measurement and dayworks (2026-11-02) -------
+// The user's choice from the list kept until all roles were built. Civil
+// (GCC) contracts are paid on quantities measured on site; work outside the
+// bill is paid on daywork sheets (the donor app's site measurements and
+// daywork sheets, rebuilt).
+enum MeasurementStatus {
+  RECORDED
+  AGREED
+  DISPUTED
+}
+
+model SiteMeasurement {
+  id             String            @id @default(uuid())
+  projectId      String
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId     String
+  contract       ProjectContract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  costPlanItemId String
+  costPlanItem   CostPlanItem      @relation(fields: [costPlanItemId], references: [id], onDelete: Cascade)
+  date           DateTime
+  location       String?
+  quantity       Float
+  notes          String?
+  status         MeasurementStatus @default(RECORDED)
+  recordedById   String
+  recordedBy     User              @relation("MeasurementRecordedBy", fields: [recordedById], references: [id])
+  respondedById  String?
+  respondedBy    User?             @relation("MeasurementRespondedBy", fields: [respondedById], references: [id], onDelete: SetNull)
+  respondedAt    DateTime?
+  disputeReason  String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([contractId, costPlanItemId])
+}
+
+enum DayworkStatus {
+  SUBMITTED
+  SIGNED
+  REJECTED
+}
+
+model DayworkSheet {
+  id             String          @id @default(uuid())
+  projectId      String
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId     String
+  contract       ProjectContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sequence       Int
+  number         String
+  date           DateTime
+  description    String
+  labour         Float           @default(0)
+  plant          Float           @default(0)
+  materials      Float           @default(0)
+  total          Float           @default(0)
+  status         DayworkStatus   @default(SUBMITTED)
+  submittedById  String
+  submittedBy    User            @relation("DayworkSubmittedBy", fields: [submittedById], references: [id])
+  decidedById    String?
+  decidedBy      User?           @relation("DayworkDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt      DateTime?
+  decisionNote   String?
+  valuationLines ValuationLine[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Numbered per contract, so each contract starts at DW-001.
+  @@unique([contractId, sequence])
+  @@index([projectId])
 }

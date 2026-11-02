@@ -2847,6 +2847,59 @@ Built on 2026-11-02 (the user's choice from the list kept until all roles were b
   - **NEC project:** variations are compensation events, payment is 14 days, and the PM keeps the title.
 - **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the civil (25/25), QS (92/92), NCR (22/22) and minimum quotes (6/6) checks and the PM signing in the browser (4/4) all still pass. Browser, 4 of 4: the FIDIC project shows the Project Engineer on the Team list and header, and Interim Payment Certificates with the contract's periods.
 
+### 2.32 Measured valuations: site measurement, dayworks and remeasurement
+
+Built on 2026-11-02 (the user's choice from the list kept until all roles were built). Until now every contract was valued on % complete against the bill. Civil works are usually paid on quantities measured on site, remeasured at the end, with dayworks for work that can't be measured.
+
+**A measured contract.** A contract set up by the QS can be marked "Measured contract" (on the new-contract form, or `measured` on the create, update and from-award routes). It can be changed until the first valuation is certified. The contract heading then says "measured (paid on agreed site quantities)".
+
+**Site measurement** (the new "Site measurement" tab under Design & site; `SiteMeasurement`; `quantity-surveying/site-measure.*`)
+- **Who measures.** Setjeka, the QS, and the consultant named on the contract to review its valuations (the civil engineer on civil works) record quantities measured against bill items, with the date and where.
+- **The contractor agrees.** The contract's own contractor (a CONTRACTOR member tied to that contractor company) agrees each measurement, or disputes it with a reason. The measurer is told of a dispute and records a corrected quantity. Setjeka can record agreement made on site.
+- **The bill view.** Each item shows its bill quantity, the quantity measured (not disputed) and the quantity agreed. Agreed quantities past the bill are flagged.
+- **What can't change.** An agreed measurement can't be removed; a correction is a new measurement.
+- **Who sees it.** Nobody but the contract's measurers and its contractor: another contractor on the project gets "not found". Clients don't see the tab.
+
+**Dayworks** (`DayworkSheet`, DW-001 numbered per contract)
+- **Submitting.** The contractor (or a measurer) submits a sheet with the date, the work, and labour, plant and materials.
+- **Signing.** A measurer signs it, or rejects it with a reason. The submitter is told either way.
+- **Notes.** Sheets carry the notes and actions thread.
+- **Contracts.** Dayworks work on any contract, measured or not.
+
+**In the valuation**
+- **Measured lines.** On a measured contract each measured bill item becomes a line at its bill rate. Its quantity to date is the larger of the quantity agreed up to the valuation date and the quantity in the previous valuation. Its value is quantity × rate, and its % is derived.
+- **The QS adjusts quantities.** The QS can change a measured line's quantity in the valuation, but never below the previous valuation's.
+- **Lump sums.** Provisional and prime-cost sums stay on % complete. The column reads "Qty / %" when both kinds are present.
+- **Dayworks.** Every signed daywork sheet dated up to the valuation date is a line at its full value, marked "Daywork". Valuations are cumulative, so a sheet paid before is not paid twice. "New variations & dayworks" brings in sheets signed since the valuation was started.
+- **The final account** of a measured contract adds a "Remeasurement" line (each measured item at its latest valuation quantity, less its bill amount) and "Add signed dayworks".
+
+**Alerts:** measurement recorded (to the contractor) and daywork submitted (to the measurers) are decisions owed; disputes and daywork decisions are actions. All four link to the tab.
+
+**Verified**
+- **API, 31 of 31 checks.**
+  - **Access:**
+    - the civil engineer named on the contract measures;
+    - its contractor agrees, and can't measure or sign;
+    - another contractor can't see it.
+  - **Measurements:**
+    - agree, dispute (a reason is needed), and the re-measure;
+    - an agreed measurement can't be removed;
+    - over-bill quantities are flagged.
+  - **Dayworks:** sign; reject (a reason is needed); notes on sheets.
+  - **Valuation 1:** pays agreed quantities to its date at the bill rate (R 18 000) plus the signed daywork only, and the QS adjusts a quantity.
+  - **Valuation 2**, after the engineer's review and the PM's certificate:
+    - picks up the later measurement (110 m3, past the bill);
+    - keeps the paving at its certified quantity and refuses to go below it;
+    - doesn't pay the daywork twice;
+    - brings in a newly signed sheet on refresh.
+  - **Final account:** shows the remeasurement and dayworks lines.
+  - **Lump-sum contracts:** take no measurements.
+- **Browser, 6 of 6:**
+  - the engineer records a measurement;
+  - the contractor agrees it on a phone in dark mode, with no sideways scroll (the bill table fits the phone);
+  - the QS sees measured lines as quantities to date, and daywork lines marked.
+- **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the QS (92/92), civil (25/25), NCR (22/22), minimum quotes (6/6) and form of contract (10/10) checks all still pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

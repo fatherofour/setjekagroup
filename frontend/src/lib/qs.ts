@@ -167,6 +167,7 @@ export interface Contract {
   completionDate: string | null;
   finalAccountStatus: FinalAccountStatus;
   reviewerRole: string;
+  measured: boolean;
   certifyWithinDays: number | null;
   payWithinDays: number | null;
   terms: { pmTitle: string; certificate: string; variations: string; certifyWithinDays: number; payWithinDays: number };
@@ -184,6 +185,10 @@ export interface ValuationLine {
   valueToDate: number;
   costPlanItemId: string | null;
   variationId: string | null;
+  /** Measured lines: the bill rate and the quantity to date. */
+  rate: number | null;
+  quantityToDate: number | null;
+  dayworkSheetId: string | null;
 }
 
 export interface Valuation {

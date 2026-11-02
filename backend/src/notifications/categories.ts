@@ -57,6 +57,12 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   NCR_RESPONDED: 'APPROVALS',
   NCR_READY: 'APPROVALS',
   NCR_DECIDED: 'ACTIONS',
+  // Measured work: the contractor agrees each measurement; whoever measures
+  // signs each daywork sheet.
+  MEASUREMENT_RECORDED: 'APPROVALS',
+  MEASUREMENT_DISPUTED: 'ACTIONS',
+  DAYWORK_SUBMITTED: 'APPROVALS',
+  DAYWORK_DECIDED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

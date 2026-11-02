@@ -11,7 +11,7 @@ import { CommentThread } from '@/components/project/CommentThread';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
-import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation } from '@/lib/qs';
+import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation, type ValuationLine } from '@/lib/qs';
 import { contractTerms, type ContractForm } from '@/lib/projectMeta';
 
 type Option = { value: string; label: string };
@@ -49,7 +49,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
 
   const show = (x: Valuation) => {
     setV(x);
-    setPct(Object.fromEntries((x.lines ?? []).map((l) => [l.id, String(l.percentComplete)])));
+    setPct(Object.fromEntries((x.lines ?? []).map((l) => [l.id, String(l.rate != null ? (l.quantityToDate ?? 0) : l.percentComplete)])));
     setExtra({ materialsOnSite: String(x.materialsOnSite), retentionReleasePct: String(x.retentionReleasePct), valuationDate: x.valuationDate.slice(0, 10) });
   };
 
@@ -80,7 +80,9 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
 
   const c = v.contract.currency;
   const can = v.can!;
-  const changed = (v.lines ?? []).some((l) => Number(pct[l.id]) !== l.percentComplete) || Number(extra.materialsOnSite) !== v.materialsOnSite || Number(extra.retentionReleasePct) !== v.retentionReleasePct || extra.valuationDate !== v.valuationDate.slice(0, 10);
+  // A measured line holds its quantity to date in the same map.
+  const done = (l: ValuationLine) => (l.rate != null ? (l.quantityToDate ?? 0) : l.percentComplete);
+  const changed = (v.lines ?? []).some((l) => !l.dayworkSheetId && Number(pct[l.id]) !== done(l)) || Number(extra.materialsOnSite) !== v.materialsOnSite || Number(extra.retentionReleasePct) !== v.retentionReleasePct || extra.valuationDate !== v.valuationDate.slice(0, 10);
   const save = () =>
     run(() =>
       authedFetch<Valuation>(base, {
@@ -89,7 +91,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
           valuationDate: extra.valuationDate,
           materialsOnSite: Number(extra.materialsOnSite) || 0,
           retentionReleasePct: Number(extra.retentionReleasePct),
-          lines: (v.lines ?? []).map((l) => ({ id: l.id, percentComplete: Math.min(100, Math.max(0, Number(pct[l.id]) || 0)) })),
+          lines: (v.lines ?? []).filter((l) => !l.dayworkSheetId).map((l) => (l.rate != null ? { id: l.id, quantityToDate: Math.max(0, Number(pct[l.id]) || 0) } : { id: l.id, percentComplete: Math.min(100, Math.max(0, Number(pct[l.id]) || 0)) })),
         },
       }),
     );
@@ -134,9 +136,9 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Work valued</h3>
             {can.edit && (
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={busy} onClick={() => run(() => authedFetch(`${base}/refresh`, { method: 'POST' }))} className={secondaryButton} title="Bring in variations approved since this valuation was started">
+                <button type="button" disabled={busy} onClick={() => run(() => authedFetch(`${base}/refresh`, { method: 'POST' }))} className={secondaryButton} title="Bring in variations approved, and daywork sheets signed, since this valuation was started">
                   <RefreshCw size={14} />
-                  New variations
+                  New variations & dayworks
                 </button>
                 <button type="button" disabled={busy || !changed} onClick={save} className={primaryButton}>
                   {changed ? 'Save' : 'Saved'}
@@ -150,28 +152,34 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
                 <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-500 dark:border-slate-800">
                   <th className="py-2 pr-2">Description</th>
                   <th className="w-32 py-2 pr-2 text-right">Contract</th>
-                  <th className="w-24 py-2 pr-2 text-right">% complete</th>
+                  <th className="w-28 py-2 pr-2 text-right">{v.lines.some((l) => l.rate != null) ? 'Qty / %' : '% complete'}</th>
                   <th className="w-32 py-2 text-right">Value to date</th>
                 </tr>
               </thead>
               <tbody>
                 {v.lines.map((l) => {
                   const p = Number(pct[l.id]) || 0;
+                  const measuredLine = l.rate != null;
+                  const live = measuredLine ? Math.round(p * l.rate! * 100) / 100 : Math.round(l.contractAmount * p) / 100;
                   return (
                     <tr key={l.id} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="py-1.5 pr-2 text-slate-800 dark:text-slate-100">
                         {l.variationId && <span className="mr-1 rounded bg-rose-50 px-1 text-[10px] text-rose-700 dark:bg-rose-950 dark:text-rose-300">Variation</span>}
+                        {l.dayworkSheetId && <span className="mr-1 rounded bg-sky-50 px-1 text-[10px] text-sky-700 dark:bg-sky-950 dark:text-sky-300">Daywork</span>}
                         {l.description}
+                        {measuredLine && <span className="block text-[11px] text-slate-400">measured · rate {money(l.rate)}</span>}
                       </td>
                       <td className="py-1.5 pr-2 text-right tabular-nums">{money(l.contractAmount)}</td>
                       <td className="py-1.5 pr-2 text-right">
-                        {can.edit ? (
-                          <input aria-label={`% complete: ${l.description}`} type="number" min={0} max={100} step="any" className={`${inputClass} h-8 text-right`} value={pct[l.id] ?? ''} onChange={(e) => setPct({ ...pct, [l.id]: e.target.value })} />
+                        {l.dayworkSheetId ? (
+                          <span className="text-slate-400">signed</span>
+                        ) : can.edit ? (
+                          <input aria-label={measuredLine ? `Quantity to date: ${l.description}` : `% complete: ${l.description}`} type="number" min={0} max={measuredLine ? undefined : 100} step="any" className={`${inputClass} h-8 text-right`} value={pct[l.id] ?? ''} onChange={(e) => setPct({ ...pct, [l.id]: e.target.value })} />
                         ) : (
-                          <span className="tabular-nums">{l.percentComplete}%</span>
+                          <span className="tabular-nums">{measuredLine ? `${l.quantityToDate ?? 0} qty` : `${l.percentComplete}%`}</span>
                         )}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums">{money(can.edit ? Math.round(l.contractAmount * p) / 100 : l.valueToDate)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{money(can.edit && !l.dayworkSheetId ? live : l.valueToDate)}</td>
                     </tr>
                   );
                 })}
@@ -419,7 +427,8 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
         <h2 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">{contract.title}</h2>
         <p className="mt-1 text-xs text-slate-500">
           {contract.contractor.name}
-          {contract.contractForm && ` · ${contract.contractForm}`} · valuations reviewed by the {reviewerTitle(contract.reviewerRole)} · certify within {contract.terms.certifyWithinDays} days, pay within {contract.terms.payWithinDays} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
+          {contract.contractForm && ` · ${contract.contractForm}`}
+          {contract.measured && ' · measured (paid on agreed site quantities)'} · valuations reviewed by the {reviewerTitle(contract.reviewerRole)} · certify within {contract.terms.certifyWithinDays} days, pay within {contract.terms.payWithinDays} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
           {contract.costPlan && ` · priced bill ${contract.costPlan.number}`}
           {contract.rfq && ` · from ${contract.rfq.rfqNumber}`}
         </p>
@@ -595,7 +604,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
   const [contractors, setContractors] = useState<Option[]>([]);
   const [plans, setPlans] = useState<Option[]>([]);
   const [awarded, setAwarded] = useState<Option[]>([]);
-  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '' });
+  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '', measured: false });
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -641,7 +650,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
         mode === 'award'
           ? await authedFetch<Contract>(`/projects/${projectId}/qs/contracts/from-award`, {
               method: 'POST',
-              body: { rfqId: form.rfqId, title: form.title.trim() || undefined, contractForm: form.contractForm || undefined, reviewerRole: form.reviewerRole, retentionPct: Number(form.retentionPct), retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct) },
+              body: { rfqId: form.rfqId, title: form.title.trim() || undefined, contractForm: form.contractForm || undefined, reviewerRole: form.reviewerRole, measured: form.measured, retentionPct: Number(form.retentionPct), retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct) },
             })
           : await authedFetch<Contract>(`/projects/${projectId}/qs/contracts`, {
               method: 'POST',
@@ -652,6 +661,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
                 contractForm: form.contractForm || undefined,
                 costPlanId: form.costPlanId || undefined,
                 reviewerRole: form.reviewerRole,
+                measured: form.measured,
                 certifyWithinDays: form.certifyWithinDays ? Number(form.certifyWithinDays) : undefined,
                 payWithinDays: form.payWithinDays ? Number(form.payWithinDays) : undefined,
                 retentionPct: Number(form.retentionPct),
@@ -659,7 +669,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
               },
             });
       setMode('none');
-      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '' });
+      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '', measured: false });
       changed();
       setOpen(c.id);
     } catch (err) {
@@ -745,6 +755,10 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
               </label>
               <Select id="ct-form" className={inputClass} value={form.contractForm} onChange={(v) => setForm({ ...form, contractForm: v })} options={CONTRACT_FORMS} />
             </div>
+            <label className="flex items-start gap-2 self-end pb-2 text-xs text-slate-600 dark:text-slate-300">
+              <input type="checkbox" className="mt-0.5" checked={form.measured} onChange={(e) => setForm({ ...form, measured: e.target.checked })} />
+              <span>Measured contract: paid on quantities measured on site, remeasured at the end</span>
+            </label>
             <div>
               <label className={labelClass} htmlFor="ct-ret">
                 Retention %

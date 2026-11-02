@@ -29,7 +29,8 @@ type CommentEntityType =
   | 'COST_PLAN'
   | 'PROJECT_CONTRACT'
   | 'VALUATION'
-  | 'NCR';
+  | 'NCR'
+  | 'DAYWORK';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

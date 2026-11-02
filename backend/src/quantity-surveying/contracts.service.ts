@@ -180,6 +180,7 @@ export class ContractsService {
         costPlanId,
         rfqId: rfq.id,
         reviewerRole: dto.reviewerRole ?? 'ARCHITECT',
+        measured: dto.measured ?? false,
         retentionPct: dto.retentionPct ?? 10,
         retentionLimitPct: dto.retentionLimitPct === undefined ? 5 : dto.retentionLimitPct,
         vatPct: rfq.costPlan?.vatPct ?? 15,
@@ -195,7 +196,7 @@ export class ContractsService {
     await this.contract(projectId, id);
     await this.checkPlan(projectId, dto.costPlanId);
     const certified = await this.prisma.valuation.count({ where: { contractId: id, status: { in: [...CERTIFIED] } } });
-    if (certified && (dto.contractSum !== undefined || dto.retentionPct !== undefined || dto.retentionLimitPct !== undefined || dto.vatPct !== undefined || dto.reviewerRole !== undefined)) {
+    if (certified && (dto.contractSum !== undefined || dto.retentionPct !== undefined || dto.retentionLimitPct !== undefined || dto.vatPct !== undefined || dto.reviewerRole !== undefined || dto.measured !== undefined)) {
       throw new BadRequestException('Certificates have been issued on this contract, so its sum and retention terms are fixed. Changes come through variations.');
     }
     await this.prisma.projectContract.update({
@@ -229,17 +230,24 @@ export class ContractsService {
       this.prisma.valuation.findFirst({ where: { contractId: id }, orderBy: { number: 'desc' }, include: { lines: true } }),
     ]);
     const spentOn = (itemId: string) => latest?.lines.find((l) => l.costPlanItemId === itemId)?.valueToDate ?? 0;
+    // A measured contract is remeasured: each measured item at its quantity to
+    // date in the latest valuation, against the bill (the user's choice, 2 Nov 2026).
+    const sumIds = new Set(items.map((i) => i.id));
+    const remeasure = c.measured ? (latest?.lines ?? []).filter((l) => l.rate != null && l.costPlanItemId && !sumIds.has(l.costPlanItemId)).reduce((s, l) => s + (l.valueToDate - l.contractAmount), 0) : 0;
+    const dayworks = (latest?.lines ?? []).filter((l) => l.dayworkSheetId).reduce((s, l) => s + l.valueToDate, 0);
     const omitted = items.reduce((s, i) => s + i.amount, 0);
     const expended = items.reduce((s, i) => s + spentOn(i.id), 0);
     const varTotal = variations.reduce((s, v) => s + (v.assessedValue ?? v.estimatedValue), 0);
     const claimTotal = claims.reduce((s, x) => s + (x.amount2 ?? 0), 0);
-    const finalSum = c.contractSum - omitted + expended + varTotal + claimTotal;
+    const finalSum = c.contractSum - omitted + expended + remeasure + dayworks + varTotal + claimTotal;
     const entry = c.finalAccountEntryId ? await this.prisma.projectRegisterEntry.findUnique({ where: { id: c.finalAccountEntryId }, select: { id: true, status: true, completedAt: true } }) : null;
     return {
       contract: { id: c.id, title: c.title, contractor: c.contractor.name, currency: c.currency, status: c.finalAccountStatus },
       lines: [
         { label: 'Contract sum', amount: round(c.contractSum) },
         ...(items.length ? [{ label: 'Less provisional and prime-cost sums', amount: round(-omitted) }, { label: 'Add provisional and prime-cost sums spent', amount: round(expended) }] : []),
+        ...(c.measured ? [{ label: 'Remeasurement (quantities measured, against the bill)', amount: round(remeasure) }] : []),
+        ...(dayworks ? [{ label: 'Add signed dayworks', amount: round(dayworks) }] : []),
         { label: `Add approved variations (${variations.length})`, amount: round(varTotal) },
         { label: `Add agreed claims (${claims.length})`, amount: round(claimTotal) },
       ],
