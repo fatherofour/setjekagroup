@@ -61,7 +61,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
   ] = await Promise.all([
     prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true, createdById: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
-    prisma.projectDocument.findMany({ where: { deletedAt: null, projectId }, select: { name: true, documentType: true, description: true } }),
+    prisma.projectDocument.findMany({ where: { deletedAt: null, projectId }, select: { name: true, documentType: true, description: true, createdById: true } }),
     prisma.transmittal.count({ where: { projectId, status: 'ISSUED' } }),
     prisma.documentRevision.findMany({ where: { document: { projectId, deletedAt: null }, reviewStatus: { not: 'PENDING' } }, select: { reviewStatus: true } }),
     prisma.documentApprovalRequest.findMany({ where: { projectId, status: { not: 'WITHDRAWN' } }, select: { outcome: true } }),
@@ -108,7 +108,7 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
   return {
     entries,
     meetings,
-    docText: documents.map((d) => `${d.name} ${d.documentType ?? ''} ${d.description ?? ''}`),
+    docs: documents.map((d) => ({ text: `${d.name} ${d.documentType ?? ''} ${d.description ?? ''}`, by: d.createdById })),
     transmittals,
     revisions,
     clientApprovals,
@@ -182,8 +182,8 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
       return rows.length ? `${plural(rows.length, 'meeting')}${e.minutes ? ' with minutes issued' : ' held'}` : null;
     }
     case 'document': {
-      const hit = f.docText.find((t) => e.match.test(t));
-      return hit ? `Document on file: ${hit.trim().slice(0, 80)}` : null;
+      const hit = f.docs.find((d) => e.match.test(d.text) && (!e.byRole || mine(d.by)));
+      return hit ? `Document on file: ${hit.text.trim().slice(0, 80)}` : null;
     }
     case 'stageApproved':
       return f.approvedFrom.has(e.from) ? 'Stage move approved by the client' : null;

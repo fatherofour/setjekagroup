@@ -933,6 +933,13 @@ that step gets skipped.
   connections register is now kept by every engineer (each has PROCSA 2.8);
   final accounts stay with the QS and the civil engineer.
 
+- **2 Nov 2026 — the electrical and mechanical engineers, Stages 2–6
+  (document.md §2.29).** One shared list (their PROCSA matrices match item
+  for item), built from the civil engineer's: new 2.11 cost estimates and
+  life cycle costs, 4.4 their cost estimate to the QS, 5.9 commissioning,
+  and a final account (5.13, 6.5). Document evidence can now count only the
+  role's own uploads. All PROCSA roles in the matrix are now built.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

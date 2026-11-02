@@ -79,7 +79,8 @@ const QS: ProjectMemberRole[] = ['QUANTITY_SURVEYOR'];
 // for their own works (2026-10-29); the civil engineer also keeps the
 // service connections and the final accounts of civil works.
 const CONSULTANTS = DESIGN_CONSULTANTS;
-const CIVIL: ProjectMemberRole[] = ['CIVIL_ENGINEER'];
+// The engineers who prepare a final account of their works (5.13, 6.5).
+const FINAL_ACCOUNT_ENGINEERS: ProjectMemberRole[] = ['CIVIL_ENGINEER', 'ELECTRICAL_ENGINEER', 'MECHANICAL_ENGINEER'];
 
 const opt = (...pairs: [string, string][]) => Object.fromEntries(pairs);
 
@@ -377,10 +378,10 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
   {
     key: 'final-accounts',
     label: 'Final accounts',
-    procsa: 'DM 6.7 · PM 6.7 · QS 5.9, 6.2 · Civil 5.13, 6.5',
+    procsa: 'DM 6.7 · PM 6.7 · QS 5.9, 6.2 · Civil, electrical and mechanical 5.13, 6.5',
     description: "Each contractor's final account, from preparation to agreement. The QS prepares it from the contract under Commercial, Contracts & valuations, which keeps this register up to date.",
     contractorsSee: true,
-    editableBy: [...QS, ...CIVIL],
+    editableBy: [...QS, ...FINAL_ACCOUNT_ENGINEERS],
     fields: [
       { column: 'contractorId', label: 'Contractor', type: 'contractor', inList: true },
       { column: 'title', label: 'Contract', type: 'text', required: true, inList: true },

@@ -11,7 +11,7 @@ export type DeliveryEvidence =
   | { kind: 'register'; register: string; category?: string[]; status?: string[]; min?: number; byRole?: boolean }
   | { kind: 'registerAllDone'; register: string; category: string[]; doneStatus: string[] }
   | { kind: 'meetings'; types: string[]; minutes?: boolean }
-  | { kind: 'document'; match: RegExp }
+  | { kind: 'document'; match: RegExp; byRole?: boolean }
   | { kind: 'stageApproved'; from: ProjectStage }
   | { kind: 'consents'; status: string[] }
   | { kind: 'appointments'; rolesDefined?: boolean; role?: string }
@@ -76,7 +76,7 @@ export interface DeliveryItem {
 }
 
 export interface DeliveryRole {
-  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR' | 'CIVIL_ENGINEER' | 'STRUCTURAL_ENGINEER';
+  key: 'DEVELOPMENT_MANAGER' | 'PROJECT_MANAGER' | 'ARCHITECT' | 'QUANTITY_SURVEYOR' | 'CIVIL_ENGINEER' | 'STRUCTURAL_ENGINEER' | 'ELECTRICAL_ENGINEER' | 'MECHANICAL_ENGINEER';
   label: string;
   memberRoles: ProjectMemberRole[];
   items: DeliveryItem[];
@@ -594,6 +594,96 @@ const STRUCTURAL_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = Object.f
   ]),
 );
 
+// PROCSA Electrical and Mechanical Engineers, Stages 2 to 6 (the user,
+// 2 Nov 2026: carry on with the engineers). Their matrices are the same
+// item for item: the civil engineer's work, plus cost estimates and life
+// cycle costs (2.11, so liaison moves to 2.12), their own cost estimate to
+// the QS (4.4), and commissioning with the tests (5.9). Like the civil
+// engineer they keep a final account of their works (5.13, 6.5).
+const COST_ESTIMATE = /estimate|life[\s-]*cycle|cost/i;
+const SERVICES_TEXT: Record<string, string> = {
+  '2.1': 'Agree documentation programme with principal consultant and other consultants',
+  '2.2': "Attend design and consultants' meetings",
+  '2.3': 'Establish concept design criteria',
+  '2.4': 'Prepare initial concept design and related documentation',
+  '2.5': 'Advise client regarding further surveys, analyses, tests and investigations which may be required',
+  '2.6': 'Refine and assess the concept design to ensure conformance with all regulatory requirements and consents',
+  '2.7': "Establish regulatory authorities' requirements and incorporate into the design",
+  '2.8': 'Establish utilities, services and connections required for the design',
+  '2.9': 'Coordinate design interfaces with other consultants',
+  '2.10': 'Prepare preliminary design and related documentation for approval by authorities and client and suitable for costing',
+  '2.11': 'Provide cost estimates and life cycle costs as required',
+  '2.12': 'Liaise, co-operate and provide necessary information to the client, principal consultant and other consultants',
+  '3.1': 'Review documentation programme with principal consultant and other consultants',
+  '3.2': "Attend design and consultants' meetings",
+  '3.3': "Incorporate client's and authorities' detailed requirements into design",
+  '3.4': "Incorporate other consultants' designs and requirements into design",
+  '3.5': 'Prepare design development drawings including draft technical details and specifications',
+  '3.6': 'Liaise, co-operate and provide necessary information to principal consultant and other consultants',
+  '3.7': 'Submit necessary design documentation to local authorities for approval',
+  '4.1': "Attend design and consultants' meetings",
+  '4.2': 'Prepare specifications for scope of works and agree preambles with quantity surveyor',
+  '4.3': 'Co-ordinate services design with other consultants',
+  '4.4': 'Provide cost estimate to quantity surveyor for incorporation into the construction budget',
+  '4.5': 'Provide working drawings to the quantity surveyor for preparation of procurement documentation',
+  '4.6': 'Liaise, co-operate and provide necessary information to principal consultant and other consultants',
+  '4.7': 'Assist with evaluation of tenders',
+  '4.8': 'Assist with preparation of contract documentation for signature',
+  '4.9': 'Assess samples and products for compliance and design intent',
+  '5.1': 'Attend site handover',
+  '5.2': 'Issue construction documentation in accordance with the documentation schedule',
+  '5.3': 'Carry out contract administration procedures delegated by the principal agent',
+  '5.4': 'Attend regular site, progress and technical meetings',
+  '5.5': 'Inspect works for conformity to contract documentation',
+  '5.6': 'Assist in the resolution of contractual claims by the contractor',
+  '5.7': 'Clarify details and descriptions during construction as required',
+  '5.8': 'Receive, comment and approve interim payment valuations',
+  '5.9': 'Witnessing and review of mock-ups, tests and commissioning',
+  '5.10': 'Check and approve subcontract shop drawings for design intent',
+  '5.11': 'Update and issue drawings register',
+  '5.12': 'Issue contract instructions as and when required',
+  '5.13': 'Prepare final account(s) for the works on a progressive basis',
+  '5.14': 'Review and comment on operation and maintenance manuals, guarantee certificates and warranties',
+  '5.15': 'Inspect the works and issue practical completion and defects lists',
+  '5.16': 'Assist in obtaining statutory certificates',
+  '6.1': 'Inspect and verify the rectification of defects',
+  '6.2': 'Receive, comment and approve relevant payment valuations and completion certificates',
+  '6.3': 'Prepare and/or procure operations and maintenance manuals, guarantees and warranties',
+  '6.4': 'Prepare and/or procure as-built drawings and documentation',
+  '6.5': 'Conclude final account(s)',
+};
+
+/** A services engineer's list, from the civil engineer's items. */
+function servicesEngineerItems(who: string, text: Record<string, string>): Partial<Record<ProjectStage, DeliveryItem[]>> {
+  const out: Partial<Record<ProjectStage, DeliveryItem[]>> = {};
+  for (const [stage, items] of Object.entries(CIVIL_ITEMS) as [ProjectStage, DeliveryItem[]][]) {
+    const list: DeliveryItem[] = [];
+    for (const i of items) {
+      const item = { ...i, tickedBy: i.tickedBy.replace(/civil engineer/g, who) };
+      if (stage === 'CONCEPT' && i.code === '2.11') {
+        list.push({ code: '2.11', text: '', evidence: { kind: 'document', match: COST_ESTIMATE, byRole: true }, tickedBy: `A cost estimate or life cycle costing uploaded by the ${who}`, go: tab('documents', 'Documents') });
+        item.code = '2.12';
+      }
+      if (stage === 'DOCUMENTATION_PROCUREMENT' && i.code === '4.4') {
+        item.evidence = { kind: 'document', match: COST_ESTIMATE, byRole: true };
+        item.tickedBy = `A cost estimate uploaded by the ${who} for the QS`;
+        item.go = tab('documents', 'Documents');
+      }
+      if (stage === 'CONSTRUCTION' && i.code === '5.9') {
+        item.evidence = { kind: 'any', of: [{ kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, { kind: 'document', match: /commission/i, byRole: true }] };
+        item.tickedBy = `A test or mock-up witnessed, or a commissioning record uploaded, by the ${who}`;
+      }
+      list.push(item);
+    }
+    out[stage] = list.map((i) => ({ ...i, text: text[i.code] }));
+  }
+  return out;
+}
+const ELECTRICAL_ROLES: ProjectMemberRole[] = ['ELECTRICAL_ENGINEER', 'ARCHITECT_ENGINEER'];
+const ELECTRICAL_ITEMS = servicesEngineerItems('electrical engineer', SERVICES_TEXT);
+const MECHANICAL_ROLES: ProjectMemberRole[] = ['MECHANICAL_ENGINEER', 'ARCHITECT_ENGINEER'];
+const MECHANICAL_ITEMS = servicesEngineerItems('mechanical engineer', { ...SERVICES_TEXT, '5.9': 'Witnessing and review of all mock-ups, tests and commissioning' });
+
 for (const s of DELIVERY_STAGES) {
   const items = ARCHITECT_ITEMS[s.stage];
   if (items) s.roles.push({ key: 'ARCHITECT', label: 'Architect', memberRoles: ARCH_ROLES, items });
@@ -603,6 +693,10 @@ for (const s of DELIVERY_STAGES) {
   if (civil) s.roles.push({ key: 'CIVIL_ENGINEER', label: 'Civil Engineer', memberRoles: CIVIL_ROLES, items: civil });
   const structural = STRUCTURAL_ITEMS[s.stage];
   if (structural) s.roles.push({ key: 'STRUCTURAL_ENGINEER', label: 'Structural Engineer', memberRoles: STRUCTURAL_ROLES, items: structural });
+  const electrical = ELECTRICAL_ITEMS[s.stage];
+  if (electrical) s.roles.push({ key: 'ELECTRICAL_ENGINEER', label: 'Electrical Engineer', memberRoles: ELECTRICAL_ROLES, items: electrical });
+  const mechanical = MECHANICAL_ITEMS[s.stage];
+  if (mechanical) s.roles.push({ key: 'MECHANICAL_ENGINEER', label: 'Mechanical Engineer', memberRoles: MECHANICAL_ROLES, items: mechanical });
 }
 
 export function findDeliveryItem(stage: string, roleKey: string, code: string) {

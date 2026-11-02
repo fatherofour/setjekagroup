@@ -2767,6 +2767,25 @@ Built on 2026-11-02, the second of the engineers (the user: "go ahead with the s
   - **Registers:** the structural engineer keeps service connections, but not the final accounts or the architect's finishes schedule.
 - **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), the civil journey (25/25), NCRs (22/22) and the QS journey (92/92) all still pass.
 
+### 2.29 The electrical and mechanical engineers — PROCSA Stages 2 to 6
+
+Built on 2026-11-02, the last of the engineers (the user: "carry on").
+
+**The lists** (`procsa-delivery.ts`, `servicesEngineerItems`)
+- **One list, two roles.** The two PROCSA matrices are the same item for item: 12, 7, 9, 16 and 5 items, 49 each. One definition builds both, from the civil engineer's items, with only the wording differing.
+- **Where they differ from the civil engineer:**
+  - **2.11** "Provide cost estimates and life cycle costs as required" (new). It ticks from a cost estimate or life cycle costing the engineer uploads; liaison moves to 2.12.
+  - **4.3** co-ordinating services design with the other consultants.
+  - **4.4** "Provide cost estimate to quantity surveyor for incorporation into the construction budget". It ticks from the engineer's own uploaded cost estimate.
+  - **5.9** adds commissioning. It ticks from a test or mock-up they witnessed, or a commissioning record they uploaded.
+- **Final account.** Like the civil engineer, they prepare and conclude a final account of their works (5.13, 6.5). The final accounts register is now kept by the QS and the civil, electrical and mechanical engineers. The structural engineer has no final account in PROCSA.
+- **Own documents only.** Document evidence can now count only the role's own uploads (`document` with `byRole`). So the QS's or Setjeka's estimate doesn't tick an engineer's 2.11 or 4.4.
+
+**Verified**
+- **Electrical journey (API), 26 of 26 checks.** Every item ticks. Setjeka's cost estimate doesn't tick the electrical engineer's 2.11. Valuations on a contract naming the electrical engineer go to them alone. They keep the final account of their works.
+- **Mechanical journey (API), 25 of 25 checks.** The same, as the mechanical engineer.
+- **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), and the civil (25/25), structural (25/25), NCR (22/22) and QS (92/92) journeys all still pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
