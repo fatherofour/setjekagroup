@@ -64,6 +64,8 @@ export interface ValuationInputs {
   contract: { contractSum: number; retentionPct: number; retentionLimitPct: number | null; vatPct: number };
   /** The cumulative net of the last certified valuation before this one. */
   previouslyCertified: number;
+  /** Contract price adjustment to date. */
+  escalation?: number;
 }
 
 /** Gross value to date, less retention (capped at its limit, and released
@@ -72,7 +74,7 @@ export interface ValuationInputs {
 export function valuationFigures(v: ValuationInputs) {
   const workDone = v.lines.filter((l) => !l.variationId).reduce((s, l) => s + l.valueToDate, 0);
   const variationsDone = v.lines.filter((l) => l.variationId).reduce((s, l) => s + l.valueToDate, 0);
-  const grossValuation = workDone + variationsDone + v.materialsOnSite;
+  const grossValuation = workDone + variationsDone + (v.escalation ?? 0) + v.materialsOnSite;
   const full = (grossValuation * v.contract.retentionPct) / 100;
   const capped = v.contract.retentionLimitPct != null ? Math.min(full, (v.contract.contractSum * v.contract.retentionLimitPct) / 100) : full;
   const retention = Math.max(capped, 0) * (1 - v.retentionReleasePct / 100);
@@ -90,6 +92,14 @@ export function valuationFigures(v: ValuationInputs) {
     vat: round(vat),
     amountDue: round(netDue + vat),
   };
+}
+
+/** Contract price adjustment for one period (the Haylett formula CPAP uses):
+ * (1 - fixed share) x the period's work x (sum of weight x index now / index
+ * at base, less 1). The weights add to 1. */
+export function priceAdjustment(periodValue: number, fixedPct: number, parts: { weight: number; base: number; current: number }[]) {
+  const factor = parts.reduce((s, p) => s + (p.weight * p.current) / p.base, 0);
+  return { factor: Math.round(factor * 10000) / 10000, amount: round((1 - fixedPct / 100) * periodValue * (factor - 1)) };
 }
 
 /** A QS's S-curve: the cumulative share of the contract spent by the end

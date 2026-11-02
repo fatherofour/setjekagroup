@@ -4240,10 +4240,53 @@ model ProjectContract {
   measured            Boolean            @default(false)
   siteMeasurements    SiteMeasurement[]
   dayworkSheets       DayworkSheet[]
+  // Contract price adjustment (CPAP): the month the tender was priced at,
+  // the share that isn't adjusted, how many months the indices lag the
+  // valuation, and each index's weighting. No weightings, no adjustment.
+  escalationBaseMonth DateTime?
+  escalationFixedPct  Float              @default(15)
+  escalationLagMonths Int                @default(0)
+  escalationWeights   ContractEscalationWeight[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
   @@index([projectId])
+}
+
+/// A published cost index (Stats SA's CPAP series and the like): kept once,
+/// for every project's contracts.
+model PriceIndex {
+  id        String                     @id @default(uuid())
+  code      String                     @unique
+  name      String
+  source    String?
+  values    PriceIndexValue[]
+  weights   ContractEscalationWeight[]
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+}
+
+/// An index's value for a month (the first of the month).
+model PriceIndexValue {
+  id      String     @id @default(uuid())
+  indexId String
+  index   PriceIndex @relation(fields: [indexId], references: [id], onDelete: Cascade)
+  month   DateTime
+  value   Float
+
+  @@unique([indexId, month])
+}
+
+/// A contract's weighting on one index; a contract's weightings add to 1.
+model ContractEscalationWeight {
+  id         String          @id @default(uuid())
+  contractId String
+  contract   ProjectContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  indexId    String
+  index      PriceIndex      @relation(fields: [indexId], references: [id], onDelete: Restrict)
+  weight     Float
+
+  @@unique([contractId, indexId])
 }
 
 enum ValuationStatus {
@@ -4281,6 +4324,9 @@ model Valuation {
   netDue              Float            @default(0)
   vat                 Float            @default(0)
   amountDue           Float            @default(0)
+  // Contract price adjustment to date (cumulative), and how it was worked.
+  escalationToDate    Float            @default(0)
+  escalationNote      String?
   notes               String?
   preparedById        String
   preparedBy          User             @relation("ValuationPreparedBy", fields: [preparedById], references: [id])

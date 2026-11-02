@@ -30,6 +30,7 @@ export interface ValuationSheet {
   figures: {
     workDone: number;
     variationsDone: number;
+    escalation: number;
     materialsOnSite: number;
     grossValuation: number;
     retention: number;
@@ -152,6 +153,7 @@ export async function valuationPdf(v: ValuationSheet): Promise<Uint8Array> {
   const sums: [string, number, boolean?][] = [
     ['Work done to date', f.workDone],
     ['Variations to date', f.variationsDone],
+    ...(f.escalation ? [['Contract price adjustment to date', f.escalation] as [string, number]] : []),
     ['Materials on site', f.materialsOnSite],
     ['Gross valuation', f.grossValuation, true],
     [`Less retention (${f.retentionPct}%${f.retentionReleasePct ? `, ${f.retentionReleasePct}% released` : ''})`, -f.retention],

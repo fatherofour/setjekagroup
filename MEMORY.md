@@ -949,6 +949,14 @@ that step gets skipped.
   The final account adds remeasurement and dayworks. Next on the user's
   list: price escalation, test results, interfaces & hidden works.
 
+- **2 Nov 2026 — contract price adjustment (document.md §2.33).** Price
+  indices are global (code, monthly values), entered by the QS or Setjeka.
+  A contract carries a base month, fixed share (15%), lag and weightings
+  adding to 1; it locks once a valuation is certified. Each valuation adds
+  (1 - fixed) x period work (no dayworks) x (sum w.It/I0 - 1), cumulative,
+  in the gross; a missing month uses the latest index and is flagged
+  provisional. Next: test results, then interfaces & hidden works.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

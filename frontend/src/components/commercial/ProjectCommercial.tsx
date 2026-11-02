@@ -16,6 +16,7 @@ import { VariationsPanel } from './VariationsPanel';
 import { InvoicesPanel } from './InvoicesPanel';
 import { BillsPanel } from '@/components/qs/BillsPanel';
 import { ContractsPanel } from '@/components/qs/ContractsPanel';
+import { PriceIndicesPanel } from '@/components/qs/EscalationPanels';
 
 interface EstimateRow {
   id: string;
@@ -97,6 +98,7 @@ export function ProjectCommercial({ projectId, currency, contractForm = null, is
         { value: 'variations', label: terms.variations },
         { value: 'bills', label: 'Bills & cost plans' },
         { value: 'contracts', label: 'Contracts & valuations' },
+        { value: 'indices', label: 'Price indices' },
         { value: 'invoices', label: 'Supplier invoices' },
         ...(internal
           ? [
@@ -114,6 +116,7 @@ export function ProjectCommercial({ projectId, currency, contractForm = null, is
       {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} internal={internal} terms={terms} onChanged={changed} />}
       {tab === 'bills' && !isClient && <BillsPanel projectId={projectId} internal={internal} isClient={isClient} initialPlanId={params.get('plan')} onChanged={changed} />}
       {tab === 'contracts' && <ContractsPanel projectId={projectId} internal={internal} isClient={isClient} onChanged={changed} />}
+      {tab === 'indices' && !isClient && <PriceIndicesPanel projectId={projectId} />}
       {tab === 'invoices' && <InvoicesPanel projectId={projectId} readOnly={isClient || !internal} onChanged={changed} />}
       {tab === 'estimates' && internal && <ProjectEstimates projectId={projectId} />}
       {tab === 'rom' && internal && <RomPanel projectId={projectId} />}

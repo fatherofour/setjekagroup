@@ -2900,6 +2900,51 @@ Built on 2026-11-02 (the user's choice from the list kept until all roles were b
   - the QS sees measured lines as quantities to date, and daywork lines marked.
 - **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the QS (92/92), civil (25/25), NCR (22/22), minimum quotes (6/6) and form of contract (10/10) checks all still pass.
 
+### 2.33 Contract price adjustment from price indices
+
+Built on 2026-11-02 (the user's choice from the list kept until all roles were built). Until now escalation was only a flat % on a bill. Under JBCC and GCC contracts with contract price adjustment (CPAP), each payment is adjusted by published cost indices.
+
+**Price indices** (`PriceIndex`, `PriceIndexValue`; Commercial > "Price indices")
+- **Shared.** Indices (for example Stats SA's labour, plant, materials and fuel series) are kept once, for every project. Each has a unique code, a name and a source.
+- **Monthly values.** The QS or Setjeka enters each month's value as it is published, or corrects one. Draft valuations that use the index are worked out again straight away, on any project.
+
+**A contract's price adjustment** (`ContractEscalationWeight`, on the contract screen)
+- **The contract data.** The base month (when the tender was priced), the fixed share that isn't adjusted (15% by default), the index lag in months (0 by default), and a weighting for each index.
+- **Rules.** The weightings must add to 1, and a base month is needed. No weightings turns it off.
+- **When it is fixed.** It can't change once a valuation on the contract is certified.
+
+**In each valuation** (`EscalationService.forValuation`, `priceAdjustment` in `qs-math.ts`)
+- **The formula:** adjustment for the period = (1 − fixed share) × the period's work × (Σ weight × index for the month ÷ index at the base month − 1).
+  - The period's work is the work and variations to date, less what the last certified valuation had. Dayworks are left out: they are already at current prices.
+  - The month is the valuation's month less the lag.
+- **Cumulative.** The adjustment to date is the last certified valuation's plus this period's. It is part of the gross valuation, so retention applies to it.
+- **Provisional figures.** If an index for the month isn't published yet, the latest one is used and the valuation says so: for example "provisional, latest published used: LABOUR Oct 2026". Entering the month's value updates the draft.
+- **Missing base.** With no index for the base month, there is no adjustment that period, and the valuation says why.
+- **Where it shows.** The valuation screen gives the adjustment to date with how it was worked. The certificate PDF adds "Contract price adjustment to date". The final account adds "Add contract price adjustment".
+
+**Not done here:** the formula is one weighted set per contract. Separate formulae per work type (for example civil and building portions on one contract) aren't supported. Check the default 15% fixed share and the lag against the contract data in use.
+
+**Verified**
+- **API, 17 of 17 checks.**
+  - **Indices:** the QS adds them; a code is used once; the contractor can't add one; months must be YYYY-MM.
+  - **Contract set-up:**
+    - the weightings must add to 1;
+    - a base month is needed;
+    - the set-up is fixed once a valuation is certified.
+  - **Valuation 1:** 20% of R 1 000 000 at weights 0.40 / 0.45 / 0.15.
+    - It is first provisional on October's indices: factor 1.095, R 16 150, in the gross.
+    - Entering November makes it final: factor 1.105, R 17 850.
+    - The certificate PDF prints.
+  - **Valuation 2:** adjusts only the next R 300 000, for R 44 625 to date.
+  - **Final account:** adds R 44 625.
+  - **A contract without it:** has no adjustment.
+- **Browser, 6 of 6:**
+  - the QS enters an index value;
+  - sees the contract's weightings, fixed once certified;
+  - sees the adjustment and its working on a valuation;
+  - sets up price adjustment on another contract (Save waits until the weightings add to 1).
+- **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the QS (92/92), measured valuations (31/31), civil (25/25), NCR (22/22), minimum quotes (6/6) and form of contract (10/10) checks all still pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

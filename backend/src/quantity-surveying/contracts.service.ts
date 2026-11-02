@@ -239,7 +239,8 @@ export class ContractsService {
     const expended = items.reduce((s, i) => s + spentOn(i.id), 0);
     const varTotal = variations.reduce((s, v) => s + (v.assessedValue ?? v.estimatedValue), 0);
     const claimTotal = claims.reduce((s, x) => s + (x.amount2 ?? 0), 0);
-    const finalSum = c.contractSum - omitted + expended + remeasure + dayworks + varTotal + claimTotal;
+    const escalation = latest?.escalationToDate ?? 0;
+    const finalSum = c.contractSum - omitted + expended + remeasure + dayworks + varTotal + claimTotal + escalation;
     const entry = c.finalAccountEntryId ? await this.prisma.projectRegisterEntry.findUnique({ where: { id: c.finalAccountEntryId }, select: { id: true, status: true, completedAt: true } }) : null;
     return {
       contract: { id: c.id, title: c.title, contractor: c.contractor.name, currency: c.currency, status: c.finalAccountStatus },
@@ -250,6 +251,7 @@ export class ContractsService {
         ...(dayworks ? [{ label: 'Add signed dayworks', amount: round(dayworks) }] : []),
         { label: `Add approved variations (${variations.length})`, amount: round(varTotal) },
         { label: `Add agreed claims (${claims.length})`, amount: round(claimTotal) },
+        ...(escalation ? [{ label: 'Add contract price adjustment', amount: round(escalation) }] : []),
       ],
       finalAccount: round(finalSum),
       change: round(finalSum - c.contractSum),

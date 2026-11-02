@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { round } from '../cost-database/pricing.js';
 import { SignoffService, signoffRootDir, type RequestMeta } from '../signoff/signoff.service.js';
+import { EscalationService } from './escalation.service.js';
 import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue, type DecisionDto } from '../signoff/dto/decision.dto.js';
 import { generateStoredName, uploadRootDir } from '../project-documents/upload.util.js';
 import { QsAccessService } from './qs-access.service.js';
@@ -41,6 +42,7 @@ export class ValuationsService {
     private readonly access: QsAccessService,
     private readonly contracts: ContractsService,
     private readonly signoff: SignoffService,
+    private readonly escalation: EscalationService,
   ) {}
 
   private link(projectId: string) {
@@ -104,14 +106,26 @@ export class ValuationsService {
   private async recompute(id: string) {
     const v = await this.prisma.valuation.findUniqueOrThrow({ where: { id }, include: { lines: true, contract: true } });
     const prev = await this.previous(v.contractId, v.number);
+    const esc = await this.escalation.forValuation(v, prev);
     const f = valuationFigures({
       lines: v.lines,
       materialsOnSite: v.materialsOnSite,
       retentionReleasePct: v.retentionReleasePct,
       contract: v.contract,
       previouslyCertified: prev?.cumulativeNet ?? 0,
+      escalation: esc.toDate,
     });
-    await this.prisma.valuation.update({ where: { id }, data: f });
+    await this.prisma.valuation.update({ where: { id }, data: { ...f, escalationToDate: esc.toDate, escalationNote: esc.note } });
+  }
+
+  /** Draft valuations take a changed price adjustment or a newly entered
+   * index on their next sum; this brings them up to date now. */
+  async recomputeDrafts(where: { contractId?: string; indexId?: string }) {
+    const drafts = await this.prisma.valuation.findMany({
+      where: { status: 'DRAFT', ...(where.contractId && { contractId: where.contractId }), ...(where.indexId && { contract: { escalationWeights: { some: { indexId: where.indexId } } } }) },
+      select: { id: true },
+    });
+    for (const d of drafts) await this.recompute(d.id);
   }
 
   /** A new valuation starts from the contract bill and the approved
@@ -256,6 +270,7 @@ export class ValuationsService {
         figures: {
           workDone: v.workDone,
           variationsDone: v.variationsDone,
+          escalation: v.escalationToDate,
           materialsOnSite: v.materialsOnSite,
           grossValuation: v.grossValuation,
           retention: v.retention,

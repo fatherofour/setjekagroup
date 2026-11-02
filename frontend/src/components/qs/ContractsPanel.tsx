@@ -13,6 +13,7 @@ import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation, type ValuationLine } from '@/lib/qs';
 import { contractTerms, type ContractForm } from '@/lib/projectMeta';
+import { PriceAdjustmentCard } from '@/components/qs/EscalationPanels';
 
 type Option = { value: string; label: string };
 
@@ -229,6 +230,13 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
           <dd className="text-right tabular-nums">{money(v.workDone)}</dd>
           <dt className="text-slate-500">Variations to date</dt>
           <dd className="text-right tabular-nums">{money(v.variationsDone)}</dd>
+          {(v.escalationToDate !== 0 || v.escalationNote) && (
+            <>
+              <dt className="text-slate-500">Contract price adjustment to date</dt>
+              <dd className="text-right tabular-nums">{money(v.escalationToDate)}</dd>
+              {v.escalationNote && <dd className={`col-span-2 text-[11px] ${/provisional|No /.test(v.escalationNote) ? 'text-amber-700 dark:text-amber-400' : 'text-slate-400'}`}>{v.escalationNote}</dd>}
+            </>
+          )}
           <dt className="text-slate-500">Materials on site</dt>
           <dd className="text-right tabular-nums">{money(v.materialsOnSite)}</dd>
           <dt className="font-medium">Gross valuation</dt>
@@ -505,6 +513,8 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
           </ul>
         )}
       </div>
+
+      {preparer && <PriceAdjustmentCard projectId={projectId} contractId={contract.id} locked={s.certifiedGross > 0} onSaved={refresh} />}
 
       {fa && (
         <div className={cardClass}>

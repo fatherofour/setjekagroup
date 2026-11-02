@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { ContractForm, CostPlanItemType, CostPlanKind, Currency, type ProjectMemberRole } from '../../generated/prisma/enums.js';
 import { CONTRACT_REVIEWERS } from '../../common/consultants.js';
 import { DecisionDto } from '../../signoff/dto/decision.dto.js';
@@ -146,6 +146,34 @@ export class CreateDayworkDto {
   @IsOptional() @IsNumber() @Min(0) labour?: number;
   @IsOptional() @IsNumber() @Min(0) plant?: number;
   @IsOptional() @IsNumber() @Min(0) materials?: number;
+}
+
+export class PriceIndexDto {
+  @IsString() @MinLength(1) @MaxLength(30) code!: string;
+  @IsString() @MinLength(1) @MaxLength(200) name!: string;
+  @IsOptional() @IsString() @MaxLength(300) source?: string;
+}
+
+export class IndexValueDto {
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'month must be YYYY-MM' }) month!: string;
+  @IsNumber() @Min(0.0001) value!: number;
+}
+
+export class IndexValuesDto {
+  @IsArray() @ArrayMaxSize(600) @ValidateNested({ each: true }) @Type(() => IndexValueDto) values!: IndexValueDto[];
+}
+
+export class EscalationWeightDto {
+  @IsUUID() indexId!: string;
+  @IsNumber() @Min(0) @Max(1) weight!: number;
+}
+
+/** A contract's price adjustment; no weightings turns it off. */
+export class ContractEscalationDto {
+  @IsOptional() @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'baseMonth must be YYYY-MM' }) baseMonth?: string | null;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) fixedPct?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(12) lagMonths?: number;
+  @IsArray() @ArrayMaxSize(12) @ValidateNested({ each: true }) @Type(() => EscalationWeightDto) weights!: EscalationWeightDto[];
 }
 
 export class MeasureReasonDto {

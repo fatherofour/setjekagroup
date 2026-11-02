@@ -10,10 +10,12 @@ import { ValuationsService } from './valuations.service.js';
 import { QsController } from './qs.controller.js';
 import { SiteMeasureController } from './site-measure.controller.js';
 import { SiteMeasureService } from './site-measure.service.js';
+import { EscalationController } from './escalation.controller.js';
+import { EscalationService } from './escalation.service.js';
 
 @Module({
   imports: [PermissionsModule, ProjectsModule, NotificationsModule, SignoffModule],
-  controllers: [QsController, SiteMeasureController],
-  providers: [QsAccessService, CostPlansService, ContractsService, ValuationsService, SiteMeasureService],
+  controllers: [QsController, SiteMeasureController, EscalationController],
+  providers: [QsAccessService, CostPlansService, ContractsService, ValuationsService, SiteMeasureService, EscalationService],
 })
 export class QsModule {}

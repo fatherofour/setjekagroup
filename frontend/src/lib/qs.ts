@@ -201,6 +201,9 @@ export interface Valuation {
   retentionReleasePct: number;
   workDone: number;
   variationsDone: number;
+  /** Contract price adjustment to date, and how this valuation's was worked. */
+  escalationToDate: number;
+  escalationNote: string | null;
   grossValuation: number;
   retention: number;
   cumulativeNet: number;
