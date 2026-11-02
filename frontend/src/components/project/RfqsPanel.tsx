@@ -44,6 +44,8 @@ interface Rfq {
   status: RfqStatus;
   invitations: RfqInvitation[];
   quotes: QuoteSummary[];
+  /** The project's procurement policy minimum (Meeting 002, 2.7). */
+  minimumQuotes?: number;
   items?: RfqItem[];
   costRegion?: { id: string; name: string; currency: string } | null;
   awardedQuoteId?: string | null;
@@ -400,8 +402,13 @@ function RfqDetailPanel({
         <div className="mt-2 flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${STATUS_DOT[rfq.status]}`} />
           <span className="text-xs text-slate-500 dark:text-slate-400">{STATUS_LABEL[rfq.status]}</span>
+          {!isExternal && rfq.minimumQuotes != null && (rfq.status === 'DRAFT' || rfq.status === 'ISSUED' || rfq.status === 'CLOSED') && (
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${(rfq.status === 'DRAFT' ? rfq.invitations.length : rfq.quotes.filter((q) => q.status === 'SUBMITTED').length) >= rfq.minimumQuotes ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}`}>
+              {rfq.status === 'DRAFT' ? `${rfq.invitations.length} of ${rfq.minimumQuotes} vendors invited` : `${rfq.quotes.filter((q) => q.status === 'SUBMITTED').length} of ${rfq.minimumQuotes} quotes needed for award`}
+            </span>
+          )}
           {!isExternal && rfq.status === 'DRAFT' && (
-            <button onClick={() => run(() => authedFetch(`${base}/issue`, { method: 'PATCH' }), 'Failed to issue RFQ.')} disabled={saving} className="ml-2 flex items-center gap-1 rounded-md bg-emerald-700 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
+            <button onClick={() => run(() => authedFetch(`${base}/issue`, { method: 'PATCH' }), 'Failed to issue RFQ.')} disabled={saving || rfq.invitations.length < (rfq.minimumQuotes ?? 0)} title={rfq.invitations.length < (rfq.minimumQuotes ?? 0) ? `Invite at least ${rfq.minimumQuotes} vendors first (the project's procurement policy)` : undefined} className="ml-2 flex items-center gap-1 rounded-md bg-emerald-700 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
               <Send size={12} />
               Issue RFQ
             </button>
@@ -556,7 +563,7 @@ function RfqDetailPanel({
                   quote={q}
                   isExternal={isExternal}
                   awarded={rfq.awardedQuoteId === q.id}
-                  canAward={!isExternal && (rfq.status === 'ISSUED' || rfq.status === 'CLOSED')}
+                  canAward={!isExternal && (rfq.status === 'ISSUED' || rfq.status === 'CLOSED') && quotes.filter((x) => x.status === 'SUBMITTED').length >= (rfq.minimumQuotes ?? 0)}
                   onAward={award}
                   onChanged={loadQuotes}
                 />

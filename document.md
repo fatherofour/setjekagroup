@@ -2786,6 +2786,25 @@ Built on 2026-11-02, the last of the engineers (the user: "carry on").
 - **Mechanical journey (API), 25 of 25 checks.** The same, as the mechanical engineer.
 - **Regression:** the architect journey (58/58), the per-role screen sweep (0 problems), the guide (18/18), and the civil (25/25), structural (25/25), NCR (22/22) and QS (92/92) journeys all still pass.
 
+### 2.30 Minimum quotes, enforced
+
+Built on 2026-11-02, the first of the extras the user chose once every role was built. Meeting 002, decision 2.7: "Where a client requires a minimum number of quotations, the platform enforces it." The project's procurement policy has always recorded the number (default 3); now it's enforced on works and supply tenders (`rfqs.service.ts`).
+
+- **Issue.** A tender can only be issued once at least the minimum number of vendors are invited.
+- **Award.** It can only be awarded once at least that many quotes are live. Withdrawn quotes don't count.
+- **No bypass.** If the client agrees to fewer on a project, Setjeka lowers the number in that project's procurement policy (Inception), so the exception is on record.
+- **The procurement screen** shows "2 of 3 vendors invited" or "2 of 3 quotes needed for award". It holds back the Issue and Award buttons until the number is reached.
+- **Consultant appointments** (Inception → Professional team) keep their own ranking and justification rules; this applies to works and supply tenders.
+
+**Verified:**
+- **API, 6 of 6 checks:**
+  - the minimum defaults to 3;
+  - issuing with 1 of 3 invited is refused;
+  - awarding on 2 of 3 quotes is refused, with the reason;
+  - with 3 quotes it's awarded;
+  - a project whose policy says 2 can award on two.
+- **Regression:** the journeys that award tenders set their test projects' policy minimum, the way Setjeka would. They still pass: civil, structural, electrical, mechanical and QS.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

@@ -53,16 +53,28 @@ export class RfqsService {
     return member?.contractorId ?? null;
   }
 
+  /** The project's minimum number of quotes (procurement policy, default 3;
+   * Meeting 002 decision 2.7: "where a client requires a minimum number of
+   * quotations, the platform enforces it"). */
+  private async minimumQuotes(projectId: string) {
+    const policy = await this.prisma.procurementPolicy.findUnique({ where: { projectId }, select: { minimumQuotes: true } });
+    return policy?.minimumQuotes ?? 3;
+  }
+
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const scopeContractorId = await this.scopeToOwnContractor(projectId, ownerId);
     // Consultant RFQs (those with a discipline) live in Inception →
     // Professional team, with their own ranking; this list is works/supply.
-    return this.prisma.rfq.findMany({
-      where: { projectId, discipline: null, ...(scopeContractorId ? { invitations: { some: { contractorId: scopeContractorId } } } : {}) },
-      include: RFQ_INCLUDE,
-      orderBy: { createdAt: 'desc' },
-    });
+    const [rows, minimumQuotes] = await Promise.all([
+      this.prisma.rfq.findMany({
+        where: { projectId, discipline: null, ...(scopeContractorId ? { invitations: { some: { contractorId: scopeContractorId } } } : {}) },
+        include: RFQ_INCLUDE,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.minimumQuotes(projectId),
+    ]);
+    return rows.map((r) => ({ ...r, minimumQuotes }));
   }
 
   async create(projectId: string, ownerId: string, dto: CreateRfqDto) {
@@ -136,6 +148,10 @@ export class RfqsService {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const rfq = await this.getOne(projectId, id);
     if (rfq.status !== 'DRAFT') throw new BadRequestException('Only a draft RFQ can be issued');
+    const minimum = await this.minimumQuotes(projectId);
+    if (rfq.invitations.length < minimum) {
+      throw new BadRequestException(`This project's procurement policy asks for at least ${minimum} quotes. Invite at least ${minimum} vendors before issuing (${rfq.invitations.length} invited).`);
+    }
     await this.prisma.rfq.update({ where: { id }, data: { status: 'ISSUED' } });
     return this.getOne(projectId, id);
   }
@@ -189,6 +205,13 @@ export class RfqsService {
     if (rfq.status !== 'ISSUED' && rfq.status !== 'CLOSED') throw new BadRequestException('Only an issued or closed RFQ can be awarded');
     const quote = rfq.quotes.find((q) => q.id === quoteId);
     if (!quote || quote.status !== 'SUBMITTED') throw new BadRequestException('Choose a live quote on this RFQ');
+    const minimum = await this.minimumQuotes(projectId);
+    const live = rfq.quotes.filter((q) => q.status === 'SUBMITTED').length;
+    if (live < minimum) {
+      throw new BadRequestException(
+        `This project's procurement policy asks for at least ${minimum} quotes before award, and this RFQ has ${live}. Get more quotes, or change the minimum in the procurement policy if the client agrees.`,
+      );
+    }
     await this.prisma.rfq.update({ where: { id }, data: { status: 'AWARDED', awardedQuoteId: quoteId, awardedAt: new Date() } });
     const priceUpdate = rfq.costRegionId && quote.items.length ? await this.costs.applyQuoteRates(id, quoteId, userId) : null;
     return { rfq: await this.getOne(projectId, id), priceUpdate };
