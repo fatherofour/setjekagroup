@@ -169,7 +169,7 @@ export class ApprovalsService {
           href: `/projects/${v.projectId}?tab=commercial&ctab=contracts`,
           requestedBy: v.preparedBy.fullName,
           requestedAt: v.submittedAt,
-          dueAt: null,
+          dueAt: v.certifyDueAt,
           projectId: v.projectId,
         });
       }

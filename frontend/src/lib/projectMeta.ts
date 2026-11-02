@@ -52,5 +52,42 @@ export const CONTRACT_FORM_LABEL: Record<ContractForm, string> = {
 
 // FIDIC titles the PM a "project engineer" (Meeting 002 §2.6).
 export function pmTitleForContractForm(contractForm: ContractForm | null | undefined): string {
-  return contractForm === 'FIDIC' ? 'Project Engineer' : 'Project Manager';
+  return contractTerms(contractForm).pmTitle;
+}
+
+/** What the form of contract changes: titles, terms and the usual days to
+ * certify and to pay (Meeting 002 §2.6). Keep in step with backend
+ * common/contract-forms.ts. */
+export interface ContractTerms {
+  pmTitle: string;
+  clientTitle: string;
+  variation: string;
+  variations: string;
+  certificate: string;
+  completion: string;
+  certifyWithinDays: number;
+  payWithinDays: number;
+}
+
+const TERMS_BASE: ContractTerms = {
+  pmTitle: 'Project Manager',
+  clientTitle: 'Client',
+  variation: 'Variation',
+  variations: 'Variations',
+  certificate: 'Payment certificate',
+  completion: 'Practical completion',
+  certifyWithinDays: 7,
+  payWithinDays: 30,
+};
+
+const TERMS_BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
+  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7 },
+  GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28 },
+  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14 },
+  FIDIC: { pmTitle: 'Project Engineer', clientTitle: 'Employer', certificate: 'Interim Payment Certificate', completion: 'Taking-over', certifyWithinDays: 28, payWithinDays: 28 },
+  OTHER: {},
+};
+
+export function contractTerms(form: ContractForm | null | undefined): ContractTerms {
+  return { ...TERMS_BASE, ...(form ? TERMS_BY_FORM[form] : {}) };
 }

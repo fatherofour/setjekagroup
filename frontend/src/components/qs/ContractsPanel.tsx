@@ -12,6 +12,7 @@ import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation } from '@/lib/qs';
+import { contractTerms, type ContractForm } from '@/lib/projectMeta';
 
 type Option = { value: string; label: string };
 
@@ -272,7 +273,13 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
             )}
           </div>
         )}
-        {v.status === 'SUBMITTED' && !can.certify && <p className="text-xs text-slate-500">With the {reviewerTitle(v.contract.reviewerRole)} to review, then Setjeka&apos;s Project Manager issues the certificate.</p>}
+        {v.status === 'SUBMITTED' && !can.certify && (
+          <p className="text-xs text-slate-500">
+            With the {reviewerTitle(v.contract.reviewerRole)} to review, then Setjeka issues the certificate{v.certifyDueAt && ` by ${new Date(v.certifyDueAt).toLocaleDateString()}`}.
+          </p>
+        )}
+        {can.certify && v.certifyDueAt && <p className={`text-xs font-medium ${new Date(v.certifyDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be certified by {new Date(v.certifyDueAt).toLocaleDateString()} (the contract&apos;s period).</p>}
+        {v.status === 'APPROVED' && v.payDueAt && <p className={`text-xs font-medium ${new Date(v.payDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be paid by {new Date(v.payDueAt).toLocaleDateString()} (the contract&apos;s period).</p>}
         {can.certify && (
           <div className="flex flex-wrap items-end gap-2">
             <p className="w-full text-xs text-slate-500">Once the {reviewerTitle(v.contract.reviewerRole)} has approved the valuation, approve and sign to issue the payment certificate; the client then approves payment. Reject it, with your comments, to send it back to the QS.</p>
@@ -412,7 +419,7 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
         <h2 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">{contract.title}</h2>
         <p className="mt-1 text-xs text-slate-500">
           {contract.contractor.name}
-          {contract.contractForm && ` · ${contract.contractForm}`} · valuations reviewed by the {reviewerTitle(contract.reviewerRole)} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
+          {contract.contractForm && ` · ${contract.contractForm}`} · valuations reviewed by the {reviewerTitle(contract.reviewerRole)} · certify within {contract.terms.certifyWithinDays} days, pay within {contract.terms.payWithinDays} · retention {contract.retentionPct}%{contract.retentionLimitPct != null && ` up to ${contract.retentionLimitPct}% of the contract sum`} · VAT {contract.vatPct}%
           {contract.costPlan && ` · priced bill ${contract.costPlan.number}`}
           {contract.rfq && ` · from ${contract.rfq.rfqNumber}`}
         </p>
@@ -440,7 +447,7 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
       <div className={cardClass}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{isClient ? 'Payment certificates' : 'Valuations and payment certificates'}</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{isClient ? `${contract.terms.certificate}s` : `Valuations and ${contract.terms.certificate.toLowerCase()}s`}</h3>
             <p className="mt-1 max-w-2xl text-xs text-slate-500">
               {isClient
                 ? 'Certificates Setjeka has issued on this contract. Approve or reject each one; only you can.'
@@ -588,7 +595,7 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
   const [contractors, setContractors] = useState<Option[]>([]);
   const [plans, setPlans] = useState<Option[]>([]);
   const [awarded, setAwarded] = useState<Option[]>([]);
-  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT' });
+  const [form, setForm] = useState({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '' });
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -645,12 +652,14 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
                 contractForm: form.contractForm || undefined,
                 costPlanId: form.costPlanId || undefined,
                 reviewerRole: form.reviewerRole,
+                certifyWithinDays: form.certifyWithinDays ? Number(form.certifyWithinDays) : undefined,
+                payWithinDays: form.payWithinDays ? Number(form.payWithinDays) : undefined,
                 retentionPct: Number(form.retentionPct),
                 retentionLimitPct: form.retentionLimitPct === '' ? null : Number(form.retentionLimitPct),
               },
             });
       setMode('none');
-      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT' });
+      setForm({ title: '', contractorId: '', contractSum: '', contractForm: '', costPlanId: '', retentionPct: '10', retentionLimitPct: '5', rfqId: '', reviewerRole: 'ARCHITECT', certifyWithinDays: '', payWithinDays: '' });
       changed();
       setOpen(c.id);
     } catch (err) {
@@ -748,6 +757,23 @@ export function ContractsPanel({ projectId, internal, isClient, onChanged }: { p
               </label>
               <input id="ct-limit" type="number" min={0} max={100} step="any" className={`${inputClass} text-right`} value={form.retentionLimitPct} onChange={(e) => setForm({ ...form, retentionLimitPct: e.target.value })} />
             </div>
+            {mode === 'manual' && (
+              <>
+                <div>
+                  <label className={labelClass} htmlFor="ct-certify">
+                    Days to certify
+                  </label>
+                  <input id="ct-certify" type="number" min={1} max={180} className={`${inputClass} text-right`} placeholder={String(contractTerms((form.contractForm || null) as ContractForm | null).certifyWithinDays)} value={form.certifyWithinDays} onChange={(e) => setForm({ ...form, certifyWithinDays: e.target.value })} />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="ct-pay">
+                    Days to pay
+                  </label>
+                  <input id="ct-pay" type="number" min={1} max={180} className={`${inputClass} text-right`} placeholder={String(contractTerms((form.contractForm || null) as ContractForm | null).payWithinDays)} value={form.payWithinDays} onChange={(e) => setForm({ ...form, payWithinDays: e.target.value })} />
+                </div>
+                <p className="text-[11px] text-slate-500 sm:col-span-2">Leave the days empty for the form of contract&apos;s usual periods; enter them from the contract data where they differ.</p>
+              </>
+            )}
             <div className="flex items-end gap-2 sm:col-span-4">
               <button type="submit" disabled={!ready} className={primaryButton}>
                 Set up the contract

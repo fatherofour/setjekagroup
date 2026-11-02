@@ -3,6 +3,13 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { round } from '../cost-database/pricing.js';
 import { QsAccessService } from './qs-access.service.js';
 import { sCurve } from './qs-math.js';
+import { contractTerms } from '../common/contract-forms.js';
+
+/** The form's terms with this contract's own periods where it has them. */
+export function termsFor(c: { contractForm: Parameters<typeof contractTerms>[0]; certifyWithinDays: number | null; payWithinDays: number | null }) {
+  const t = contractTerms(c.contractForm);
+  return { ...t, certifyWithinDays: c.certifyWithinDays ?? t.certifyWithinDays, payWithinDays: c.payWithinDays ?? t.payWithinDays };
+}
 import type { CashFlowDto, ContractFromAwardDto, CreateContractDto, FinalAccountActionDto, UpdateContractDto } from './dto/qs.dto.js';
 
 const CERTIFIED = ['CERTIFIED', 'APPROVED', 'PAID'] as const;
@@ -58,7 +65,7 @@ export class ContractsService {
       include: { contractor: { select: { id: true, name: true } }, costPlan: { select: { id: true, number: true, title: true } }, rfq: { select: { id: true, rfqNumber: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    return Promise.all(rows.map(async (c) => ({ ...c, standing: await this.standing(projectId, c) })));
+    return Promise.all(rows.map(async (c) => ({ ...c, terms: termsFor(c), standing: await this.standing(projectId, c) })));
   }
 
   async get(projectId: string, userId: string, id: string) {
@@ -69,7 +76,7 @@ export class ContractsService {
       include: { contractor: { select: { id: true, name: true } }, costPlan: { select: { id: true, number: true, title: true } }, rfq: { select: { id: true, rfqNumber: true } }, createdBy: PERSON },
     });
     if (!c) throw new NotFoundException('Contract not found');
-    return { ...c, standing: await this.standing(projectId, c) };
+    return { ...c, terms: termsFor(c), standing: await this.standing(projectId, c) };
   }
 
   private async checkPlan(projectId: string, costPlanId?: string | null) {

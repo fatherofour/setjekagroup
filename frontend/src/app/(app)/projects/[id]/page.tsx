@@ -496,8 +496,8 @@ export default function ProjectDetailPage() {
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}
       {tab === 'registers' && <RegistersPanel key={searchParams.get('register') ?? 'registers'} projectId={project.id} initial={searchParams.get('register') ?? undefined} />}
       {tab === 'photos' && <SitePhotosPanel projectId={project.id} />}
-      {tab === 'commercial' && seesCommercial && <ProjectCommercial key={searchParams.get('ctab') ?? ''} projectId={project.id} currency={project.currency} isClient={isClient} internal={!isExternal || user?.role === 'ADMIN'} />}
-      {tab === 'team' && <ProjectMembersPanel projectId={project.id} />}
+      {tab === 'commercial' && seesCommercial && <ProjectCommercial key={searchParams.get('ctab') ?? ''} projectId={project.id} currency={project.currency} contractForm={project.contractForm} isClient={isClient} internal={!isExternal || user?.role === 'ADMIN'} />}
+      {tab === 'team' && <ProjectMembersPanel projectId={project.id} contractForm={project.contractForm} />}
       {tab === 'structure' && <ProjectNodeTree projectId={project.id} />}
     </div>
   );

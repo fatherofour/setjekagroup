@@ -2805,6 +2805,48 @@ Built on 2026-11-02, the first of the extras the user chose once every role was 
   - a project whose policy says 2 can award on two.
 - **Regression:** the journeys that award tenders set their test projects' policy minimum, the way Setjeka would. They still pass: civil, structural, electrical, mechanical and QS.
 
+### 2.31 The form of contract drives titles, terms and time periods
+
+Built on 2026-11-02 (the user's choice from the list kept until all roles were built). Meeting 002, decision 2.6: "The contract form drives role titles, terminology, procurement rules, variation workflow and contractual time periods. Under a FIDIC agreement the project manager is titled project engineer." Until now the form (JBCC, GCC, NEC, FIDIC, other) was only recorded: on the project from the procurement policy, and on each contract.
+
+**The terms** (`common/contract-forms.ts`, with a frontend copy in `lib/projectMeta.ts`)
+
+| Form | PM's title | Client | Variations are | Certificate | Days to certify / pay (usual) |
+|---|---|---|---|---|---|
+| JBCC | Project Manager | Employer | Variation orders | Payment certificate | 7 / 7 |
+| GCC | Project Manager | Employer | Variation orders | Payment certificate | 7 / 28 |
+| NEC | Project Manager | Client | Compensation events | Payment certificate | 7 / 14 |
+| FIDIC | **Project Engineer** | Employer | Variations | Interim Payment Certificate | 28 / 28 |
+| Other or not set | Project Manager | Client | Variations | Payment certificate | 7 / 30 |
+
+- **The periods are defaults.** Each contract can carry its own from its contract data ("Days to certify", "Days to pay"); left empty, the form's usual periods apply. Days to certify run from the QS submitting the valuation; days to pay from the certificate.
+- **Check the periods.** They are the usual ones for each form, not legal advice. Setjeka should check them against the editions they use.
+
+**Where it shows**
+- **The PM's title.** Under FIDIC the PM is the Project Engineer:
+  - on the project header and the Team list ("Project Engineer (Project Manager)");
+  - on PROCSA ("Project Engineer (PROCSA Project Manager)", Stages 1 to 6);
+  - on signed copies (the signer's role);
+  - on the certificate ("Issued by …, Project Engineer, for Setjeka").
+- **Terms.** The Commercial tab and the variations heading use the form's word ("Compensation events" under NEC). Certificates are named for the form: the PDF heading and the contract screen say "Interim Payment Certificate" under FIDIC.
+- **Time periods.**
+  - **Certify by.** A submitted valuation gets a certify-by date, shown on the valuation and as the due date in Setjeka's approvals queue.
+  - **Pay by.** An approved certificate gets a pay-by date.
+  - **Reminders.** Both join the reminders from three days before, as does the client's response date on a certificate.
+
+**Not done here:** procurement rules and the variation workflow (for example NEC's quotation and acceptance periods for compensation events) don't change by form yet. The minimum quotes rule (§2.30) is per project, through the procurement policy.
+
+**Verified**
+- **API, 10 of 10 checks.**
+  - **FIDIC project:**
+    - PROCSA calls the PM the Project Engineer;
+    - the contract takes FIDIC's terms (Interim Payment Certificate, 28 / 28), and its own 2 and 10 days override them;
+    - the valuation's certify-by date is 2 days after submission, and shows in the approvals queue and as a reminder;
+    - the PM signs as Project Engineer;
+    - the pay-by date is 10 days after the certificate.
+  - **NEC project:** variations are compensation events, payment is 14 days, and the PM keeps the title.
+- **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the civil (25/25), QS (92/92), NCR (22/22) and minimum quotes (6/6) checks and the PM signing in the browser (4/4) all still pass. Browser, 4 of 4: the FIDIC project shows the Project Engineer on the Team list and header, and Interim Payment Certificates with the contract's periods.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

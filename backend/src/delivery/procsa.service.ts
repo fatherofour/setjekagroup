@@ -6,6 +6,7 @@ import { OpportunitiesService } from '../opportunities/opportunities.service.js'
 import type { ProjectMemberRole, ProjectStage } from '../generated/prisma/enums.js';
 import { DELIVERY_STAGES, findDeliveryItem, type DeliveryEvidence, type DeliveryRole } from './procsa-delivery.js';
 import { REGISTER_BY_KEY } from './registers.js';
+import { contractTerms } from '../common/contract-forms.js';
 
 const HS_RE = /health\s*(and|&)\s*safety|h\s*&\s*s\b|\bshe\b/i;
 // Setjeka's own roles: evidence for them is anyone's work on the project.
@@ -391,6 +392,8 @@ export class ProcsaService {
   async tracker(projectId: string, userId: string) {
     const project = await this.projects.findOneForOwner(projectId, userId);
     const me = await this.viewer(projectId, userId);
+    // Under FIDIC the Project Manager is the Project Engineer (Meeting 002, 2.6).
+    const pmTitle = contractTerms(project.contractForm).pmTitle;
     const roleKeys = DELIVERY_STAGES[0].roles.map((r) => r.key);
     const memberRolesOf = (key: string): ProjectMemberRole[] => DELIVERY_STAGES.flatMap((s) => s.roles).find((r) => r.key === key)?.memberRoles ?? [];
     const visible = (key: string) => me.internal || memberRolesOf(key).some((r) => me.roles.includes(r));
@@ -428,7 +431,7 @@ export class ProcsaService {
       .filter((r) => roleKeys.includes(r.key as never) && visible(r.key))
       .map((r) => ({
         key: r.key,
-        label: r.label,
+        label: r.key === 'PROJECT_MANAGER' && pmTitle !== 'Project Manager' ? `${pmTitle} (PROCSA Project Manager)` : r.label,
         people: people(r.key),
         items: r.items.map((i) => ({ code: i.code, text: i.text, done: i.done, source: i.source, evidence: i.evidence, manualCheck: i.manualCheck, go: { tab: 'inception', label: 'Inception (Stage 1)' } })),
       }));
@@ -440,7 +443,7 @@ export class ProcsaService {
       purpose: s.purpose,
       roles: s.roles.filter((role) => visible(role.key)).map((role: DeliveryRole) => ({
         key: role.key,
-        label: role.label,
+        label: role.key === 'PROJECT_MANAGER' && pmTitle !== 'Project Manager' ? `${pmTitle} (PROCSA Project Manager)` : role.label,
         people: people(role.key),
         items: role.items.map((item): TrackerItem => {
           const auto = evidenceFor(facts, item.evidence, whoFor(role.key));

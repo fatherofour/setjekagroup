@@ -4211,6 +4211,10 @@ model ProjectContract {
   // Retention stops growing at this share of the contract sum.
   retentionLimitPct   Float?             @default(5)
   vatPct              Float              @default(15)
+  // Days to certify a valuation and to pay a certificate. Empty means the
+  // form of contract's usual periods (common/contract-forms.ts).
+  certifyWithinDays   Int?
+  payWithinDays       Int?
   startDate           DateTime?
   completionDate      DateTime?
   finalAccountStatus  FinalAccountStatus @default(NOT_STARTED)
@@ -4272,6 +4276,10 @@ model Valuation {
   certifiedAt         DateTime?
   // The payment-certificates register entry the architect reviews.
   registerEntryId     String?
+  // When the PM is to certify it and Setjeka to pay it, from the contract's
+  // periods (Meeting 002 decision 2.6: the form sets the time periods).
+  certifyDueAt        DateTime?
+  payDueAt            DateTime?
   responseDueAt       DateTime?
   decidedById         String?
   decidedBy           User?            @relation("ValuationDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)

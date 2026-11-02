@@ -23,6 +23,8 @@ export interface ValuationSheet {
   isFinal: boolean;
   preparedBy: string;
   certifiedBy: string | null;
+  /** Setjeka's PM's title under the form of contract (Project Engineer under FIDIC). */
+  certifierTitle: string;
   certifiedAt: Date | null;
   lines: { description: string; contractAmount: number; percentComplete: number; valueToDate: number; variation: boolean }[];
   figures: {
@@ -70,7 +72,7 @@ function fit(font: PDFFont, s: string, size: number, width: number) {
  * retention, what was certified before, VAT and the amount due. */
 export async function valuationPdf(v: ValuationSheet): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
-  pdf.setTitle(`${v.heading === 'VALUATION' ? 'Valuation' : 'Payment certificate'} ${v.number}`);
+  pdf.setTitle(`${v.heading === 'VALUATION' ? 'Valuation' : v.heading.charAt(0) + v.heading.slice(1).toLowerCase()} ${v.number}`);
   pdf.setAuthor('Setjeka Group');
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -171,7 +173,7 @@ export async function valuationPdf(v: ValuationSheet): Promise<Uint8Array> {
   y -= 24;
   if (v.certifiedBy && v.certifiedAt) {
     page.drawText('CERTIFIED', { x: M, y, size: 7.5, font: bold, color: MUTED });
-    page.drawText(safe(font, `Issued by ${v.certifiedBy} for Setjeka, ${day(v.certifiedAt)}. Payment is subject to the client's approval.`), { x: M, y: y - 14, size: 9.5, font, color: INK });
+    page.drawText(safe(font, `Issued by ${v.certifiedBy}, ${v.certifierTitle}, for Setjeka, ${day(v.certifiedAt)}. Payment is subject to the client's approval.`), { x: M, y: y - 14, size: 9.5, font, color: INK });
   } else {
     page.drawText("QUANTITY SURVEYOR'S RECOMMENDATION", { x: M, y, size: 7.5, font: bold, color: MUTED });
     page.drawText(safe(font, `Prepared by ${v.preparedBy} for review by the architect and certification by Setjeka.`), { x: M, y: y - 14, size: 9.5, font, color: INK });

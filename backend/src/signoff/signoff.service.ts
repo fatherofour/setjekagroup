@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { contractTerms } from '../common/contract-forms.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import type { ApprovalOutcome, ApprovalSubject, SignatureMethod } from '../generated/prisma/enums.js';
 import { OUTCOME_LABEL, isApproval, type SignatureInputDto } from './dto/decision.dto.js';
@@ -132,12 +133,13 @@ export class SignoffService {
     const [signer, member, project] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({ where: { id: p.signerId }, select: { fullName: true, accountType: true } }),
       this.prisma.projectMember.findFirst({ where: { projectId: p.projectId, userId: p.signerId }, select: { role: true } }),
-      this.prisma.project.findUniqueOrThrow({ where: { id: p.projectId }, select: { name: true, projectCode: true } }),
+      this.prisma.project.findUniqueOrThrow({ where: { id: p.projectId }, select: { name: true, projectCode: true, contractForm: true } }),
     ]);
     const sig = await this.signatureFor(p.signerId, p.signature);
     const id = randomUUID();
     const signedAt = new Date();
-    const signerRole = member ? (ROLE_LABEL[member.role] ?? member.role.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())) : signer.accountType === 'INTERNAL' ? 'Setjeka' : undefined;
+    const roleLabel = (role: string) => (role === 'PROJECT_MANAGER' ? contractTerms(project.contractForm).pmTitle : (ROLE_LABEL[role] ?? role.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())));
+    const signerRole = member ? roleLabel(member.role) : signer.accountType === 'INTERNAL' ? 'Setjeka' : undefined;
     const details: SignOffDetails = {
       projectName: project.projectCode ? `${project.name} (${project.projectCode})` : project.name,
       title: p.title,

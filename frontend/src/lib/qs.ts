@@ -167,6 +167,9 @@ export interface Contract {
   completionDate: string | null;
   finalAccountStatus: FinalAccountStatus;
   reviewerRole: string;
+  certifyWithinDays: number | null;
+  payWithinDays: number | null;
+  terms: { pmTitle: string; certificate: string; variations: string; certifyWithinDays: number; payWithinDays: number };
   contractor: { id: string; name: string };
   costPlan: { id: string; number: string; title: string } | null;
   rfq: { id: string; rfqNumber: string } | null;
@@ -205,6 +208,8 @@ export interface Valuation {
   certificateNumber: string | null;
   submittedAt: string | null;
   certifiedAt: string | null;
+  certifyDueAt: string | null;
+  payDueAt: string | null;
   responseDueAt: string | null;
   decisionOutcome: string | null;
   decisionComment: string | null;
@@ -212,7 +217,7 @@ export interface Valuation {
   paidAt: string | null;
   paymentReference: string | null;
   contractId: string;
-  contract: { id: string; title: string; currency: string; contractSum: number; retentionPct: number; vatPct: number; reviewerRole?: string; contractor: { name: string } };
+  contract: { id: string; title: string; currency: string; contractSum: number; retentionPct: number; vatPct: number; reviewerRole?: string; contractForm?: string | null; contractor: { name: string } };
   preparedBy: { fullName: string };
   certifiedBy?: { fullName: string } | null;
   decidedBy?: { fullName: string } | null;

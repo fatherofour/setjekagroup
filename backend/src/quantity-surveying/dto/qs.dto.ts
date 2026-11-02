@@ -73,6 +73,9 @@ export class CreateContractDto {
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
+  /** Days to certify and to pay, from the contract data; empty uses the form's usual periods. */
+  @IsOptional() @IsInt() @Min(1) @Max(180) certifyWithinDays?: number | null;
+  @IsOptional() @IsInt() @Min(1) @Max(180) payWithinDays?: number | null;
   @IsOptional() @IsDateString() startDate?: string;
   @IsOptional() @IsDateString() completionDate?: string;
 }
@@ -86,6 +89,8 @@ export class UpdateContractDto {
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionPct?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) retentionLimitPct?: number | null;
   @IsOptional() @IsNumber() @Min(0) @Max(100) vatPct?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(180) certifyWithinDays?: number | null;
+  @IsOptional() @IsInt() @Min(1) @Max(180) payWithinDays?: number | null;
   @IsOptional() @IsDateString() startDate?: string | null;
   @IsOptional() @IsDateString() completionDate?: string | null;
 }

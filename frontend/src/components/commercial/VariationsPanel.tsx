@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { costCodeLabel, formatRate, type CostCode } from '@/lib/commercial';
 import { CommentThread } from '@/components/project/CommentThread';
+import { contractTerms, type ContractTerms } from '@/lib/projectMeta';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
@@ -62,7 +63,7 @@ const value = (v: Variation) => v.assessedValue ?? v.estimatedValue;
 /** Register COM "Variation/change order": raised and assessed by Setjeka
  * (the QS prices it), decided by the client alone. An approved variation
  * draws the contingency down. */
-export function VariationsPanel({ projectId, currency, isClient, onChanged, internal = true }: { projectId: string; currency: string; isClient: boolean; onChanged: () => void; internal?: boolean }) {
+export function VariationsPanel({ projectId, currency, isClient, onChanged, internal = true, terms = contractTerms(null) }: { projectId: string; currency: string; isClient: boolean; onChanged: () => void; internal?: boolean; terms?: ContractTerms }) {
   const { authedFetch } = useAuth();
   const [deciding, setDeciding] = useState<Variation | null>(null);
   const [signed, setSigned] = useState(0);
@@ -139,7 +140,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged, inte
       <div className={cardClass}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Variations &amp; change orders</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{terms.variations}</h2>
             <p className="mt-1 max-w-2xl text-xs text-slate-500 dark:text-slate-400">
               {isClient
                 ? 'Changes to the works that need your decision. Approving one adds it to the budget, funded from the contingency. Only you can approve or reject.'

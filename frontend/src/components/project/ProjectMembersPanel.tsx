@@ -6,6 +6,7 @@ import { Trash2, UserPlus, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { PROJECT_MEMBER_ROLES, projectMemberRoleLabel, type ProjectMemberRole } from '@/lib/projectMemberRoles';
+import { pmTitleForContractForm, type ContractForm } from '@/lib/projectMeta';
 import type { Contractor } from '@/lib/contractors';
 import { CLASSIFICATION_LABEL } from '@/lib/organisationMeta';
 import { Select } from '@/components/ui/Select';
@@ -28,7 +29,8 @@ const ONE_OFF = '';
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
-export function ProjectMembersPanel({ projectId }: { projectId: string }) {
+export function ProjectMembersPanel({ projectId, contractForm = null }: { projectId: string; contractForm?: ContractForm | null }) {
+  const pmTitle = pmTitleForContractForm(contractForm);
   const { authedFetch, user } = useAuth();
   // Setjeka keeps the team; outside parties see who is on it.
   const manages = user?.role === 'ADMIN' || user?.accountType === 'INTERNAL';
@@ -157,7 +159,7 @@ export function ProjectMembersPanel({ projectId }: { projectId: string }) {
           {members.map((m) => {
             const title = m.user?.fullName ?? m.contractor?.name ?? m.externalName;
             const email_ = m.user?.email ?? m.externalEmail;
-            const subParts = [projectMemberRoleLabel(m.role)];
+            const subParts = [m.role === 'PROJECT_MANAGER' && pmTitle !== 'Project Manager' ? `${pmTitle} (Project Manager)` : projectMemberRoleLabel(m.role)];
             if (m.contractor) {
               subParts.push(m.contractor.tradeType ? m.contractor.tradeType : 'Contractor');
               if (m.externalName) subParts.push(`Contact: ${m.externalName}`);

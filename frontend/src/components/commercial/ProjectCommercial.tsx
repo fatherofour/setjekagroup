@@ -9,6 +9,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { RomPanel } from '@/components/estimates/RomPanel';
 import { cardClass, secondaryButton } from '@/lib/stage0';
 import { formatRate } from '@/lib/commercial';
+import { contractTerms, type ContractForm } from '@/lib/projectMeta';
 import { CostReportPanel } from './CostReportPanel';
 import { BudgetPanel } from './BudgetPanel';
 import { VariationsPanel } from './VariationsPanel';
@@ -77,7 +78,8 @@ function ProjectEstimates({ projectId }: { projectId: string }) {
  * valuations, supplier invoices and estimates. The QS (an outside firm)
  * does the commercial work but not Setjeka's steps; the client sees the
  * cost report, decides variations and approves payment certificates. */
-export function ProjectCommercial({ projectId, currency, isClient, internal }: { projectId: string; currency: string; isClient: boolean; internal: boolean }) {
+export function ProjectCommercial({ projectId, currency, contractForm = null, isClient, internal }: { projectId: string; currency: string; contractForm?: ContractForm | null; isClient: boolean; internal: boolean }) {
+  const terms = contractTerms(contractForm);
   const params = useSearchParams();
   const [tab, setTab] = useState(params.get('ctab') ?? (isClient ? 'variations' : 'report'));
   const [version, setVersion] = useState(0);
@@ -85,14 +87,14 @@ export function ProjectCommercial({ projectId, currency, isClient, internal }: {
 
   const tabs = isClient
     ? [
-        { value: 'variations', label: 'Variations' },
-        { value: 'contracts', label: 'Payment certificates' },
+        { value: 'variations', label: terms.variations },
+        { value: 'contracts', label: `${terms.certificate}s` },
         { value: 'report', label: 'Cost report' },
       ]
     : [
         { value: 'report', label: 'Cost report' },
         { value: 'budget', label: 'Budget & contingency' },
-        { value: 'variations', label: 'Variations' },
+        { value: 'variations', label: terms.variations },
         { value: 'bills', label: 'Bills & cost plans' },
         { value: 'contracts', label: 'Contracts & valuations' },
         { value: 'invoices', label: 'Supplier invoices' },
@@ -109,7 +111,7 @@ export function ProjectCommercial({ projectId, currency, isClient, internal }: {
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === 'report' && <CostReportPanel projectId={projectId} version={version} />}
       {tab === 'budget' && <BudgetPanel projectId={projectId} onChanged={changed} internal={internal} />}
-      {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} internal={internal} onChanged={changed} />}
+      {tab === 'variations' && <VariationsPanel projectId={projectId} currency={currency} isClient={isClient} internal={internal} terms={terms} onChanged={changed} />}
       {tab === 'bills' && !isClient && <BillsPanel projectId={projectId} internal={internal} isClient={isClient} initialPlanId={params.get('plan')} onChanged={changed} />}
       {tab === 'contracts' && <ContractsPanel projectId={projectId} internal={internal} isClient={isClient} onChanged={changed} />}
       {tab === 'invoices' && <InvoicesPanel projectId={projectId} readOnly={isClient || !internal} onChanged={changed} />}

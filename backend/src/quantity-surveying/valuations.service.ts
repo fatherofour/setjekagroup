@@ -10,6 +10,8 @@ import { QsAccessService } from './qs-access.service.js';
 import { ContractsService } from './contracts.service.js';
 import { valuationFigures } from './qs-math.js';
 import { ROLE_TITLE, holdersOf } from '../common/consultants.js';
+import { addDays, contractTerms } from '../common/contract-forms.js';
+import { termsFor } from './contracts.service.js';
 import { valuationPdf } from './valuation-pdf.js';
 import type { CertifyValuationDto, CreateValuationDto, PayValuationDto, UpdateValuationDto } from './dto/qs.dto.js';
 
@@ -201,7 +203,8 @@ export class ValuationsService {
     return {
       v,
       sheet: {
-        heading: certified && v.certificateNumber ? 'PAYMENT CERTIFICATE' : 'VALUATION',
+        heading: certified && v.certificateNumber ? contractTerms(v.contract.contractForm).certificate.toUpperCase() : 'VALUATION',
+        certifierTitle: contractTerms(v.contract.contractForm).pmTitle,
         number: certified && v.certificateNumber ? v.certificateNumber : `No. ${v.number}`,
         projectName: project.name,
         projectCode: project.projectCode,
@@ -319,7 +322,8 @@ export class ValuationsService {
     const entry = existing
       ? await this.prisma.projectRegisterEntry.update({ where: { id: existing.id }, data })
       : await this.prisma.projectRegisterEntry.create({ data: { ...data, projectId, register: 'payment-certificates', createdById: userId } });
-    await this.prisma.valuation.update({ where: { id }, data: { status: 'SUBMITTED', submittedAt: new Date(), returnedReason: null, registerEntryId: entry.id } });
+    const now = new Date();
+    await this.prisma.valuation.update({ where: { id }, data: { status: 'SUBMITTED', submittedAt: now, certifyDueAt: addDays(now, termsFor(v.contract).certifyWithinDays), returnedReason: null, registerEntryId: entry.id } });
 
     const who = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fullName: true } });
     const what = `valuation ${v.number} on ${v.contract.title} (${v.contract.contractor.name}): ${money(v.contract.currency, v.amountDue)} due`;
@@ -446,7 +450,10 @@ export class ValuationsService {
       source,
     });
     const approve = isApproval(outcome);
-    await this.prisma.valuation.update({ where: { id }, data: { status: approve ? 'APPROVED' : 'REJECTED', decidedById: userId, decidedAt: new Date(), decisionOutcome: outcome, decisionComment: comment } });
+    await this.prisma.valuation.update({
+      where: { id },
+      data: { status: approve ? 'APPROVED' : 'REJECTED', decidedById: userId, decidedAt: new Date(), decisionOutcome: outcome, decisionComment: comment, payDueAt: approve ? addDays(v.certifiedAt ?? new Date(), termsFor(v.contract).payWithinDays) : null },
+    });
     if (!approve && entry) await this.prisma.projectRegisterEntry.update({ where: { id: entry.id }, data: { status: 'DRAFT' } });
     await this.access.tell(
       projectId,
