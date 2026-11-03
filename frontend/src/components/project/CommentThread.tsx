@@ -35,7 +35,8 @@ type CommentEntityType =
   | 'HOLD_POINT'
   | 'INTERFACE'
   | 'HIDDEN_WORK'
-  | 'TIME_CLAIM';
+  | 'TIME_CLAIM'
+  | 'CONTRACT_DEFECT';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

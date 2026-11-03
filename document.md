@@ -3160,6 +3160,87 @@ These are the usual periods, as defaults. **Setjeka should check them against th
   - civil (25), structural (25), electrical (26), mechanical (25), NCR (22) and QS (92);
   - measured valuations (31), tests (42), interfaces and hidden works (42), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.37 Completion certificates and the defects liability period
+
+Built on 2026-11-03, the second item from the user's role-by-role review of the donor app (`defects_liability`). It adds a new project tab, **Completion & defects** (`defects/`, `DefectsPanel.tsx`), which everyone on the project sees, the client included. It sits with instructions and letters in the permission matrix. Until now, defects were rows typed into a register, and the QS chose the retention release by hand.
+
+**Each contract's path** (on the contract: `practicalCompletionAt`, `worksCompletionAt`, `defectsPeriodDays`, `defectsPeriodEndsAt`, `finalCompletionAt`)
+1. **Practical completion.** Certified by the consultant who administers the contract (its reviewer role) or by Setjeka's PM or DM. The QS doesn't certify.
+2. **Works completion.** Certified once every defect on the practical completion list is verified. It starts the defects liability period.
+3. **The defects period.**
+   - **Length.** The form's usual length (JBCC 90 days, GCC 365, NEC 364, FIDIC 365, otherwise 90) unless the contract data says otherwise. It can be changed until final completion.
+   - **Reminder.** The PM is reminded from three days before it ends.
+4. **Final completion.** Certified once the period has ended (dated no earlier) and every practical completion and defects-period defect is verified or declined.
+
+**On the register and to the parties.** Each certificate goes on the **Handover and completion** register, and the client, the contractor and the QS are told.
+
+**Retention follows the certificates** (`valuations.service.ts`)
+- **Half the retention.** It can be released on a valuation only once practical completion is certified, on or before the valuation date.
+- **The final valuation.** It (which releases the rest) can be raised only after final completion.
+- **The QS journey's close-out** now certifies practical, works and final completion before its final valuation.
+
+**Defects** (`ContractDefect`, DEF-001 on)
+- **Three lists, by stage.**
+  - The **practical completion list** runs until works completion.
+  - The **defects liability period** list runs from works completion to final completion.
+  - **Latent defects** are those found after final completion.
+- **Listing them.** The consultants, QA/QC and Setjeka list defects. Each has 14 days to be put right unless a date is given, and the contractor is told.
+- **The client reports defects** in the defects period or as latent defects. A report waits for Setjeka or a consultant to issue it to the contractor, or to decline it as not a defect.
+- **Putting them right.**
+  1. The contractor puts each right, with photos (`SitePhoto.contractDefectId`).
+  2. The consultant verifies it on site, or sends it back (counted).
+  3. Overdue defects are flagged.
+- **The register.** Each issued defect keeps the **Defects** register in step: the list, the status and the verified date. That ticks the PROCSA defects items, for example the architect's 6.1.
+- **Who sees what.** The client sees every defect; a contractor sees only their own contracts. Defects carry the notes and actions thread.
+
+**Not done here:**
+- **Latent defects:** no separate period or bond.
+- **Certificates can't be withdrawn** once issued.
+- **Defects on the drawings:** these stay in the punch list (§2.23).
+
+**Verified**
+- **API, 44 of 44 checks.**
+  - **Before completion:**
+    - JBCC's 90-day and GCC's 365-day periods show;
+    - a contractor sees only their own contract, and the QS can't certify;
+    - half the retention isn't released, and the valuation can't be made final;
+    - the contractor can't list defects, and the client can't add to the practical completion list.
+  - **Practical completion:**
+    - the architect certifies it; it is on the register;
+    - the client, contractor and QS are told;
+    - the QS then releases half the retention.
+  - **The practical completion list:**
+    - two defects are listed, due in 14 days; the contractor is told; both are on the register under the practical completion list;
+    - works completion is refused until they're verified;
+    - another contractor sees none of it, and the contractor can't verify;
+    - put right, sent back, put right again and verified;
+    - a photo is added;
+    - a defects-period defect is refused before works completion.
+  - **Works completion and the period:**
+    - the 90 days run from works completion, and the practical completion list closes;
+    - the client's report waits for Setjeka, the architect and PM are told, and it isn't on the register until issued;
+    - nothing is latent yet;
+    - the architect issues it;
+    - final completion is refused while the period runs;
+    - a 10-day period has ended, but the open defect blocks final completion until verified;
+    - final completion is refused when dated before the period's end, then certified;
+    - the valuation can then be final, and all three certificates are on the register.
+  - **Latent defects:** a latent report is declined; the client sees all four defects.
+  - **Notes, reminders and PROCSA:**
+    - the client adds a note;
+    - the PM is reminded as a 3-day period ends;
+    - the architect's PROCSA 6.1 ticks.
+- **Browser, 9 of 9:**
+  - the architect sees the finished contract with all retention due, certifies a new contract's practical completion, and lists a defect (the list follows the contract's stage);
+  - works completion waits on it; the contractor puts it right on a phone, with no sideways scrolling;
+  - the architect verifies it and certifies works completion, starting the 90-day period;
+  - the client reports a defect for Setjeka to issue.
+- **Regression:**
+  - QS (93, with the new check that the final valuation waits on final completion);
+  - the architect journey (58), the per-role sweep (0 problems) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests (42), interfaces and hidden works (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

@@ -372,6 +372,30 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.defects': {
+    contractor: {
+      title: 'Completion & defects',
+      steps: [
+        s('Put defects right', 'Each defect listed on your contract has a date to be put right by. Fix it, add photos, and mark it put right; the consultant verifies it on site.'),
+        s('Completion and retention', 'Works completion waits on the practical completion list, and final completion on the defects period. Half the retention comes back at practical completion, the rest after final completion.'),
+      ],
+    },
+    client: {
+      title: 'Completion & defects',
+      steps: [
+        s('Where each contract stands', 'Practical completion, works completion, the defects period and final completion, with the dates.'),
+        s('Report a defect', 'Found something not right after handover? Report it here. Setjeka issues it to the contractor and checks it is put right.'),
+      ],
+    },
+    all: {
+      title: 'Completion & defects',
+      steps: [
+        s('Certify completion', 'Certify practical completion, then works completion once the practical completion list is verified. That starts the defects period.'),
+        s('List and verify defects', 'List defects against the contract. The contractor puts each right; verify it on site or send it back. Issue or decline what the client reports.'),
+        s('Final completion', 'Once the defects period has ended and every defect is verified, certify final completion. The final valuation then releases the rest of the retention.'),
+      ],
+    },
+  },
   'project.eot': {
     contractor: {
       title: 'Delays & extensions of time',

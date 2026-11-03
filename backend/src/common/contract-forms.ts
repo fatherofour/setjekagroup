@@ -24,6 +24,8 @@ export interface ContractTerms {
   noticeWithinDays: number;
   claimWithinDays: number;
   assessWithinDays: number;
+  /** The defects liability period, in calendar days from works completion. */
+  defectsPeriodDays: number;
 }
 
 const BASE: Omit<ContractTerms, 'form'> = {
@@ -38,14 +40,15 @@ const BASE: Omit<ContractTerms, 'form'> = {
   noticeWithinDays: 28,
   claimWithinDays: 28,
   assessWithinDays: 28,
+  defectsPeriodDays: 90,
 };
 
 const BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
   // JBCC's 20 and 40 working days, and 30 to decide, as calendar days.
-  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7, noticeWithinDays: 28, claimWithinDays: 56, assessWithinDays: 42 },
-  GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28 },
+  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7, noticeWithinDays: 28, claimWithinDays: 56, assessWithinDays: 42, defectsPeriodDays: 90 },
+  GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28, defectsPeriodDays: 365 },
   // NEC: notify within 8 weeks, quote within 3, the PM replies within 2.
-  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14, noticeWithinDays: 56, claimWithinDays: 21, assessWithinDays: 14 },
+  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14, noticeWithinDays: 56, claimWithinDays: 21, assessWithinDays: 14, defectsPeriodDays: 364 },
   FIDIC: {
     pmTitle: 'Project Engineer',
     clientTitle: 'Employer',
@@ -57,6 +60,8 @@ const BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
     noticeWithinDays: 28,
     claimWithinDays: 84,
     assessWithinDays: 42,
+    // The defects notification period, usually 365 days.
+    defectsPeriodDays: 365,
   },
   OTHER: {},
 };

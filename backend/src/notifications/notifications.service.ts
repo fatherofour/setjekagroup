@@ -190,11 +190,12 @@ export class NotificationsService {
     const dueSoon = { responseDueAt: { lte: window, not: null } };
     const overdue = { responseDueAt: { lt: now, not: null } };
     const asLead = { project: { members: { some: { userId, role: { in: ['PROJECT_MANAGER' as const, 'DEVELOPMENT_MANAGER' as const] } } } } };
-    const [certs, toCertify, toPay, toAssess] = await Promise.all([
+    const [certs, toCertify, toPay, toAssess, periodsEnding] = await Promise.all([
       this.prisma.valuation.findMany({ where: { status: 'CERTIFIED', ...dueSoon, ...asClient } }),
       this.prisma.valuation.findMany({ where: { status: 'SUBMITTED', certifyDueAt: { lte: window, not: null }, ...asLead } }),
       this.prisma.valuation.findMany({ where: { status: 'APPROVED', payDueAt: { lte: window, not: null }, ...asLead } }),
       this.prisma.timeClaim.findMany({ where: { status: 'SUBMITTED', assessDueAt: { lte: window, not: null }, ...asLead } }),
+      this.prisma.projectContract.findMany({ where: { finalCompletionAt: null, defectsPeriodEndsAt: { lte: window, not: null }, ...asLead } }),
     ]);
     const [dels, vars, gates, docs, myDels, myVars, myGates, myDocs] = await Promise.all([
       this.prisma.stageDeliverable.findMany({ where: { status: 'SUBMITTED', ...dueSoon, ...asClient } }),
@@ -216,6 +217,7 @@ export class NotificationsService {
     for (const v of toCertify) push('APPROVAL_DUE', 'VALUATION', v.id, v.projectId, `Valuation ${v.number} ${v.certifyDueAt! < now ? 'was' : 'is'} to be certified by ${shortDate(v.certifyDueAt!)}`, v.certifyDueAt!, `/projects/${v.projectId}?tab=commercial&ctab=contracts`);
     for (const v of toPay) push('APPROVAL_DUE', 'VALUATION', v.id, v.projectId, `Payment certificate ${v.certificateNumber} ${v.payDueAt! < now ? 'was' : 'is'} to be paid by ${shortDate(v.payDueAt!)}`, v.payDueAt!, `/projects/${v.projectId}?tab=commercial&ctab=contracts`);
     for (const c of toAssess) push('APPROVAL_DUE', 'TIME_CLAIM', c.id, c.projectId, `Extension-of-time claim ${c.number} ${c.assessDueAt! < now ? 'was' : 'is'} to be assessed by ${shortDate(c.assessDueAt!)}`, c.assessDueAt!, `/projects/${c.projectId}?tab=eot&claim=${c.id}`);
+    for (const c of periodsEnding) push('APPROVAL_DUE', 'CONTRACT_DEFECT', c.id, c.projectId, `The defects period on ${c.title} ${c.defectsPeriodEndsAt! < now ? 'ended' : 'ends'} ${shortDate(c.defectsPeriodEndsAt!)}: inspect, list the last defects and certify final completion`, c.defectsPeriodEndsAt!, `/projects/${c.projectId}?tab=defects&defect=${c.id}`);
     const late = (what: string, due: Date) => `The client hasn't responded to ${what} (due ${shortDate(due)})`;
     for (const d of myDels) push('APPROVAL_OVERDUE', 'STAGE_DELIVERABLE', d.id, d.projectId, late(delTitle(d.key, d.version), d.responseDueAt!), d.responseDueAt!, `/projects/${d.projectId}?tab=inception`);
     for (const v of myVars) push('APPROVAL_OVERDUE', 'VARIATION', v.id, v.projectId, late(`variation ${v.number}`, v.responseDueAt!), v.responseDueAt!, `/projects/${v.projectId}?tab=commercial`);

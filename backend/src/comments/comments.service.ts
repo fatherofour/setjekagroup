@@ -56,6 +56,7 @@ export class CommentsService {
       INTERFACE: () => this.prisma.projectInterface.findFirst({ where: { id: entityId, projectId } }),
       HIDDEN_WORK: () => this.prisma.hiddenWork.findFirst({ where: { id: entityId, projectId } }),
       TIME_CLAIM: () => this.prisma.timeClaim.findFirst({ where: { id: entityId, projectId } }),
+      CONTRACT_DEFECT: () => this.prisma.contractDefect.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),

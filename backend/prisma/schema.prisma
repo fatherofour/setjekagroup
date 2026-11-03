@@ -373,6 +373,8 @@ model User {
   hiddenWorksDecided          HiddenWork[]                 @relation("HiddenWorkDecidedBy")
   timeClaimsNotified          TimeClaim[]                  @relation("TimeClaimNotifiedBy")
   timeClaimsDecided           TimeClaim[]                  @relation("TimeClaimDecidedBy")
+  defectsRaised               ContractDefect[]             @relation("DefectRaisedBy")
+  defectsVerified             ContractDefect[]             @relation("DefectVerifiedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -712,6 +714,7 @@ model Project {
   interfaces               ProjectInterface[]
   hiddenWorks              HiddenWork[]
   timeClaims               TimeClaim[]
+  contractDefects          ContractDefect[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -1078,6 +1081,7 @@ enum CommentEntityType {
   INTERFACE
   HIDDEN_WORK
   TIME_CLAIM
+  CONTRACT_DEFECT
 }
 
 model Comment {
@@ -1189,6 +1193,11 @@ enum NotificationType {
   TIME_CLAIM_SUBMITTED
   TIME_CLAIM_DECIDED
   TIME_CLAIM_RESPONDED
+  COMPLETION_CERTIFIED
+  DEFECT_REPORTED
+  DEFECT_ISSUED
+  DEFECT_RECTIFIED
+  DEFECT_DECIDED
 }
 
 model Notification {
@@ -3278,6 +3287,8 @@ model SitePhoto {
   punchItem          PunchItem?        @relation(fields: [punchItemId], references: [id], onDelete: SetNull)
   hiddenWorkId       String?
   hiddenWork         HiddenWork?       @relation(fields: [hiddenWorkId], references: [id], onDelete: SetNull)
+  contractDefectId   String?
+  contractDefect     ContractDefect?   @relation(fields: [contractDefectId], references: [id], onDelete: SetNull)
 
   @@index([projectId, takenAt])
   @@index([issueId])
@@ -4298,6 +4309,16 @@ model ProjectContract {
   // contractor's claims for more time.
   penaltyPerDay       Float?
   timeClaims          TimeClaim[]
+  // Completion and the defects liability period (2026-11-03): practical
+  // completion, works completion once the practical completion list is
+  // cleared, the defects period (the form's usual length unless the contract
+  // says otherwise), and final completion once its defects are put right.
+  practicalCompletionAt DateTime?
+  worksCompletionAt     DateTime?
+  defectsPeriodDays     Int?
+  defectsPeriodEndsAt   DateTime?
+  finalCompletionAt     DateTime?
+  defects               ContractDefect[]
   // Contract price adjustment (CPAP): the month the tender was priced at,
   // the share that isn't adjusted, how many months the indices lag the
   // valuation, and each index's weighting. No weightings, no adjustment.
@@ -4787,6 +4808,64 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- Defects liability (2026-11-03) ----------------------------------------
+// From the user's role-by-role review of the donor app (defects_liability).
+// Defects are listed against a contract at practical completion, in the
+// defects liability period, or as latent defects afterwards. The contractor
+// puts each right and the consultant verifies it. Works completion waits on
+// the practical completion list; final completion on the defects period's
+// end and its defects; and the retention is released in step (half at
+// practical completion, the rest on the final valuation).
+enum DefectList {
+  PRACTICAL_COMPLETION
+  DEFECTS_LIABILITY
+  LATENT
+}
+
+enum DefectStatus {
+  // Reported by the client, for Setjeka or a consultant to issue.
+  REPORTED
+  OPEN
+  RECTIFIED
+  VERIFIED
+  DECLINED
+}
+
+model ContractDefect {
+  id              String          @id @default(uuid())
+  projectId       String
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId      String
+  contract        ProjectContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sequence        Int
+  number          String
+  list            DefectList
+  title           String
+  description     String?
+  location        String?
+  status          DefectStatus    @default(OPEN)
+  dueDate         DateTime?
+  raisedById      String
+  raisedBy        User            @relation("DefectRaisedBy", fields: [raisedById], references: [id])
+  rectifiedAt     DateTime?
+  rectifiedNote   String?
+  verifiedAt      DateTime?
+  verifiedById    String?
+  verifiedBy      User?           @relation("DefectVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  declineReason   String?
+  reopened        Int             @default(0)
+  // The Defects register entry kept in step with it.
+  registerEntryId String?
+  history         Json            @default("[]")
+  photos          SitePhoto[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Numbered per project: DEF-001.
+  @@unique([projectId, sequence])
+  @@index([contractId, status])
 }
 
 // ---- Delay notices and extension-of-time claims (2026-11-03) ---------------

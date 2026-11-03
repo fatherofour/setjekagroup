@@ -989,6 +989,18 @@ that step gets skipped.
   claims only. Contract penalty per day shows penalties when late. Next:
   defects liability.
 
+- **3 Nov 2026 — completion certificates and defects liability (document.md
+  §2.37).** New tab Completion & defects (`defects/`, COMMUNICATIONS
+  permissions, client sees it). Contract path PC -> works completion (PC list
+  verified) -> defects period (form default JBCC 90 / GCC 365 / NEC 364 /
+  FIDIC 365) -> final completion (period ended, defects verified). Certified
+  by the contract's reviewer role or PM/DM; each goes on the certificates
+  register. ContractDefect (DEF-001) syncs the defects register (category
+  PRACTICAL_COMPLETION_LIST for the PC list). **Retention gate:** 50% release
+  needs PC on/before the valuation date; a final valuation needs final
+  completion — the QS journey's close-out now certifies all three first.
+  Next: handover pack.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

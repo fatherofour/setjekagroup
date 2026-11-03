@@ -139,6 +139,9 @@ export class ValuationsService {
     const open = all.find((v) => !(CERTIFIED as readonly string[]).includes(v.status));
     if (open) throw new BadRequestException(`Valuation ${open.number} on this contract is still open. Finish it first.`);
     if (all.some((v) => v.isFinal)) throw new BadRequestException('The final valuation on this contract has been certified');
+    // The rest of the retention is released on the final valuation, which
+    // follows the final completion certificate (defects liability, §2.37).
+    if (dto.isFinal && !contract.finalCompletionAt) throw new BadRequestException('The final valuation follows the final completion certificate: the defects period has to end and its defects be verified first');
     const number = all.reduce((m, v) => Math.max(m, v.number), 0) + 1;
     const prev = await this.previous(contract.id, number);
     const pctFor = (key: { costPlanItemId?: string; variationId?: string }) =>
@@ -191,6 +194,15 @@ export class ValuationsService {
     this.access.preparer(a);
     const v = await this.load(projectId, id);
     if (v.status !== 'DRAFT') throw new BadRequestException('Only a draft valuation can be changed');
+    // Retention comes back in step with completion: half once practical
+    // completion is certified by the valuation date, the rest on the final
+    // valuation after final completion.
+    if (dto.isFinal && !v.contract.finalCompletionAt) throw new BadRequestException('The final valuation follows the final completion certificate: the defects period has to end and its defects be verified first');
+    if (dto.retentionReleasePct && !(v.isFinal || dto.isFinal)) {
+      const asAt = dto.valuationDate ? new Date(dto.valuationDate) : v.valuationDate;
+      if (dto.retentionReleasePct === 100 && !v.contract.finalCompletionAt) throw new BadRequestException('All the retention is released on the final valuation, after final completion');
+      if (!v.contract.practicalCompletionAt || v.contract.practicalCompletionAt > asAt) throw new BadRequestException('Half the retention is released once practical completion is certified, on or before the valuation date');
+    }
     const { lines, ...data } = dto;
     const prev = await this.previous(v.contractId, v.number);
     const ops = [];

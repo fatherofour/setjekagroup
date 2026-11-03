@@ -12,6 +12,7 @@ import {
   FlaskConical,
   EyeOff,
   Waypoints,
+  BadgeCheck,
   TrendingUp,
   Ruler,
   HelpCircle,
@@ -158,6 +159,7 @@ export const NAV: NavEntry[] = [
       { label: 'Interfaces', href: '/projects', icon: Waypoints, requiresProject: true, projectPathSuffix: '?tab=interfaces' },
       { label: 'Site measurement', href: '/projects', icon: Ruler, requiresProject: true, projectPathSuffix: '?tab=measure' },
       { label: 'Punch list', href: '/projects', icon: ListX, requiresProject: true, projectPathSuffix: '?tab=punch' },
+      { label: 'Completion & defects', href: '/projects', icon: BadgeCheck, requiresProject: true, projectPathSuffix: '?tab=defects' },
     ],
   },
   {

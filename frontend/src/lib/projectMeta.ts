@@ -70,6 +70,7 @@ export interface ContractTerms {
   noticeWithinDays: number;
   claimWithinDays: number;
   assessWithinDays: number;
+  defectsPeriodDays: number;
 }
 
 const TERMS_BASE: ContractTerms = {
@@ -84,13 +85,14 @@ const TERMS_BASE: ContractTerms = {
   noticeWithinDays: 28,
   claimWithinDays: 28,
   assessWithinDays: 28,
+  defectsPeriodDays: 90,
 };
 
 const TERMS_BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
-  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7, noticeWithinDays: 28, claimWithinDays: 56, assessWithinDays: 42 },
-  GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28 },
-  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14, noticeWithinDays: 56, claimWithinDays: 21, assessWithinDays: 14 },
-  FIDIC: { pmTitle: 'Project Engineer', clientTitle: 'Employer', certificate: 'Interim Payment Certificate', completion: 'Taking-over', certifyWithinDays: 28, payWithinDays: 28, noticeWithinDays: 28, claimWithinDays: 84, assessWithinDays: 42 },
+  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7, noticeWithinDays: 28, claimWithinDays: 56, assessWithinDays: 42, defectsPeriodDays: 90 },
+  GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28, defectsPeriodDays: 365 },
+  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14, noticeWithinDays: 56, claimWithinDays: 21, assessWithinDays: 14, defectsPeriodDays: 364 },
+  FIDIC: { pmTitle: 'Project Engineer', clientTitle: 'Employer', certificate: 'Interim Payment Certificate', completion: 'Taking-over', certifyWithinDays: 28, payWithinDays: 28, noticeWithinDays: 28, claimWithinDays: 84, assessWithinDays: 42, defectsPeriodDays: 365 },
   OTHER: {},
 };
 

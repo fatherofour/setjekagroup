@@ -81,6 +81,13 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   TIME_CLAIM_SUBMITTED: 'APPROVALS',
   TIME_CLAIM_DECIDED: 'ACTIONS',
   TIME_CLAIM_RESPONDED: 'ACTIONS',
+  // Completion certificates are news; a defect is the contractor's to put
+  // right and the consultant's to verify; a client's report is Setjeka's.
+  COMPLETION_CERTIFIED: 'APPROVALS',
+  DEFECT_REPORTED: 'ACTIONS',
+  DEFECT_ISSUED: 'ASSIGNMENTS',
+  DEFECT_RECTIFIED: 'APPROVALS',
+  DEFECT_DECIDED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',
