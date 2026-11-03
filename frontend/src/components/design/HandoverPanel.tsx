@@ -286,12 +286,10 @@ export function HandoverPanel({ projectId }: { projectId: string }) {
   }, [authedFetch, projectId]);
   useEffect(load, [load]);
 
-  // An alert about a whole contract's pack links to the contract.
-  useEffect(() => {
-    if (selectedId && contracts?.some((k) => k.id === selectedId)) setSelectedId(null);
-  }, [contracts, selectedId]);
-
-  if (selectedId && !contracts?.some((k) => k.id === selectedId)) return <Detail projectId={projectId} id={selectedId} onBack={() => setSelectedId(null)} onChanged={load} />;
+  // An alert about a whole contract's pack links to the contract: that opens
+  // the pack, not an item.
+  const openId = selectedId && !contracts?.some((k) => k.id === selectedId) ? selectedId : null;
+  if (openId) return <Detail projectId={projectId} id={openId} onBack={() => setSelectedId(null)} onChanged={load} />;
 
   async function act(fn: () => Promise<unknown>, fail: string) {
     setError(null);

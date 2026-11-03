@@ -1019,6 +1019,15 @@ that step gets skipped.
   points short), now-critical / off-critical, forecast vs baseline finish.
   Next: portfolio dashboard.
 
+- **4 Nov 2026 — portfolio dashboard (document.md §2.40).** `/portfolio`
+  (internal only, `GET /portfolio`), dashboard card now real. Per project
+  RAG on cost (projected final vs original budget + contingency — approved
+  VOs not double-counted), programme (baseline variance + contracts past
+  revised completion), client approvals waiting/overdue, risks (score 15+);
+  overall = worst. Totals in ZAR via recorded FX. Thresholds are defaults to
+  agree with Setjeka. Also fixed set-state-in-effect lint errors in the
+  tests, defects and handover panels. Next on the list: HSE incidents.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

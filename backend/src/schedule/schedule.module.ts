@@ -13,6 +13,6 @@ import { PermissionsModule } from '../permissions/permissions.module.js';
   imports: [ProjectsModule, PermissionsModule],
   controllers: [ScheduleActivitiesController, ScheduleDependenciesController, ScheduleBaselinesController, ScheduleImportController],
   providers: [ScheduleService, ScheduleBaselinesService, ScheduleImportService],
-  exports: [ScheduleService],
+  exports: [ScheduleService, ScheduleBaselinesService],
 })
 export class ScheduleModule {}

@@ -11,7 +11,6 @@ import {
   PauseCircle,
   CheckCircle2,
   Plus,
-  Wallet,
   Calculator,
   Boxes,
   Cog,
@@ -86,7 +85,6 @@ function KpiTile({
 // an honest "coming soon" state rather than fabricated numbers, so the
 // dashboard's layout matches the full design without pretending data exists.
 const COMING_SOON_WIDGETS = [
-  { icon: Wallet, title: 'Finance summary', description: 'Budget vs. actuals across your portfolio, once budgets are tracked.' },
   { icon: Calculator, title: 'Estimate resources', description: 'Labour, material and equipment resourcing from the estimate builder.' },
   { icon: Boxes, title: 'BIM coverage', description: 'How much of each project has a linked BIM model, once BIM Takeoff lands.' },
   { icon: Cog, title: 'Operations snapshot', description: 'Daily diary and site operations at a glance.' },

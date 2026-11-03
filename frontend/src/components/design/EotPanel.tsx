@@ -399,14 +399,18 @@ export function EotPanel({ projectId }: { projectId: string }) {
       .catch(() => undefined);
   }, [authedFetch, projectId]);
 
+  useEffect(load, [load]);
+
+  const notifiable = contracts.filter((k) => k.can.notify);
+  // The programme's activities, for the notice form only: the client never
+  // gives notice, and can't read the site options.
+  const canNotify = notifiable.length > 0;
   useEffect(() => {
-    load();
+    if (!canNotify) return;
     authedFetch<{ activities: { id: string; name: string }[] }>(`/projects/${projectId}/interfaces/options`)
       .then((o) => setActivities(o.activities))
       .catch(() => undefined);
-  }, [authedFetch, projectId, load]);
-
-  const notifiable = contracts.filter((k) => k.can.notify);
+  }, [authedFetch, projectId, canNotify]);
 
   async function notify(e: FormEvent) {
     e.preventDefault();

@@ -46,6 +46,7 @@ import { SiteRecordsModule } from './site-records/site-records.module.js';
 import { TimeClaimsModule } from './time-claims/time-claims.module.js';
 import { DefectsModule } from './defects/defects.module.js';
 import { HandoverModule } from './handover/handover.module.js';
+import { PortfolioModule } from './portfolio/portfolio.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -115,6 +116,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     TimeClaimsModule,
     DefectsModule,
     HandoverModule,
+    PortfolioModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

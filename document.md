@@ -3364,6 +3364,69 @@ Built on 2026-11-04, the fourth item from the user's role-by-role review. Baseli
   - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
   - measured valuations (31), tests and hold points (42, which use the programme), interfaces (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.40 The portfolio dashboard
+
+Built on 2026-11-04: roadmap item 5's last open part, and the fifth item from the user's role-by-role review.
+
+- **Where.** A new **Portfolio** page (`/portfolio`, under Overview in the menu, Setjeka staff only; `GET /portfolio`, `portfolio/`). It shows every project that isn't archived.
+- **The dashboard card.** "Portfolio overview" no longer says "Not tracked yet": it shows the portfolio's budget, forecast, how many projects have a budget, and how many need attention. The "Finance summary" placeholder is gone.
+- **Where the figures come from.** Every figure comes from the project's own screens, not a second calculation:
+  - cost from the cost report (§2.14);
+  - the programme from the baseline variance (§2.39);
+  - completion from the contracts and the extensions of time granted (§2.36).
+
+**Each project**
+- **Who and where:** name, code, client, Setjeka PM and stage.
+- **Cost.** The projected final cost against what was set aside: the original budget and its contingency. Approved variations are in the revised budget and draw on the contingency, so they are counted once. Also shown: the amount over, the contingency left, and whether the budget is locked.
+  - **Red:** over by more than 5%, or the contingency spent.
+  - **Amber:** over at all, or the contingency spent once pending variations are approved.
+  - **Grey:** no budget.
+- **Programme.** The forecast finish against the latest baseline in working days, with progress against plan.
+  - **Red:** more than 10 working days behind, or any contract past its revised completion date (granted extensions included).
+  - **Amber:** behind at all, or late activities on the critical path.
+  - **Grey:** no baseline and no contract dates.
+- **Client approvals.** Stage 1 documents, variations, stage moves, document approvals and payment certificates waiting for the client.
+  - **Red:** any overdue.
+  - **Amber:** any waiting.
+- **Risks.** Open risks.
+  - **Red:** a high risk (score 15 or more) is open.
+  - **Amber:** any risk is open.
+- **On site.** Open NCRs, defects, extension-of-time claims and outstanding handover documents.
+- **Overall.** The worst of cost, programme, approvals and risk.
+
+**The page**
+- **Totals in rand.** Converted at Setjeka's recorded exchange rates; anything with no rate is left out and named. The totals are revised budget, projected final cost, projects behind programme, approvals waiting (and overdue), and high risks.
+- **Finding projects.** Search by project, client or PM; filter by health and stage. Projects needing attention come first.
+- **Layout.** A table on wider screens and a card per project on a phone.
+- **Download.** The list as shown can be downloaded as a CSV.
+- **Speed.** Projects are worked out six at a time: 177 local test projects take about 3 seconds, and a real portfolio of tens of projects well under one.
+
+**Not done here:** no history (the portfolio is as at now); amounts per project are in its own currency. The thresholds (5%, 10 working days, a risk score of 15) are defaults to agree with Setjeka.
+
+**Verified**
+- **API, 13 of 13 checks.**
+  - **An on-track project** (budget, baselined programme on plan, nothing waiting) is green, with its budget, PM and baseline.
+  - **An over-budget project.** Approved variations past the contingency make it red, R 70 000 over its R 1 050 000 budget and contingency; with no programme, its time is not tracked.
+  - **A late project:**
+    - a contract 20 days past completion makes the programme red;
+    - a variation with the client makes approvals amber;
+    - a high risk makes risk red;
+    - overall is the worst.
+  - **The totals** add the projects in rand and count approvals and high risks.
+  - **A client** is refused.
+- **Browser, 10 of 10:**
+  - the dashboard card shows the real budget and links to the portfolio;
+  - the three test projects show, those needing attention first, with "R 1.12m of R 1.05m, R 70k over" and the late contract;
+  - the health filter works, and the CSV holds what is shown;
+  - on a phone each project is a card, with no sideways scrolling;
+  - a client has no Portfolio in the menu and is told it is for Setjeka staff.
+- **Regression:** these all still pass:
+  - variance (17), handover (36 API, 7 UI), defects (44 API, 9 UI), tests (42 API, 7 UI) and delays (37 API, 9 UI);
+  - QS (93), the architect journey (58) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), interfaces (42), escalation (17), minimum quotes (6) and form of contract (10).
+- **The per-role sweep now covers this week's tabs:** NCRs, tests, hidden works, interfaces, measurement, delays, completion and handover. It found the client's Delays & EOT tab asking for the site options the notice form uses, which was refused (403). That list now loads only for people who can give notice. With the fix, the sweep shows 0 screens with problems.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

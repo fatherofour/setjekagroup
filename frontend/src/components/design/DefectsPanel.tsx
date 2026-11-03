@@ -395,20 +395,16 @@ export function DefectsPanel({ projectId }: { projectId: string }) {
   useEffect(load, [load]);
 
   // A completion alert links to its contract: show that contract's defects.
-  useEffect(() => {
-    if (selectedId && contracts?.some((k) => k.id === selectedId)) {
-      setContractFilter(selectedId);
-      setSelectedId(null);
-    }
-  }, [contracts, selectedId]);
-
-  if (selectedId && !contracts?.some((k) => k.id === selectedId)) return <Detail projectId={projectId} id={selectedId} onBack={() => setSelectedId(null)} onChanged={load} />;
+  const linkedContract = selectedId && contracts?.some((k) => k.id === selectedId) ? selectedId : null;
+  const openId = linkedContract ? null : selectedId;
+  const contractShown = contractFilter || linkedContract || '';
+  if (openId) return <Detail projectId={projectId} id={openId} onBack={() => setSelectedId(null)} onChanged={load} />;
 
   const canList = Boolean(contracts?.some((k) => k.can.listDefects));
   const canReport = Boolean(contracts?.some((k) => k.can.report));
   const chosen = contracts?.find((k) => k.id === (form.contractId || contracts?.[0]?.id));
   const list = form.list || (chosen ? listNow(chosen) : 'PRACTICAL_COMPLETION');
-  const shown = (defects ?? []).filter((d) => (!contractFilter || d.contract.id === contractFilter) && (filter === 'all' || ['REPORTED', 'OPEN', 'RECTIFIED'].includes(d.status)));
+  const shown = (defects ?? []).filter((d) => (!contractShown || d.contract.id === contractShown) && (filter === 'all' || ['REPORTED', 'OPEN', 'RECTIFIED'].includes(d.status)));
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -511,7 +507,12 @@ export function DefectsPanel({ projectId }: { projectId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Defects</h3>
         <div className="flex flex-wrap gap-2">
-          {contracts && contracts.length > 1 && <Select aria-label="Contract filter" className={`${selectCls} h-9 w-48`} value={contractFilter} onChange={setContractFilter} options={[{ value: '', label: 'All contracts' }, ...contracts.map((k) => ({ value: k.id, label: k.title }))]} />}
+          {contracts && contracts.length > 1 && <Select aria-label="Contract filter" className={`${selectCls} h-9 w-48`} value={contractShown}
+              onChange={(v) => {
+                setContractFilter(v);
+                setSelectedId(null);
+              }}
+              options={[{ value: '', label: 'All contracts' }, ...contracts.map((k) => ({ value: k.id, label: k.title }))]} />}
           <Select aria-label="Show" className={`${selectCls} h-9 w-32`} value={filter} onChange={(v) => setFilter(v as 'open' | 'all')} options={[{ value: 'open', label: 'Open' }, { value: 'all', label: 'All' }]} />
         </div>
       </div>

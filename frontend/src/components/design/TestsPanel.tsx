@@ -528,15 +528,16 @@ export interface TestDraft {
   label?: string;
 }
 
-function TestsSection({ projectId, opts, criteria, draft, clearDraft }: { projectId: string; opts: Options; criteria: Criterion[]; draft: TestDraft | null; clearDraft: () => void }) {
+function TestsSection({ projectId, opts, criteria, draft }: { projectId: string; opts: Options; criteria: Criterion[]; draft: TestDraft | null }) {
   const { authedFetch } = useAuth();
   const params = useSearchParams();
   const [rows, setRows] = useState<TestResult[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(params.get('test'));
+  const [selectedId, setSelectedId] = useState<string | null>(draft ? null : params.get('test'));
   const blank = { criterionId: '', title: '', location: '', contractorId: '', scheduleActivityId: '', holdPointId: '', retestOfId: '', sampleRef: '', laboratory: '', sampledAt: '', testedAt: todayIso(), value: '', outcome: '' as '' | Outcome, remarks: '' };
-  const [form, setForm] = useState(blank);
-  const [recording, setRecording] = useState(false);
-  const [label, setLabel] = useState<string | null>(null);
+  // Opened from a hold point: start from what it asks for.
+  const [form, setForm] = useState(() => (draft ? { ...blank, ...draft } : blank));
+  const [recording, setRecording] = useState(Boolean(draft));
+  const [label, setLabel] = useState<string | null>(draft?.label ?? null);
   const [filter, setFilter] = useState<'all' | 'fail' | 'review'>('all');
   const [error, setError] = useState<string | null>(null);
 
@@ -545,17 +546,6 @@ function TestsSection({ projectId, opts, criteria, draft, clearDraft }: { projec
       .then(setRows)
       .catch((e) => setError(err(e, 'Failed to load the test results.')));
   }, [authedFetch, projectId]);
-
-  useEffect(() => {
-    if (!draft) return;
-    setForm({ ...blank, ...draft });
-    setLabel(draft.label ?? null);
-    setRecording(true);
-    setSelectedId(null);
-    clearDraft();
-    // blank is rebuilt each render; only a new draft should reset the form.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, clearDraft]);
 
   const crit = criteria.find((c) => c.id === form.criterionId);
 
@@ -912,7 +902,6 @@ export function TestsPanel({ projectId }: { projectId: string }) {
   const [section, setSection] = useState(params.get('test') ? 'tests' : params.get('point') ? 'points' : 'points');
   const [draft, setDraft] = useState<TestDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const clearDraft = useCallback(() => setDraft(null), []);
 
   useEffect(() => {
     Promise.all([authedFetch<Options>(`/projects/${projectId}/quality/options`), authedFetch<Criterion[]>(`/projects/${projectId}/quality/criteria`)])
@@ -940,7 +929,10 @@ export function TestsPanel({ projectId }: { projectId: string }) {
               { value: 'criteria', label: 'Acceptance criteria', count: criteria.filter((c) => c.active).length },
             ]}
             value={section}
-            onChange={setSection}
+            onChange={(s) => {
+              setSection(s);
+              setDraft(null);
+            }}
           />
         </div>
       </div>
@@ -955,7 +947,7 @@ export function TestsPanel({ projectId }: { projectId: string }) {
           }}
         />
       )}
-      {section === 'tests' && <TestsSection projectId={projectId} opts={opts} criteria={criteria} draft={draft} clearDraft={clearDraft} />}
+      {section === 'tests' && <TestsSection projectId={projectId} opts={opts} criteria={criteria} draft={draft} />}
       {section === 'criteria' && <CriteriaSection projectId={projectId} opts={opts} criteria={criteria} setCriteria={setCriteria} />}
     </div>
   );
