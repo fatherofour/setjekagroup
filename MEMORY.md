@@ -1012,6 +1012,13 @@ that step gets skipped.
   advised against (see the reply that day). Next on the list: baseline
   variance.
 
+- **4 Nov 2026 — baseline variance (document.md §2.39).** Schedule screen
+  "Baseline variance" view; `GET schedule/baselines/variance`. Snapshots now
+  also store baselinePercent / wasCritical / baselineFloatDays. Working-day
+  variance per activity, straight-line planned % vs actual (behind = 10+
+  points short), now-critical / off-critical, forecast vs baseline finish.
+  Next: portfolio dashboard.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

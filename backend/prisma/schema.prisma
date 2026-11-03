@@ -956,6 +956,11 @@ model ScheduleBaselineSnapshot {
   baselineStart        DateTime
   baselineEnd          DateTime
   baselineDurationDays Float
+  // Where the activity stood in the plan when baselined (2026-11-03), so the
+  // variance shows the critical path moving.
+  baselinePercent      Int              @default(0)
+  wasCritical          Boolean          @default(false)
+  baselineFloatDays    Float?
 
   @@index([baselineId])
   @@index([activityId])

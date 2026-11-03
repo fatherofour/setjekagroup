@@ -16,6 +16,7 @@ import { ScheduleGanttView } from '@/components/schedule/ScheduleGanttView';
 import { ScheduleCalendarView } from '@/components/schedule/ScheduleCalendarView';
 import { ScheduleCardView } from '@/components/schedule/ScheduleCardView';
 import { ScheduleImportButton } from '@/components/schedule/ScheduleImportButton';
+import { ScheduleVarianceView } from '@/components/schedule/ScheduleVarianceView';
 
 interface ProjectSummary {
   id: string;
@@ -35,6 +36,7 @@ const VIEW_TABS: TabItem[] = [
   { value: 'gantt', label: 'Gantt' },
   { value: 'calendar', label: 'Calendar' },
   { value: 'card', label: 'Card' },
+  { value: 'variance', label: 'Baseline variance' },
 ];
 
 function BaselinesMenu({ projectId }: { projectId: string }) {
@@ -194,6 +196,7 @@ export default function ProjectSchedulePage() {
       {view === 'gantt' && <ScheduleGanttView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
       {view === 'calendar' && <ScheduleCalendarView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
       {view === 'card' && <ScheduleCardView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
+      {view === 'variance' && <ScheduleVarianceView projectId={id} data={scheduleData} />}
 
       {panelMode && (
         <ActivityDetailPanel

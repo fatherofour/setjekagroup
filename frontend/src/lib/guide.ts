@@ -622,6 +622,7 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       steps: [
         s('The programme', 'Activities, dates and links as a Gantt chart.'),
         s('Progress', 'Update percentage complete on your activities so the programme stays true.'),
+        s('Against the baseline', 'Save the agreed programme as a baseline. Baseline variance then shows the forecast finish against it, progress against plan, what is finishing late and where the critical path has moved.'),
       ],
     },
   },

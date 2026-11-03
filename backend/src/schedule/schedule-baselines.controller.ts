@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ScheduleBaselinesService } from './schedule-baselines.service.js';
 import { CreateBaselineDto } from './dto/create-baseline.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
@@ -16,6 +16,12 @@ export class ScheduleBaselinesController {
   @RequirePermission('SCHEDULE', 'VIEW')
   findAll(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
     return this.baselinesService.findAll(projectId, user.sub);
+  }
+
+  @Get('variance')
+  @RequirePermission('SCHEDULE', 'VIEW')
+  variance(@Param('projectId') projectId: string, @Query('baselineId') baselineId: string | undefined, @CurrentUser() user: JwtPayload) {
+    return this.baselinesService.variance(projectId, user.sub, baselineId);
   }
 
   @Post()

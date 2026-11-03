@@ -3310,6 +3310,60 @@ Built on 2026-11-03, the third item from the user's role-by-role review of the d
   - measured valuations (31), tests (42), interfaces and hidden works (42), escalation (17), minimum quotes (6) and form of contract (10);
   - delays (37), after a fix found by this run: late notice and late claims are now counted in South African calendar days. Rounding elapsed hours had counted a notice given in the afternoon one day late.
 
+### 2.39 Baseline variance
+
+Built on 2026-11-04, the fourth item from the user's role-by-role review. Baselines could already be saved (§2.4) but nothing compared against them. The schedule screen gains a **Baseline variance** view (`ScheduleVarianceView.tsx`; `GET /projects/:id/schedule/baselines/variance?baselineId=`, SCHEDULE view permission). It uses the latest baseline unless another is chosen.
+
+**What a baseline now records.** Each activity's snapshot also keeps its % complete, whether it was on the critical path, and its float. Baselines saved before this keep none of that, so they show no critical path changes.
+
+**Per activity** (all in working days, Monday to Friday, as the programme counts them)
+- **Movement.** Start, finish and duration movement against the baseline: positive is later, negative is earlier.
+- **Status.** Each activity is shown as late, early or on plan; activities added since the baseline are marked "added since".
+- **Planned progress today.** This is straight-line over the baselined working days, counting today; a milestone is all or nothing. The gap to the reported % complete is shown. An unfinished activity 10 points or more short is **behind**.
+- **Critical path.** **Now critical** (it wasn't at the baseline), **off the critical path** (it was), or critical.
+- **Bars.** Baseline and current dates side by side on one time axis.
+
+**The summary**
+- **Forecast finish:** the latest current finish, against the baseline finish, in working days.
+- **Progress today:** planned against actual, weighted by duration over the activities that do the work (summary rows left out).
+- **Finishing late:** how many activities finish late (and how many of those are on the critical path), early and on plan.
+- **Critical path:** how many activities are newly critical, off the critical path, or behind on progress, and how many were added.
+- **Filters:** the list filters to late or added, behind on progress, on the critical path, or all.
+
+**Not done here:**
+- Planned progress is straight-line, not a resource-loaded curve.
+- There's no history of progress over time (so no S-curve of actual progress), and no earned value; the user didn't choose earned value.
+- Activities deleted since the baseline drop out of it, because their snapshots go with them.
+
+**Verified**
+- **API, 17 of 17 checks.**
+  - **Before and at baselining:**
+    - with no baseline, there is nothing to compare;
+    - the baseline records which activities were critical;
+    - straight after baselining, nothing has moved;
+    - the baseline has the substructure finished by today (100% planned), and with nothing reported the work is behind.
+  - **After the programme moves:**
+    - the substructure takes 4 more days and finishes 4 working days late;
+    - it pushes the frame 4 days, though the frame's own duration is unchanged;
+    - the forecast finish is 4 days past the baseline, with the late activities on the critical path;
+    - site services finish a day early, and when completed are not behind;
+    - an instructed activity is new since the baseline;
+    - the substructure at 60% against 100% planned is 40 points behind.
+  - **Critical path:** site services grown to 40 days become newly critical, and the substructure drops off.
+  - **Choosing a baseline:**
+    - a second baseline becomes the default (nothing moved against it);
+    - the first can still be chosen;
+    - an unknown baseline is refused.
+- **Browser, 6 of 6:**
+  - the latest baseline is shown;
+  - choosing the tender programme shows the finish later and the substructure 4 days late;
+  - the newly critical activity is marked, and the behind filter works;
+  - no sideways scrolling on a phone.
+- **Regression:** these all still pass:
+  - handover (36), defects (44), QS (93), the architect journey (58), the per-role sweep (0 problems) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests and hold points (42, which use the programme), interfaces (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
