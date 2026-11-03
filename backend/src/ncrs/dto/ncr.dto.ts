@@ -12,6 +12,8 @@ export class CreateNcrDto {
   @IsOptional() @IsUUID() inspectionId?: string;
   /** Raised from a failed test result. */
   @IsOptional() @IsUUID() testResultId?: string;
+  /** Raised from hidden work covered before sign-off. */
+  @IsOptional() @IsUUID() hiddenWorkId?: string;
   @IsOptional() @IsDateString() dueDate?: string;
   @IsOptional() @IsNumber() costImpact?: number;
   @IsOptional() @IsInt() @Min(-3650) @Max(3650) timeImpactDays?: number;

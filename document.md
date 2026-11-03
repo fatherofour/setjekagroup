@@ -3005,6 +3005,75 @@ Built on 2026-11-03 (the user's choice from the list kept until all roles were b
   - civil (25), structural (25), electrical (26), mechanical (25), NCR (22 API, 4 UI) and QS (92);
   - measured valuations (31), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.35 The interfaces register and hidden-works sign-off
+
+Built on 2026-11-03, the last of the six extras chosen once all roles were built. It draws on the donor app's `interface_management` and its site-supervision hidden-works register. It adds two project tabs next to Tests & hold points: **Hidden works** and **Interfaces** (`site-records/`, `HiddenWorksPanel.tsx`, `InterfacesPanel.tsx`). Both use the inspections permissions and the same rules on who sees what (`common/site-party.ts`): the client sees neither, and a contractor sees only their own work.
+
+**Interfaces** (`ProjectInterface`, IF-001 on)
+- **What an interface is.** One party's work depends on another's. For example, slab penetrations the mechanical engineer needs from the structural engineer, or cast-in plates for a steel canopy.
+- **The record.** Each interface names who provides it and who depends on it: any two people on the team, not the client. It also has a kind (physical, functional, spatial, information, programme or contractual), a place and an agree-by date, and it can be linked to a programme activity and an RFI.
+- **Agreeing it.**
+  1. The provider proposes the detail: sizes, positions, loads, drawing references.
+  2. The dependant agrees it, or sends it back with a reason. The provider then proposes again.
+  3. Once it is built as agreed, Setjeka, a consultant, QA/QC or whoever raised it closes it.
+- **Overdue.** An interface past its agree-by date that isn't agreed yet is flagged overdue.
+- **Contractors** raise interfaces they are a side to, and see only those.
+- **Alerts and lists.** Interface alerts go to the provider when it is raised, to the dependant when a detail is proposed, and to the provider when it is agreed or sent back. The list filters to "Waiting on me".
+
+**Hidden works** (`HiddenWork`, HW-001 on)
+- **Asking for sign-off.** Before work is covered (drainage backfilled, a ceiling boarded, waterproofing screeded), the contractor or the site team asks for it to be signed off. The request gives the trade, the place, when it is ready and optionally a named inspector.
+- **Photos.** Photos are added from the record and kept with it (`SitePhoto.hiddenWorkId`). **It can't be approved without a photo:** the photos are the record of what is hidden.
+- **The inspector decides.** The named inspector (or Setjeka, or any consultant or QA/QC if none is named) either:
+  - approves it, recording what is covered (sizes, depths, positions); or
+  - turns it back with a reason. The contractor puts it right and asks again.
+- **Covering it.** Once approved, the contractor marks it covered.
+- **Covered too soon.** Work found covered before sign-off is recorded so. An NCR can be raised from it; the NCR form is filled in, and the two link (`NonConformance.hiddenWorkId`).
+- **The register.** The register view, filtered by trade, is the record of what lies where, for the handover.
+
+**Notes, alerts and PROCSA**
+- Both records carry the notes and actions thread.
+- **Alert types:** INTERFACE_RAISED, INTERFACE_PROPOSED and INTERFACE_DECIDED; HIDDEN_WORK_REQUESTED and HIDDEN_WORK_DECIDED.
+- **PROCSA:**
+  - An interface agreed with the role as a side now ticks "co-ordinate design interfaces": architect 2.7, and 2.9 for the engineers.
+  - Any agreed interface ticks the PM's 3.7, "technical co-ordination".
+  - Hidden work signed off by the role ticks "inspect the works for conformity" (5.5).
+
+**Verified**
+- **API, 42 of 42 checks.**
+  - **Interfaces:**
+    - the client sees none;
+    - the two sides must differ, and the client can't be one;
+    - it is overdue past the agree-by date;
+    - a contractor who is no side can't see it or raise one between others;
+    - only the provider proposes, and only the dependant agrees or sends it back;
+    - after a revised proposal it is agreed and closed, with its history;
+    - a contractor's own interface is hidden from another contractor;
+    - an open interface can be cancelled;
+    - the alerts arrive;
+    - the structural engineer's PROCSA 2.9 ticks, but not the civil engineer's.
+  - **Hidden works:**
+    - the client sees none, and the inspector can't be a contractor;
+    - the contractor's request is tagged to their firm, and the named inspector is alerted;
+    - another contractor can't see it;
+    - approval is refused without photos;
+    - a photo is uploaded, counted and listed against it;
+    - neither the contractor nor another engineer can approve it;
+    - it is turned back, can't be covered, is asked for again, and is approved with the as-built record, then covered;
+    - work covered before sign-off raises a linked NCR;
+    - notes work, and the client can't read them;
+    - civil PROCSA 5.5 ticks.
+- **Browser, 9 of 9:**
+  - the structural engineer raises an interface and proposes the detail;
+  - the mechanical engineer agrees it on a phone;
+  - the contractor asks for sign-off on a phone, and the approval waits for photos until one is added from the phone;
+  - the civil engineer approves it with the as-built record;
+  - the register lists every record;
+  - no sideways scrolling on a phone.
+- **Regression:**
+  - the architect journey (58), the per-role sweep (0 problems) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25), NCR (22 API, 4 UI) and QS (92);
+  - measured valuations (31), tests and hold points (42 API, 7 UI), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

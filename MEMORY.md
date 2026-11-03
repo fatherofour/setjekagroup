@@ -969,6 +969,16 @@ that step gets skipped.
   handover pack, baseline variance, portfolio dashboard, HSE incidents,
   permits to work, then the site manager's diary, look-ahead and plant.
 
+- **3 Nov 2026 — interfaces register and hidden-works sign-off
+  (document.md §2.35).** Two tabs, Hidden works and Interfaces
+  (`site-records/`, shared caller rules in `common/site-party.ts`).
+  Interfaces: owner proposes the detail, accepter agrees or sends back,
+  closed once built; overdue past agree-by. Hidden works: requested by the
+  contractor/site team, approved by the named inspector only with photos on
+  record (SitePhoto.hiddenWorkId) and an as-built note, then covered; found
+  covered early raises a linked NCR. That completes the six extras. Next on
+  the user's list: delay & EOT claims.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

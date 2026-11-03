@@ -30,6 +30,8 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   DAYWORK: 'Daywork sheet',
   TEST_RESULT: 'Test result',
   HOLD_POINT: 'Hold point',
+  INTERFACE: 'Interface',
+  HIDDEN_WORK: 'Hidden work',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -114,6 +116,12 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'DAYWORK':
         put(type, (await prisma.dayworkSheet.findMany({ where, select: { id: true, number: true, description: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.description.slice(0, 60)}` })));
+        break;
+      case 'INTERFACE':
+        put(type, (await prisma.projectInterface.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'HIDDEN_WORK':
+        put(type, (await prisma.hiddenWork.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
         break;
       case 'TEST_RESULT':
         put(type, (await prisma.testResult.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));

@@ -68,6 +68,13 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   TEST_FAILED: 'ACTIONS',
   HOLD_POINT_NOTIFIED: 'APPROVALS',
   HOLD_POINT_DECIDED: 'ACTIONS',
+  // An interface is the owner's to propose and the accepter's to agree;
+  // hidden work is the inspector's to sign off before it is covered.
+  INTERFACE_RAISED: 'ASSIGNMENTS',
+  INTERFACE_PROPOSED: 'APPROVALS',
+  INTERFACE_DECIDED: 'ACTIONS',
+  HIDDEN_WORK_REQUESTED: 'APPROVALS',
+  HIDDEN_WORK_DECIDED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

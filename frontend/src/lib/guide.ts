@@ -372,6 +372,33 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.hidden': {
+    contractor: {
+      title: 'Hidden works',
+      steps: [
+        s('Before you cover it', 'Before backfilling drainage, closing a ceiling or screeding over waterproofing, ask for it to be signed off and add photos of the work.'),
+        s('Then cover it', 'Once it is approved, cover it and mark it covered. Work covered before sign-off may have to be opened up.'),
+      ],
+    },
+    all: {
+      title: 'Hidden works',
+      steps: [
+        s('Sign off before it is covered', 'Inspect the work the contractor is about to cover. Approve it once photos are on record, or turn it back with your reasons.'),
+        s('The record of what is hidden', 'Add the sizes, depths and positions when you approve. The register shows what lies where, by trade, for the handover.'),
+        s('Covered too soon', 'If work was covered before sign-off, record it so and raise an NCR from it.'),
+      ],
+    },
+  },
+  'project.interfaces': {
+    all: {
+      title: 'Interfaces',
+      steps: [
+        s('Two sides', "An interface is where one party's work depends on another's. Name who provides it and who depends on it, and when it must be agreed."),
+        s('Propose and agree', 'Whoever provides it proposes the detail; whoever depends on it agrees it, or sends it back. Overdue interfaces are flagged.'),
+        s('Close it', 'Once it is built as agreed, close it. Use the notes to chase actions.'),
+      ],
+    },
+  },
   'project.measure': {
     contractor: {
       title: 'Site measurement',

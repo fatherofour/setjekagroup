@@ -367,6 +367,10 @@ model User {
   holdPointsCreated           HoldPoint[]                  @relation("HoldPointCreatedBy")
   holdPointsNotified          HoldPoint[]                  @relation("HoldPointNotifiedBy")
   holdPointsReleased          HoldPoint[]                  @relation("HoldPointReleasedBy")
+  interfacesCreated           ProjectInterface[]           @relation("InterfaceCreatedBy")
+  interfacesAgreed            ProjectInterface[]           @relation("InterfaceAgreedBy")
+  hiddenWorksRequested        HiddenWork[]                 @relation("HiddenWorkRequestedBy")
+  hiddenWorksDecided          HiddenWork[]                 @relation("HiddenWorkDecidedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -411,6 +415,7 @@ model Contractor {
   projectContracts        ProjectContract[]
   testResults             TestResult[]
   holdPoints              HoldPoint[]
+  hiddenWorks             HiddenWork[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -702,6 +707,8 @@ model Project {
   testCriteria             TestCriterion[]
   testResults              TestResult[]
   holdPoints               HoldPoint[]
+  interfaces               ProjectInterface[]
+  hiddenWorks              HiddenWork[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -772,6 +779,9 @@ model ProjectMember {
   rfisAssigned               Rfi[]                      @relation("RfiAssignedTo")
   ncrsAssigned               NonConformance[]           @relation("NcrAssignee")
   holdPointsToRelease        HoldPoint[]                @relation("HoldPointReleaser")
+  interfacesOwned            ProjectInterface[]         @relation("InterfaceOwner")
+  interfacesAccepted         ProjectInterface[]         @relation("InterfaceAccepter")
+  hiddenWorksToInspect       HiddenWork[]               @relation("HiddenWorkInspector")
   rfisBallInCourt            Rfi[]                      @relation("RfiBallInCourt")
   submittalsSubmitted        Submittal[]                @relation("SubmittalSubmittedBy")
   submittalsReviewing        Submittal[]                @relation("SubmittalReviewer")
@@ -883,6 +893,8 @@ model ScheduleActivity {
   tasks                 ProjectTask[]
   testResults           TestResult[]
   holdPoints            HoldPoint[]
+  interfaces            ProjectInterface[]
+  hiddenWorks           HiddenWork[]
   documents             ProjectDocument[]
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
@@ -1059,6 +1071,8 @@ enum CommentEntityType {
   DAYWORK
   TEST_RESULT
   HOLD_POINT
+  INTERFACE
+  HIDDEN_WORK
 }
 
 model Comment {
@@ -1161,6 +1175,11 @@ enum NotificationType {
   TEST_FAILED
   HOLD_POINT_NOTIFIED
   HOLD_POINT_DECIDED
+  INTERFACE_RAISED
+  INTERFACE_PROPOSED
+  INTERFACE_DECIDED
+  HIDDEN_WORK_REQUESTED
+  HIDDEN_WORK_DECIDED
 }
 
 model Notification {
@@ -1439,6 +1458,7 @@ model Rfi {
   project                     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   rfiNumber                   String
   title                       String
+  interfaces                  ProjectInterface[]
   question                    String?
   officialResponse            String?
   respondedAt                 DateTime?
@@ -3243,6 +3263,8 @@ model SitePhoto {
   inspection         SiteInspection?   @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
   punchItemId        String?
   punchItem          PunchItem?        @relation(fields: [punchItemId], references: [id], onDelete: SetNull)
+  hiddenWorkId       String?
+  hiddenWork         HiddenWork?       @relation(fields: [hiddenWorkId], references: [id], onDelete: SetNull)
 
   @@index([projectId, takenAt])
   @@index([issueId])
@@ -4449,6 +4471,8 @@ model NonConformance {
   inspection        SiteInspection? @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
   testResultId      String?
   testResult        TestResult?     @relation(fields: [testResultId], references: [id], onDelete: SetNull)
+  hiddenWorkId      String?
+  hiddenWork        HiddenWork?     @relation(fields: [hiddenWorkId], references: [id], onDelete: SetNull)
   dueDate           DateTime?
   rootCauseCategory String?
   rootCause         String?
@@ -4633,6 +4657,119 @@ model HoldPoint {
   @@unique([projectId, sequence])
   @@index([projectId, status])
   @@index([scheduleActivityId])
+}
+
+// ---- Interfaces register and hidden-works sign-off (2026-11-03) ------------
+// From the list kept until all roles were built (the donor app's
+// interface_management and site_supervision hidden-works register). An
+// interface is a hand-over between two parties - a slab penetration the
+// mechanical engineer needs from the structural engineer, say. The owner
+// proposes the agreed detail, the accepter agrees it, and it is closed once
+// built. Hidden works are signed off, with photos, before they are covered.
+enum InterfaceType {
+  PHYSICAL
+  FUNCTIONAL
+  SPATIAL
+  INFORMATION
+  SCHEDULE
+  CONTRACTUAL
+}
+
+enum InterfaceStatus {
+  OPEN
+  PROPOSED
+  AGREED
+  CLOSED
+  CANCELLED
+}
+
+model ProjectInterface {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  title              String
+  description        String?
+  type               InterfaceType     @default(PHYSICAL)
+  location           String?
+  // Who provides it and has to get the detail agreed, and who depends on it.
+  ownerId            String
+  owner              ProjectMember     @relation("InterfaceOwner", fields: [ownerId], references: [id])
+  accepterId         String
+  accepter           ProjectMember     @relation("InterfaceAccepter", fields: [accepterId], references: [id])
+  needBy             DateTime?
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  rfiId              String?
+  rfi                Rfi?              @relation(fields: [rfiId], references: [id], onDelete: SetNull)
+  status             InterfaceStatus   @default(OPEN)
+  agreedDetail       String?
+  proposedAt         DateTime?
+  agreedAt           DateTime?
+  agreedById         String?
+  agreedBy           User?             @relation("InterfaceAgreedBy", fields: [agreedById], references: [id], onDelete: SetNull)
+  closedAt           DateTime?
+  rejectReason       String?
+  cancelReason       String?
+  // [{ status, at, by, name, comment }], oldest first.
+  history            Json              @default("[]")
+  createdById        String
+  createdBy          User              @relation("InterfaceCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Numbered per project: IF-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+enum HiddenWorkStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  COVERED
+  // Found covered before it was signed off.
+  COVERED_UNAPPROVED
+  CANCELLED
+}
+
+model HiddenWork {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  // What is about to be covered, e.g. "Sewer MH3 to MH5, before backfill".
+  title              String
+  trade              String?
+  location           String?
+  contractorId       String?
+  contractor         Contractor?       @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  inspectorId        String?
+  inspector          ProjectMember?    @relation("HiddenWorkInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  readyAt            DateTime?
+  // The record of what is covered: sizes, depths, positions, falls.
+  asBuilt            String?
+  status             HiddenWorkStatus  @default(REQUESTED)
+  requestedById      String
+  requestedBy        User              @relation("HiddenWorkRequestedBy", fields: [requestedById], references: [id])
+  decidedAt          DateTime?
+  decidedById        String?
+  decidedBy          User?             @relation("HiddenWorkDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  decisionComment    String?
+  coveredAt          DateTime?
+  history            Json              @default("[]")
+  photos             SitePhoto[]
+  ncrs               NonConformance[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Numbered per project: HW-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
 }
 
 // ---- Measured contracts: site measurement and dayworks (2026-11-02) -------

@@ -37,6 +37,7 @@ interface Ncr {
   assignee: { id: string; role: string; externalName: string | null; user: { fullName: string } | null } | null;
   inspection: { id: string; number: string; title: string } | null;
   testResult: { id: string; number: string; title: string } | null;
+  hiddenWork: { id: string; number: string; title: string } | null;
   events: { id: string; toStatus: Status; comment: string | null; createdAt: string; actor: { fullName: string } }[];
   can: { edit: boolean; respond: boolean; agree: boolean; reject: boolean; ready: boolean; close: boolean; reopen: boolean; void: boolean };
 }
@@ -96,6 +97,7 @@ function NcrDetail({ projectId, n, onBack, onChanged }: { projectId: string; n: 
             {n.dueDate && ` · answer by ${fmtDay(n.dueDate)}`}
             {n.inspection && ` · from ${n.inspection.number} ${n.inspection.title}`}
             {n.testResult && ` · from test ${n.testResult.number} ${n.testResult.title}`}
+            {n.hiddenWork && ` · from hidden work ${n.hiddenWork.number} ${n.hiddenWork.title}`}
           </p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS[n.status].tone}`}>{STATUS[n.status].label}</span>
@@ -229,8 +231,8 @@ export function NcrPanel({ projectId }: { projectId: string }) {
   const [rows, setRows] = useState<Ncr[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(params.get('ncr'));
-  const [raising, setRaising] = useState(Boolean(params.get('fromInspection') || params.get('fromTest')));
-  const [form, setForm] = useState({ title: '', description: '', kind: 'WORKMANSHIP' as Kind, severity: 'MINOR' as Severity, location: '', assigneeId: '', dueDate: '', inspectionId: params.get('fromInspection') ?? '', testResultId: params.get('fromTest') ?? '' });
+  const [raising, setRaising] = useState(Boolean(params.get('fromInspection') || params.get('fromTest') || params.get('fromHiddenWork')));
+  const [form, setForm] = useState({ title: '', description: '', kind: 'WORKMANSHIP' as Kind, severity: 'MINOR' as Severity, location: '', assigneeId: '', dueDate: '', inspectionId: params.get('fromInspection') ?? '', testResultId: params.get('fromTest') ?? '', hiddenWorkId: params.get('fromHiddenWork') ?? '' });
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const [error, setError] = useState<string | null>(null);
 
@@ -271,6 +273,24 @@ export function NcrPanel({ projectId }: { projectId: string }) {
       .catch(() => {});
   }, [authedFetch, params, projectId, members]);
 
+  // Raised from hidden work covered before sign-off.
+  useEffect(() => {
+    const id = params.get('fromHiddenWork');
+    if (!id) return;
+    authedFetch<{ number: string; title: string; location: string | null; decisionComment: string | null; contractor: { id: string } | null }>(`/projects/${projectId}/hidden-works/${id}`)
+      .then((h) => {
+        const assignee = members.find((m) => m.role === 'CONTRACTOR' && h.contractor && (m as Member & { contractorId?: string | null }).contractorId === h.contractor.id);
+        setForm((f) => ({
+          ...f,
+          assigneeId: f.assigneeId || (assignee?.id ?? ''),
+          title: f.title || `Covered before sign-off: ${h.title}`,
+          location: f.location || (h.location ?? ''),
+          description: f.description || `${h.number} was covered before it was inspected${h.decisionComment ? `: ${h.decisionComment}` : '.'} Open it up for inspection, or show by other means that it conforms.`,
+        }));
+      })
+      .catch(() => {});
+  }, [authedFetch, params, projectId, members]);
+
   const contractors = members.filter((m) => m.role === 'CONTRACTOR');
   const mineAsContractor = members.some((m) => m.userId === user?.id && m.role === 'CONTRACTOR');
 
@@ -280,7 +300,7 @@ export function NcrPanel({ projectId }: { projectId: string }) {
     try {
       const n = await authedFetch<Ncr>(`/projects/${projectId}/ncrs`, {
         method: 'POST',
-        body: { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim() || undefined, dueDate: form.dueDate || undefined, inspectionId: form.inspectionId || undefined, testResultId: form.testResultId || undefined },
+        body: { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim() || undefined, dueDate: form.dueDate || undefined, inspectionId: form.inspectionId || undefined, testResultId: form.testResultId || undefined, hiddenWorkId: form.hiddenWorkId || undefined },
       });
       setRows((r) => [n, ...(r ?? [])]);
       setRaising(false);

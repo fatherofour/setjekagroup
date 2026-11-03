@@ -32,7 +32,9 @@ type CommentEntityType =
   | 'NCR'
   | 'DAYWORK'
   | 'TEST_RESULT'
-  | 'HOLD_POINT';
+  | 'HOLD_POINT'
+  | 'INTERFACE'
+  | 'HIDDEN_WORK';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

@@ -61,6 +61,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     ncrs,
     testsReviewed,
     pointsReleased,
+    interfacesAgreed,
+    hiddenApproved,
   ] = await Promise.all([
     prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true, createdById: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
@@ -109,6 +111,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.nonConformance.findMany({ where: { projectId, status: { not: 'VOID' } }, select: { status: true, raisedById: true } }),
     prisma.testResult.findMany({ where: { projectId, status: 'REVIEWED' }, select: { reviewedById: true } }),
     prisma.holdPoint.findMany({ where: { projectId, status: 'RELEASED' }, select: { releasedById: true } }),
+    prisma.projectInterface.findMany({ where: { projectId, status: { in: ['AGREED', 'CLOSED'] } }, select: { ownerId: true, accepterId: true, agreedById: true, createdById: true } }),
+    prisma.hiddenWork.findMany({ where: { projectId, status: { in: ['APPROVED', 'COVERED'] } }, select: { decidedById: true } }),
   ]);
   return {
     entries,
@@ -155,6 +159,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     ncrs,
     testsReviewed,
     pointsReleased,
+    interfacesAgreed,
+    hiddenApproved,
   };
 }
 
@@ -353,6 +359,14 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
       const points = f.pointsReleased.filter((p) => mine(p.releasedById)).length;
       if (!tests && !points) return null;
       return [tests ? `${plural(tests, 'test result')} reviewed` : '', points ? `${plural(points, 'hold point')} released` : ''].filter(Boolean).join(', ');
+    }
+    case 'interfaces': {
+      const n = f.interfacesAgreed.filter((i) => !who || who.memberIds.has(i.ownerId) || who.memberIds.has(i.accepterId) || mine(i.agreedById) || mine(i.createdById)).length;
+      return n ? `${plural(n, 'interface')} agreed` : null;
+    }
+    case 'hiddenWorks': {
+      const n = f.hiddenApproved.filter((h) => mine(h.decidedById)).length;
+      return n ? `${plural(n, 'hidden work', 'hidden works')} signed off` : null;
     }
     case 'any': {
       for (const x of e.of) {
