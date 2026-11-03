@@ -1036,6 +1036,16 @@ that step gets skipped.
   without an LTI. Portfolio: open serious incident -> risk red. Next: permits
   to work.
 
+- **4 Nov 2026 — permits to work (document.md §2.42).** Second part of the
+  Health & safety tab (`permits/`, `/hse/permits`). Contractor/site team
+  asks with the type's precautions all confirmed (gas test for confined
+  spaces), max 7 days; HSE/site manager, PM, DM or Setjeka issues, rejects,
+  suspends, reinstates and closes after hand-back. Expired-not-handed-back
+  is flagged and turns portfolio risk amber. Also wrote
+  `confirm-with-setjeka.md` (root): everything to confirm or chase with the
+  client so far. Next on the list: the site manager items (diary, look-ahead,
+  plant), waiting on the Field operations scope decision.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

@@ -379,6 +379,8 @@ model User {
   handoverFiles               HandoverFile[]
   incidentsReported           HseIncident[]                @relation("IncidentReportedBy")
   incidentsClosed             HseIncident[]                @relation("IncidentClosedBy")
+  permitsRequested            WorkPermit[]                 @relation("PermitRequestedBy")
+  permitsIssued               WorkPermit[]                 @relation("PermitIssuedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -425,6 +427,7 @@ model Contractor {
   holdPoints              HoldPoint[]
   hiddenWorks             HiddenWork[]
   hseIncidents            HseIncident[]
+  workPermits             WorkPermit[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -722,6 +725,7 @@ model Project {
   contractDefects          ContractDefect[]
   handoverItems            HandoverItem[]
   hseIncidents             HseIncident[]
+  workPermits              WorkPermit[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -1097,6 +1101,7 @@ enum CommentEntityType {
   CONTRACT_DEFECT
   HANDOVER_ITEM
   HSE_INCIDENT
+  WORK_PERMIT
 }
 
 model Comment {
@@ -1220,6 +1225,9 @@ enum NotificationType {
   INCIDENT_REPORTED
   INCIDENT_ACTION_ASSIGNED
   INCIDENT_UPDATED
+  PERMIT_REQUESTED
+  PERMIT_DECIDED
+  PERMIT_HANDED_BACK
 }
 
 model Notification {
@@ -4831,6 +4839,73 @@ model HiddenWork {
   updatedAt          DateTime          @updatedAt
 
   // Numbered per project: HW-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+// ---- Permits to work (2026-11-04) -------------------------------------------
+// From the user's role-by-role review of the donor app (hse_advanced).
+// High-risk work - hot work, work at height, excavation, confined spaces,
+// electrical isolation, lifting - needs a permit: the contractor (or the
+// site team) asks for it with its precautions confirmed, the HSE or site
+// manager issues it for a set period, and it is handed back and closed when
+// the work is done and the area safe.
+enum PermitType {
+  HOT_WORK
+  WORKING_AT_HEIGHT
+  EXCAVATION
+  CONFINED_SPACE
+  ELECTRICAL_ISOLATION
+  LIFTING
+  OTHER
+}
+
+enum PermitStatus {
+  REQUESTED
+  ISSUED
+  SUSPENDED
+  HANDED_BACK
+  CLOSED
+  REJECTED
+  CANCELLED
+}
+
+model WorkPermit {
+  id            String       @id @default(uuid())
+  projectId     String
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence      Int
+  number        String
+  type          PermitType
+  title         String
+  description   String
+  location      String
+  contractorId  String?
+  contractor    Contractor?  @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  // The people who will do the work, as written.
+  workers       String?
+  validFrom     DateTime
+  validTo       DateTime
+  // [{ text, done }]: the precautions for the type, confirmed by whoever asks.
+  checklist     Json         @default("[]")
+  // Confined spaces: the gas test before entry.
+  gasTest       String?
+  status        PermitStatus @default(REQUESTED)
+  conditions    String?
+  requestedById String
+  requestedBy   User         @relation("PermitRequestedBy", fields: [requestedById], references: [id])
+  issuedById    String?
+  issuedBy      User?        @relation("PermitIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  issuedAt      DateTime?
+  handedBackAt  DateTime?
+  handBackNote  String?
+  closedAt      DateTime?
+  reason        String?
+  history       Json         @default("[]")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Numbered per project: PTW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
 }

@@ -52,7 +52,7 @@ import { HiddenWorksPanel } from '@/components/design/HiddenWorksPanel';
 import { EotPanel } from '@/components/design/EotPanel';
 import { DefectsPanel } from '@/components/design/DefectsPanel';
 import { HandoverPanel } from '@/components/design/HandoverPanel';
-import { HsePanel } from '@/components/design/HsePanel';
+import { HseWorkspace } from '@/components/design/PermitsPanel';
 import { MeasurePanel } from '@/components/qs/MeasurePanel';
 import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
@@ -514,7 +514,7 @@ export default function ProjectDetailPage() {
       {tab === 'eot' && roleKnown && <EotPanel projectId={project.id} />}
       {tab === 'defects' && roleKnown && <DefectsPanel projectId={project.id} />}
       {tab === 'handover' && roleKnown && <HandoverPanel projectId={project.id} />}
-      {tab === 'hse' && roleKnown && !isClient && <HsePanel projectId={project.id} />}
+      {tab === 'hse' && roleKnown && !isClient && <HseWorkspace projectId={project.id} />}
       {tab === 'measure' && roleKnown && !isClient && <MeasurePanel projectId={project.id} />}
       {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}

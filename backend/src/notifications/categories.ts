@@ -98,6 +98,11 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   INCIDENT_REPORTED: 'APPROVALS',
   INCIDENT_ACTION_ASSIGNED: 'ASSIGNMENTS',
   INCIDENT_UPDATED: 'ACTIONS',
+  // A permit waits on its issuer; the decision (a suspension above all)
+  // goes straight back to the crew.
+  PERMIT_REQUESTED: 'APPROVALS',
+  PERMIT_DECIDED: 'APPROVALS',
+  PERMIT_HANDED_BACK: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

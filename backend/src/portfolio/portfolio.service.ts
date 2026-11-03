@@ -7,6 +7,7 @@ import { ScheduleBaselinesService } from '../schedule/schedule-baselines.service
 import { addDays } from '../common/contract-forms.js';
 import { HIGH_SEVERITY_THRESHOLD } from '../project-risks/project-risks.service.js';
 import { openSeriousIncidents } from '../hse/hse.service.js';
+import { expiredOpenPermits } from '../permits/permits.service.js';
 
 export type Health = 'GREEN' | 'AMBER' | 'RED' | 'NONE';
 const RANK: Record<Health, number> = { NONE: 0, GREEN: 1, AMBER: 2, RED: 3 };
@@ -102,6 +103,8 @@ export class PortfolioService {
         this.prisma.handoverItem.count({ where: { projectId: p.id, status: { in: ['OUTSTANDING', 'SUBMITTED', 'RETURNED'] } } }),
         this.prisma.hseIncident.count({ where: { projectId: p.id, status: { not: 'CLOSED' } } }),
         openSeriousIncidents(this.prisma, p.id),
+        this.prisma.workPermit.count({ where: { projectId: p.id, status: 'ISSUED', validFrom: { lte: now }, validTo: { gte: now } } }),
+        expiredOpenPermits(this.prisma, p.id),
       ]),
     ]);
 
@@ -132,7 +135,9 @@ export class PortfolioService {
     const high = risks.filter((r) => r.probability * r.impact >= HIGH_SEVERITY_THRESHOLD).length;
     // An open serious incident (lost time, a death, or reportable) is a risk
     // the portfolio should not miss; any open incident is one to watch.
-    const riskHealth: Health = high || site[5] ? 'RED' : risks.length || site[4] ? 'AMBER' : 'GREEN';
+    // A permit past its end and not handed back is high-risk work nobody is
+    // controlling: one to watch.
+    const riskHealth: Health = high || site[5] ? 'RED' : risks.length || site[4] || site[7] ? 'AMBER' : 'GREEN';
     const pm = p.members[0];
 
     return {
@@ -168,7 +173,7 @@ export class PortfolioService {
       },
       approvals: { waiting, overdue: late },
       risks: { open: risks.length, high },
-      site: { ncrs: site[0], defects: site[1], claims: site[2], handover: site[3], incidents: site[4], seriousIncidents: site[5] },
+      site: { ncrs: site[0], defects: site[1], claims: site[2], handover: site[3], incidents: site[4], seriousIncidents: site[5], permitsLive: site[6], permitsExpired: site[7] },
       health: { cost: costHealth, time: timeHealth, approvals: approvalsHealth, risk: riskHealth, overall: worst(costHealth, timeHealth, approvalsHealth, riskHealth) },
     };
   }

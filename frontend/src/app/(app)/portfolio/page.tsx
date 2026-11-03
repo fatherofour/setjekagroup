@@ -23,7 +23,7 @@ interface Row {
   programme: { baseline: string | null; baselineFinish: string | null; forecastFinish: string | null; finishVarianceDays: number | null; plannedPercent: number | null; actualPercent: number | null; lateContracts: number; maxDaysLate: number };
   approvals: { waiting: number; overdue: number };
   risks: { open: number; high: number };
-  site: { ncrs: number; defects: number; claims: number; handover: number; incidents: number; seriousIncidents: number };
+  site: { ncrs: number; defects: number; claims: number; handover: number; incidents: number; seriousIncidents: number; permitsLive: number; permitsExpired: number };
   health: { cost: Health; time: Health; approvals: Health; risk: Health; overall: Health };
 }
 
@@ -115,10 +115,10 @@ export default function PortfolioPage() {
   const stages = useMemo(() => [...new Set((data?.projects ?? []).map((r) => r.stage))], [data]);
 
   function downloadCsv() {
-    const head = ['Project', 'Code', 'Client', 'Project manager', 'Stage', 'Overall', 'Cost', 'Programme', 'Approvals', 'Risk', 'Currency', 'Revised budget', 'Projected final cost', 'Over budget', 'Forecast finish', 'Finish vs baseline (working days)', 'Approvals waiting', 'Approvals overdue', 'Open risks', 'High risks', 'Open NCRs', 'Open defects', 'Open time claims', 'Handover outstanding', 'Open incidents', 'Serious incidents open'];
+    const head = ['Project', 'Code', 'Client', 'Project manager', 'Stage', 'Overall', 'Cost', 'Programme', 'Approvals', 'Risk', 'Currency', 'Revised budget', 'Projected final cost', 'Over budget', 'Forecast finish', 'Finish vs baseline (working days)', 'Approvals waiting', 'Approvals overdue', 'Open risks', 'High risks', 'Open NCRs', 'Open defects', 'Open time claims', 'Handover outstanding', 'Open incidents', 'Serious incidents open', 'Permits live', 'Permits expired, not handed back'];
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = rows.map((r) =>
-      [r.name, r.projectCode, r.client, r.projectManager, projectStageInfo(r.stage).label, WORD[r.health.overall], WORD[r.health.cost], WORD[r.health.time], WORD[r.health.approvals], WORD[r.health.risk], r.currency, r.cost.revisedBudget, r.cost.projectedFinalCost, r.cost.overBudget, r.programme.forecastFinish?.slice(0, 10), r.programme.finishVarianceDays, r.approvals.waiting, r.approvals.overdue, r.risks.open, r.risks.high, r.site.ncrs, r.site.defects, r.site.claims, r.site.handover, r.site.incidents, r.site.seriousIncidents]
+      [r.name, r.projectCode, r.client, r.projectManager, projectStageInfo(r.stage).label, WORD[r.health.overall], WORD[r.health.cost], WORD[r.health.time], WORD[r.health.approvals], WORD[r.health.risk], r.currency, r.cost.revisedBudget, r.cost.projectedFinalCost, r.cost.overBudget, r.programme.forecastFinish?.slice(0, 10), r.programme.finishVarianceDays, r.approvals.waiting, r.approvals.overdue, r.risks.open, r.risks.high, r.site.ncrs, r.site.defects, r.site.claims, r.site.handover, r.site.incidents, r.site.seriousIncidents, r.site.permitsLive, r.site.permitsExpired]
         .map(esc)
         .join(','),
     );
@@ -293,7 +293,7 @@ export default function PortfolioPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
-                      {[r.site.ncrs && `${r.site.ncrs} NCR${r.site.ncrs === 1 ? '' : 's'}`, r.site.defects && `${r.site.defects} defect${r.site.defects === 1 ? '' : 's'}`, r.site.claims && `${r.site.claims} EOT claim${r.site.claims === 1 ? '' : 's'}`, r.site.handover && `${r.site.handover} handover`, r.site.incidents && `${r.site.incidents} incident${r.site.incidents === 1 ? '' : 's'}${r.site.seriousIncidents ? ` (${r.site.seriousIncidents} serious)` : ''}`].filter(Boolean).join(' · ') || '—'}
+                      {[r.site.ncrs && `${r.site.ncrs} NCR${r.site.ncrs === 1 ? '' : 's'}`, r.site.defects && `${r.site.defects} defect${r.site.defects === 1 ? '' : 's'}`, r.site.claims && `${r.site.claims} EOT claim${r.site.claims === 1 ? '' : 's'}`, r.site.handover && `${r.site.handover} handover`, r.site.incidents && `${r.site.incidents} incident${r.site.incidents === 1 ? '' : 's'}${r.site.seriousIncidents ? ` (${r.site.seriousIncidents} serious)` : ''}`, r.site.permitsLive && `${r.site.permitsLive} permit${r.site.permitsLive === 1 ? '' : 's'} live`, r.site.permitsExpired && `${r.site.permitsExpired} permit${r.site.permitsExpired === 1 ? '' : 's'} expired`].filter(Boolean).join(' · ') || '—'}
                     </td>
                   </tr>
                 ))}

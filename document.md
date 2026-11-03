@@ -3505,6 +3505,68 @@ Built on 2026-11-04, from the user's role-by-role review (the donor app's `safet
   - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
   - measured valuations (31), tests (42), interfaces (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.42 Permits to work
+
+Built on 2026-11-04, the last HSE item from the user's role-by-role review (the donor app's `hse_advanced`). The Health & safety tab now has two parts, **Incidents** (§2.41) and **Permits to work** (`permits/`, `PermitsPanel.tsx`; `/projects/:id/hse/permits`). It uses the same permissions: the client sees none, and a contractor sees their own firm's permits or the ones they asked for.
+
+**Asking for a permit** (`WorkPermit`, PTW-001 on)
+- **The types:** hot work, working at height, excavation, confined space, electrical isolation, lifting, or other high-risk work.
+- **Who asks.** The contractor or the site team.
+- **What a request gives:**
+  - the work, where it is, and the method;
+  - the crew;
+  - the period, which ends after it starts, runs for no more than **7 days**, and isn't already over.
+- **The precautions** (`PERMIT_CHECKS`, from the Construction Regulations 2014 and the Electrical Installation Regulations) must each be confirmed. Extra precautions can be added.
+  - **Hot work:** combustibles cleared within 10 m; an extinguisher at the work; a fire watch during the work and for 60 minutes after; gas cylinders secured with flashback arrestors.
+  - **Working at height:** a fall protection plan (reg. 10); harnesses and anchors checked; edge protection or scaffold tagged; a rescue plan; the area below barricaded.
+  - **Excavation:** services located; sides shored, battered or benched (reg. 13); barricades; ladder access; spoil kept 1 m back.
+  - **Confined space:** a gas test before entry, which must be recorded; ventilation; a standby person; rescue equipment and a plan; isolations locked out.
+  - **Electrical isolation:** isolated; locked and tagged out; tested dead; a competent person appointed.
+  - **Lifting:** a lift plan; the crane and tackle certified; a competent operator and rigger; an exclusion zone; the wind within the crane's limit.
+- **Alerts.** The HSE manager, the site manager and the PM are told.
+
+**Issuing and closing**
+- **Who issues.** The HSE manager, the site manager, the PM, the DM or Setjeka. A contractor can't issue their own permit.
+- **Issuing.** The issuer issues the permit, with any conditions, or doesn't (with the reason). The crew are told.
+- **Suspending.** The issuer can **suspend** a permit ("stop the work", with the reason; the crew are told at once) and reinstate it while its period runs.
+- **Hand-back.** When the work is done, the holder hands the permit back. The issuer checks the area and closes it. A request not yet issued can be cancelled.
+- **Live and expired.** A permit is **live** while issued and within its period. Past its end and not handed back, it shows **expired: hand back**.
+- **The board** counts permits live now, waiting to be issued, expired and not handed back, and suspended.
+- **The portfolio** (§2.40) shows live and expired permits under "On site", and an expired permit not handed back turns the project's risk amber.
+- **Notes.** Permits carry the notes and actions thread.
+
+**Not done here:**
+- No check for clashing permits in one place (hot work beside a confined space, say).
+- No sign-off by the crew themselves.
+- The precaution lists are starting points for Setjeka's HSE consultant to adjust.
+
+**Verified**
+- **API, 27 of 27 checks.**
+  - **Requests:**
+    - the client sees nothing; each type has its precautions;
+    - a request is refused with a precaution unconfirmed, for more than 7 days, ending before it starts, or for a confined space with no gas test;
+    - the contractor's PTW-001 has an extra precaution, and the HSE and site managers are told;
+    - another contractor can't see it, and the contractor can't issue it.
+  - **Issuing to closing:**
+    - the site manager issues it with a condition, and it is live; the contractor is told;
+    - the HSE manager suspends it and the contractor is told to stop; it is reinstated;
+    - the contractor hands it back and the issuer is told; the contractor can't close it, and the site manager closes it.
+  - **Other ends:**
+    - a request is turned down with a reason, and another is cancelled;
+    - an issued permit past its end shows expired, can't be reinstated, and is counted on the board;
+    - the portfolio shows it, with the risk to watch.
+  - **Notes** work, and the client can't read them.
+- **Browser, 7 of 7:**
+  - the contractor asks for a working-at-height permit on a phone; the request waits until every precaution is ticked; no sideways scrolling;
+  - the HSE manager issues it with a wind condition (it shows live), then suspends it;
+  - the board counts the suspended permit;
+  - incidents sit beside permits on the tab.
+- **Regression:** these all still pass:
+  - incidents (26 API, 7 UI), portfolio (13), variance (17), handover (36), defects (44), QS (93), the architect journey (58), the guide (18), and the per-role sweep (0 problems);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests (42), interfaces (42), escalation (17), minimum quotes (6) and form of contract (10);
+  - delays (37). Its test briefly expected 12 days late when it ran just after midnight South African time: it worked out event dates in UTC, while the app (rightly) counts South African calendar days. The test now dates events by the SA calendar.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
