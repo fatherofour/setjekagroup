@@ -21,7 +21,11 @@ type Row = Prisma.TimeClaimGetPayload<{ include: typeof INCLUDE }>;
 
 const DECIDED: TimeClaimStatus[] = ['GRANTED', 'PARTLY_GRANTED', 'REJECTED'];
 const GRANTED: TimeClaimStatus[] = ['GRANTED', 'PARTLY_GRANTED'];
-const days = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / DAY);
+// Whole calendar days between two moments, counted on South African dates
+// (UTC+2), so a notice late in the evening isn't rounded into the next day.
+const SA = 2 * 3_600_000;
+const saDay = (d: Date) => Math.floor((d.getTime() + SA) / DAY);
+const days = (a: Date, b: Date) => saDay(a) - saDay(b);
 
 /** Delay notices and extension-of-time claims (the user's choice from the
  * role-by-role review, 2026-11-03; the donor app's notices and EOT claims).

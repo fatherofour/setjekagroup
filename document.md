@@ -3241,6 +3241,75 @@ Built on 2026-11-03, the second item from the user's role-by-role review of the 
   - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
   - measured valuations (31), tests (42), interfaces and hidden works (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.38 The handover pack
+
+Built on 2026-11-03, the third item from the user's role-by-role review of the donor app (its closeout and commissioning modules). It adds a new project tab, **Handover pack** (`handover/`, `HandoverPanel.tsx`), which everyone sees. It uses the instructions and letters permissions, like completion and defects.
+
+**What is asked for** (`HandoverItem`, HO-001 on, per contract)
+- **The types:** as-built drawings, O&M manuals, warranties, guarantees, compliance certificates, commissioning records, the health and safety file, or other.
+- **Each item** has a title, an optional system (for example "Lifts") and a due date.
+- **Who asks.** Setjeka, the consultants and QA/QC.
+- **The usual pack.** "Add the usual pack" adds what the contract doesn't have yet:
+  - as-built drawings;
+  - O&M manuals;
+  - commissioning and test records;
+  - the electrical (SANS 10142-1), plumbing and fire certificates of compliance;
+  - the contractor's guarantee;
+  - manufacturers' warranties;
+  - the health and safety file.
+- **Changing the list.** An item nothing has been uploaded for can be removed. The contractor is told what is asked for.
+
+**How an item runs**
+1. **Upload.** The contractor uploads the files (`HandoverFile`).
+   - Allowed: PDF, Word, Excel, DWG/DXF, IFC, zip and photos, up to 30 MB each (the server's request limit).
+   - Stored under `HANDOVER_UPLOAD_DIR` (default `./uploads/handover`).
+   - A file can be removed until the item is submitted.
+2. **Submit.** The contractor submits the item. A warranty or guarantee needs the date it runs to, and who gives it. The consultants, QA/QC and the PM are told.
+3. **Review.** A consultant, QA/QC or Setjeka accepts the item, or returns it with comments. A returned item goes back to the contractor to replace and resubmit.
+4. **Hand over.** Setjeka's PM hands the contract's accepted items to the client in one go. The client is told, and only then sees and downloads them.
+
+**Around it**
+- **The register.** Each item keeps the **Handover documents** register in step: Outstanding, then Received, then Distributed. The register gains a "Commissioning records" type.
+- **Final completion** (§2.37) now also waits on every handover item on the contract being accepted or handed over.
+- **Warranty reminders.** Setjeka's PM, and the client once it is handed over, are reminded from 30 days before a warranty or guarantee runs out.
+- **Notes.** Each item carries the notes and actions thread; the client reads notes only on handed-over items.
+- **Who sees what.** A contractor sees only their own contracts.
+
+**Verified**
+- **API, 36 of 36 checks.**
+  - **Asking for the pack:**
+    - a contractor sees only their own contract and can't set the pack;
+    - the usual pack is 9 documents, added once;
+    - a lift manual is added for a system;
+    - the contractor is told, all ten are on the register outstanding, and the client sees nothing.
+  - **Supply and review:**
+    - nothing is submitted without a file, and an executable is refused;
+    - the manual is uploaded, and another contractor can't see or add to it;
+    - it is submitted, the architect is told, and the register shows it received;
+    - the contractor can't accept it;
+    - it is returned with comments, the wrong file is removed, a new one is resubmitted, and it is accepted;
+    - a warranty needs its run-to date.
+  - **Hand-over:**
+    - before hand-over, the client sees and downloads nothing;
+    - the architect can't hand over; Setjeka hands over the two accepted documents;
+    - the client is told, sees just those two, and downloads the manual;
+    - the register shows them distributed;
+    - Setjeka and the client are reminded of the warranty running out within the month;
+    - the client notes a handed-over document, but can't see notes on one not handed over.
+  - **Final completion:**
+    - refused while 8 documents are outstanding, and the completion card says so;
+    - once the unneeded ones are removed, it follows.
+- **Browser, 7 of 7:**
+  - the architect asks for the usual pack;
+  - the contractor uploads and submits from a phone, with no sideways scrolling;
+  - the architect accepts it, and Setjeka hands it over;
+  - the client sees only what was handed over, and downloads it.
+- **Regression:**
+  - defects (44), QS (93), the architect journey (58), the per-role sweep (0 problems) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests (42), interfaces and hidden works (42), escalation (17), minimum quotes (6) and form of contract (10);
+  - delays (37), after a fix found by this run: late notice and late claims are now counted in South African calendar days. Rounding elapsed hours had counted a notice given in the afternoon one day late.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

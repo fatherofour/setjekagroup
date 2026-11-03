@@ -375,6 +375,8 @@ model User {
   timeClaimsDecided           TimeClaim[]                  @relation("TimeClaimDecidedBy")
   defectsRaised               ContractDefect[]             @relation("DefectRaisedBy")
   defectsVerified             ContractDefect[]             @relation("DefectVerifiedBy")
+  handoverReviewed            HandoverItem[]               @relation("HandoverReviewedBy")
+  handoverFiles               HandoverFile[]
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -715,6 +717,7 @@ model Project {
   hiddenWorks              HiddenWork[]
   timeClaims               TimeClaim[]
   contractDefects          ContractDefect[]
+  handoverItems            HandoverItem[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -1082,6 +1085,7 @@ enum CommentEntityType {
   HIDDEN_WORK
   TIME_CLAIM
   CONTRACT_DEFECT
+  HANDOVER_ITEM
 }
 
 model Comment {
@@ -1198,6 +1202,10 @@ enum NotificationType {
   DEFECT_ISSUED
   DEFECT_RECTIFIED
   DEFECT_DECIDED
+  HANDOVER_REQUESTED
+  HANDOVER_SUBMITTED
+  HANDOVER_DECIDED
+  HANDOVER_DELIVERED
 }
 
 model Notification {
@@ -4319,6 +4327,7 @@ model ProjectContract {
   defectsPeriodEndsAt   DateTime?
   finalCompletionAt     DateTime?
   defects               ContractDefect[]
+  handoverItems         HandoverItem[]
   // Contract price adjustment (CPAP): the month the tender was priced at,
   // the share that isn't adjusted, how many months the indices lag the
   // valuation, and each index's weighting. No weightings, no adjustment.
@@ -4808,6 +4817,82 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- The handover pack (2026-11-03) ----------------------------------------
+// From the user's role-by-role review of the donor app (closeout and
+// commissioning). Each contract has a list of what the contractor hands
+// over: as-built drawings, O&M manuals, warranties and guarantees,
+// statutory certificates, commissioning records and the health and safety
+// file. The contractor uploads each, the consultant accepts it or returns
+// it, and Setjeka hands the accepted pack to the client. Final completion
+// waits on the pack; warranties are reminded before they expire.
+enum HandoverKind {
+  AS_BUILT
+  O_AND_M_MANUAL
+  WARRANTY
+  GUARANTEE
+  STATUTORY_CERTIFICATE
+  COMMISSIONING
+  HEALTH_AND_SAFETY_FILE
+  OTHER
+}
+
+enum HandoverStatus {
+  OUTSTANDING
+  SUBMITTED
+  RETURNED
+  ACCEPTED
+  HANDED_OVER
+}
+
+model HandoverItem {
+  id              String          @id @default(uuid())
+  projectId       String
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId      String
+  contract        ProjectContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sequence        Int
+  number          String
+  kind            HandoverKind
+  title           String
+  // The system or element it covers, e.g. "Fire detection", "Lifts".
+  system          String?
+  dueDate         DateTime?
+  status          HandoverStatus  @default(OUTSTANDING)
+  // Warranties and guarantees: who gives it, and until when.
+  issuer          String?
+  expiresAt       DateTime?
+  submittedAt     DateTime?
+  reviewedById    String?
+  reviewedBy      User?           @relation("HandoverReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  reviewComment   String?
+  handedOverAt    DateTime?
+  registerEntryId String?
+  history         Json            @default("[]")
+  files           HandoverFile[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Numbered per project: HO-001.
+  @@unique([projectId, sequence])
+  @@index([contractId, status])
+}
+
+model HandoverFile {
+  id             String       @id @default(uuid())
+  itemId         String
+  item           HandoverItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  filename       String
+  storedFilename String
+  mimeType       String
+  size           Int
+  uploadedById   String
+  uploadedBy     User         @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([itemId])
 }
 
 // ---- Defects liability (2026-11-03) ----------------------------------------

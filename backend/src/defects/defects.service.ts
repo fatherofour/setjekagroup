@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { addDays, contractTerms } from '../common/contract-forms.js';
 import { DESIGN_CONSULTANTS, holdersOf } from '../common/consultants.js';
 import type { DefectDto } from './dto/defects.dto.js';
+import { handoverOutstanding } from '../handover/handover.service.js';
 
 const INCLUDE = {
   contract: { select: { id: true, title: true, contractorId: true, reviewerRole: true, contractor: { select: { name: true } } } },
@@ -100,7 +101,7 @@ export class DefectsService {
 
   // ---- Contracts: completion and the defects period -------------------------
 
-  private position(w: Awaited<ReturnType<DefectsService['who']>>, c: Contract, defects: { list: DefectList; status: DefectStatus }[]) {
+  private position(w: Awaited<ReturnType<DefectsService['who']>>, c: Contract, defects: { list: DefectList; status: DefectStatus }[], handoverOpen = 0) {
     const terms = contractTerms(c.contractForm);
     const periodDays = c.defectsPeriodDays ?? terms.defectsPeriodDays;
     const openOf = (lists: DefectList[]) => defects.filter((d) => lists.includes(d.list) && !DONE.includes(d.status) && d.status !== 'REPORTED').length;
@@ -122,7 +123,14 @@ export class DefectsService {
       retention: c.finalCompletionAt ? 'ALL' : c.practicalCompletionAt ? 'HALF' : 'NONE',
       blockers: {
         works: pcOpen ? `${pcOpen} practical completion defect${pcOpen === 1 ? '' : 's'} still to be verified` : null,
-        final: c.defectsPeriodEndsAt && c.defectsPeriodEndsAt.getTime() > Date.now() ? `The defects period runs to ${day(c.defectsPeriodEndsAt)}` : dlpOpen ? `${dlpOpen} defect${dlpOpen === 1 ? '' : 's'} still to be verified` : null,
+        final:
+          c.defectsPeriodEndsAt && c.defectsPeriodEndsAt.getTime() > Date.now()
+            ? `The defects period runs to ${day(c.defectsPeriodEndsAt)}`
+            : dlpOpen
+              ? `${dlpOpen} defect${dlpOpen === 1 ? '' : 's'} still to be verified`
+              : handoverOpen
+                ? `${handoverOpen} handover document${handoverOpen === 1 ? '' : 's'} still to be accepted`
+                : null,
       },
       can: {
         certifyPractical: cert && !c.practicalCompletionAt,
@@ -152,6 +160,7 @@ export class DefectsService {
         finalCompletionAt: true,
         contractor: { select: { name: true } },
         defects: { select: { list: true, status: true } },
+        handoverItems: { where: { status: { notIn: ['ACCEPTED', 'HANDED_OVER'] } }, select: { id: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -159,14 +168,14 @@ export class DefectsService {
 
   async contracts(projectId: string, userId: string) {
     const w = await this.who(projectId, userId);
-    return (await this.contractRows(projectId, w)).map(({ defects, ...c }) => this.position(w, c, defects));
+    return (await this.contractRows(projectId, w)).map(({ defects, handoverItems, ...c }) => this.position(w, c, defects, handoverItems.length));
   }
 
   private async contract(projectId: string, w: Awaited<ReturnType<DefectsService['who']>>, id: string) {
     const [row] = await this.contractRows(projectId, w, id);
     if (!row) throw new NotFoundException('Contract not found');
-    const { defects, ...c } = row;
-    return { c, p: this.position(w, c, defects) };
+    const { defects, handoverItems, ...c } = row;
+    return { c, p: this.position(w, c, defects, handoverItems.length) };
   }
 
   async setPeriod(projectId: string, userId: string, contractId: string, days: number | null | undefined) {
@@ -200,6 +209,8 @@ export class DefectsService {
       if (date < c.defectsPeriodEndsAt) throw new BadRequestException(`The defects period runs to ${day(c.defectsPeriodEndsAt)}`);
       const open = await this.prisma.contractDefect.count({ where: { contractId, list: { in: ['PRACTICAL_COMPLETION', 'DEFECTS_LIABILITY'] }, status: { in: ['OPEN', 'RECTIFIED', 'REPORTED'] } } });
       if (open) throw new BadRequestException(`Final completion waits on ${open} defect${open === 1 ? '' : 's'} still to be put right, verified or declined`);
+      const pack = await handoverOutstanding(this.prisma, contractId);
+      if (pack) throw new BadRequestException(`Final completion waits on ${pack} handover document${pack === 1 ? '' : 's'} still to be accepted`);
       data.finalCompletionAt = date;
     }
     await this.prisma.projectContract.update({ where: { id: contractId }, data });

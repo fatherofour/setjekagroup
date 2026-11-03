@@ -88,6 +88,12 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   DEFECT_ISSUED: 'ASSIGNMENTS',
   DEFECT_RECTIFIED: 'APPROVALS',
   DEFECT_DECIDED: 'ACTIONS',
+  // The pack is the contractor's to supply, the consultant's to review and
+  // the client's to receive.
+  HANDOVER_REQUESTED: 'ASSIGNMENTS',
+  HANDOVER_SUBMITTED: 'APPROVALS',
+  HANDOVER_DECIDED: 'ACTIONS',
+  HANDOVER_DELIVERED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

@@ -372,6 +372,27 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.handover': {
+    contractor: {
+      title: 'Handover pack',
+      steps: [
+        s('What you hand over', 'Each document asked of you is listed: as-builts, manuals, warranties, compliance certificates. Upload the files and submit each one; give the expiry date for a warranty.'),
+        s('Review', 'A consultant accepts each document or returns it with comments. Final completion waits on the whole pack.'),
+      ],
+    },
+    client: {
+      title: 'Your handover pack',
+      steps: [s('Your documents', 'Everything handed over to you for each contract, to download: manuals, warranties, certificates and as-built drawings. You are reminded a month before a warranty runs out.')],
+    },
+    all: {
+      title: 'Handover pack',
+      steps: [
+        s('Ask for the pack', "Add the usual pack to each contract, then anything particular to it, such as a lift manual. The contractor is told."),
+        s('Review', 'Accept each document, or return it with your comments.'),
+        s('Hand over', 'Hand the accepted documents to the client in one go. Final completion waits on the pack being accepted.'),
+      ],
+    },
+  },
   'project.defects': {
     contractor: {
       title: 'Completion & defects',

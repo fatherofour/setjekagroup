@@ -13,6 +13,7 @@ import {
   EyeOff,
   Waypoints,
   BadgeCheck,
+  FolderCheck,
   TrendingUp,
   Ruler,
   HelpCircle,
@@ -160,6 +161,7 @@ export const NAV: NavEntry[] = [
       { label: 'Site measurement', href: '/projects', icon: Ruler, requiresProject: true, projectPathSuffix: '?tab=measure' },
       { label: 'Punch list', href: '/projects', icon: ListX, requiresProject: true, projectPathSuffix: '?tab=punch' },
       { label: 'Completion & defects', href: '/projects', icon: BadgeCheck, requiresProject: true, projectPathSuffix: '?tab=defects' },
+      { label: 'Handover pack', href: '/projects', icon: FolderCheck, requiresProject: true, projectPathSuffix: '?tab=handover' },
     ],
   },
   {

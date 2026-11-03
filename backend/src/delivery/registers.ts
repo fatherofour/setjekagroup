@@ -363,6 +363,7 @@ export const DELIVERY_REGISTERS: DeliveryRegister[] = [
           ['GUARANTEE', 'Guarantee'],
           ['STATUTORY_CERTIFICATE', 'Statutory compliance certificate'],
           ['HEALTH_AND_SAFETY_FILE', 'Health and safety file'],
+          ['COMMISSIONING', 'Commissioning records'],
           ['OTHER', 'Other'],
         ),
       },

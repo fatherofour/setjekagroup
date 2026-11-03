@@ -1001,6 +1001,17 @@ that step gets skipped.
   completion — the QS journey's close-out now certifies all three first.
   Next: handover pack.
 
+- **3 Nov 2026 — handover pack (document.md §2.38).** New tab Handover pack
+  (`handover/`, COMMUNICATIONS permissions). HandoverItem (HO-001) per
+  contract with uploaded HandoverFiles (disk, HANDOVER_UPLOAD_DIR, 30 MB);
+  contractor submits (warranties need run-to date), consultant accepts or
+  returns, Setjeka PM hands accepted items to the client (client sees only
+  handed-over). Syncs the handover-documents register; final completion now
+  also waits on the pack; 30-day warranty expiry reminders. The same day the
+  user asked about AI: the obliterated DeepSeek V4.1 Flash was assessed and
+  advised against (see the reply that day). Next on the list: baseline
+  variance.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

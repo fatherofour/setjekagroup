@@ -51,6 +51,7 @@ import { InterfacesPanel } from '@/components/design/InterfacesPanel';
 import { HiddenWorksPanel } from '@/components/design/HiddenWorksPanel';
 import { EotPanel } from '@/components/design/EotPanel';
 import { DefectsPanel } from '@/components/design/DefectsPanel';
+import { HandoverPanel } from '@/components/design/HandoverPanel';
 import { MeasurePanel } from '@/components/qs/MeasurePanel';
 import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
@@ -80,6 +81,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'interfaces', label: 'Interfaces' },
   { value: 'eot', label: 'Delays & EOT' },
   { value: 'defects', label: 'Completion & defects' },
+  { value: 'handover', label: 'Handover pack' },
   { value: 'measure', label: 'Site measurement' },
   { value: 'punch', label: 'Punch list' },
   { value: 'photos', label: 'Site photos' },
@@ -509,6 +511,7 @@ export default function ProjectDetailPage() {
       {tab === 'interfaces' && roleKnown && !isClient && <InterfacesPanel projectId={project.id} />}
       {tab === 'eot' && roleKnown && <EotPanel projectId={project.id} />}
       {tab === 'defects' && roleKnown && <DefectsPanel projectId={project.id} />}
+      {tab === 'handover' && roleKnown && <HandoverPanel projectId={project.id} />}
       {tab === 'measure' && roleKnown && !isClient && <MeasurePanel projectId={project.id} />}
       {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}
