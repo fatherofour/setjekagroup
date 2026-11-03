@@ -19,6 +19,11 @@ export interface ContractTerms {
   completion: string;
   certifyWithinDays: number;
   payWithinDays: number;
+  /** Delay claims, in calendar days: notice from the event, the detailed
+   * claim from the notice, and the assessment from the claim. */
+  noticeWithinDays: number;
+  claimWithinDays: number;
+  assessWithinDays: number;
 }
 
 const BASE: Omit<ContractTerms, 'form'> = {
@@ -30,12 +35,17 @@ const BASE: Omit<ContractTerms, 'form'> = {
   completion: 'Practical completion',
   certifyWithinDays: 7,
   payWithinDays: 30,
+  noticeWithinDays: 28,
+  claimWithinDays: 28,
+  assessWithinDays: 28,
 };
 
 const BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
-  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7 },
+  // JBCC's 20 and 40 working days, and 30 to decide, as calendar days.
+  JBCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', payWithinDays: 7, noticeWithinDays: 28, claimWithinDays: 56, assessWithinDays: 42 },
   GCC: { clientTitle: 'Employer', variation: 'Variation order', variations: 'Variation orders', completion: 'Completion', payWithinDays: 28 },
-  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14 },
+  // NEC: notify within 8 weeks, quote within 3, the PM replies within 2.
+  NEC: { clientTitle: 'Client', variation: 'Compensation event', variations: 'Compensation events', completion: 'Completion', payWithinDays: 14, noticeWithinDays: 56, claimWithinDays: 21, assessWithinDays: 14 },
   FIDIC: {
     pmTitle: 'Project Engineer',
     clientTitle: 'Employer',
@@ -43,6 +53,10 @@ const BY_FORM: Record<ContractForm, Partial<ContractTerms>> = {
     completion: 'Taking-over',
     certifyWithinDays: 28,
     payWithinDays: 28,
+    // Clause 20.2: notice in 28 days, the full claim in 84, a response in 42.
+    noticeWithinDays: 28,
+    claimWithinDays: 84,
+    assessWithinDays: 42,
   },
   OTHER: {},
 };

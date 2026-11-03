@@ -372,6 +372,31 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.eot': {
+    contractor: {
+      title: 'Delays & extensions of time',
+      steps: [
+        s('Give notice in time', "When something delays the works, give notice straight away. Each contract shows its notice period; late notice is flagged."),
+        s('Then claim', 'Submit the claim by the date shown: the days, any costs, and the particulars of how you worked them out.'),
+        s('The assessment', "Setjeka's PM assesses it. Accept the assessment, or dispute it and say why."),
+      ],
+    },
+    client: {
+      title: 'Delays & extensions of time',
+      steps: [
+        s('Your completion dates', "Each contract shows its completion date and the revised date after any extension of time Setjeka's PM has granted."),
+        s('Costs come to you', 'Any costs granted with an extension come to you as a variation to approve.'),
+      ],
+    },
+    all: {
+      title: 'Delays & extensions of time',
+      steps: [
+        s('Notices and claims', "The contractor gives notice of a delay and then claims the days. Late notices and overdue claims are flagged against the contract form's periods."),
+        s('Assess', 'Grant all, some or none of the days and costs, with your reasons, by the date shown. Granted days move the completion date.'),
+        s('Costs to the client', 'Send granted costs to the client as a variation. Set a contract\'s penalty per day to see penalties once it runs late.'),
+      ],
+    },
+  },
   'project.hidden': {
     contractor: {
       title: 'Hidden works',

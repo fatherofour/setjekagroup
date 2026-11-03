@@ -34,7 +34,8 @@ type CommentEntityType =
   | 'TEST_RESULT'
   | 'HOLD_POINT'
   | 'INTERFACE'
-  | 'HIDDEN_WORK';
+  | 'HIDDEN_WORK'
+  | 'TIME_CLAIM';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

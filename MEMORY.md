@@ -979,6 +979,16 @@ that step gets skipped.
   covered early raises a linked NCR. That completes the six extras. Next on
   the user's list: delay & EOT claims.
 
+- **3 Nov 2026 — delay notices and EOT claims (document.md §2.36).** New
+  tab Delays & EOT (`time-claims/`, COMMUNICATIONS permissions). Contractor
+  notifies (late notice flagged against the form's period), then claims days
+  and costs; the Setjeka PM/DM assesses (never above the claim); granted days
+  move the contract's revised completion; granted costs become a draft
+  variation for the client (client-only money). Synced to the claims
+  delivery register; PM reminded of assess-by dates; client sees decided
+  claims only. Contract penalty per day shows penalties when late. Next:
+  defects liability.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

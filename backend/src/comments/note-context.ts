@@ -32,6 +32,7 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   HOLD_POINT: 'Hold point',
   INTERFACE: 'Interface',
   HIDDEN_WORK: 'Hidden work',
+  TIME_CLAIM: 'Extension of time',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -122,6 +123,9 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'HIDDEN_WORK':
         put(type, (await prisma.hiddenWork.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'TIME_CLAIM':
+        put(type, (await prisma.timeClaim.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
         break;
       case 'TEST_RESULT':
         put(type, (await prisma.testResult.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));

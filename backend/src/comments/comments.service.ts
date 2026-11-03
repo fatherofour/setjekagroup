@@ -55,6 +55,7 @@ export class CommentsService {
       HOLD_POINT: () => this.prisma.holdPoint.findFirst({ where: { id: entityId, projectId } }),
       INTERFACE: () => this.prisma.projectInterface.findFirst({ where: { id: entityId, projectId } }),
       HIDDEN_WORK: () => this.prisma.hiddenWork.findFirst({ where: { id: entityId, projectId } }),
+      TIME_CLAIM: () => this.prisma.timeClaim.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),
@@ -129,7 +130,7 @@ export class CommentsService {
    * inspection to everyone but the client, and a photo to the client only
    * once Setjeka has shared it. */
   private async canSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
-    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK'].includes(entityType)) return true;
+    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'TIME_CLAIM'].includes(entityType)) return true;
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
     if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
     const client = Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
@@ -138,6 +139,8 @@ export class CommentsService {
       visible = Boolean(await this.prisma.projectCommunication.findFirst({ where: { id: entityId, projectId, OR: [{ authorId: userId }, { recipients: { some: { userId } } }] } }));
     } else if (['INSPECTION', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK'].includes(entityType)) {
       visible = !client;
+    } else if (entityType === 'TIME_CLAIM' && client) {
+      visible = Boolean(await this.prisma.timeClaim.findFirst({ where: { id: entityId, projectId, status: { in: ['GRANTED', 'PARTLY_GRANTED', 'REJECTED'] } } }));
     } else if (entityType === 'SITE_PHOTO' && client) {
       visible = Boolean(await this.prisma.sitePhoto.findFirst({ where: { id: entityId, projectId, clientVisible: true } }));
     }

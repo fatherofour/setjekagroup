@@ -49,6 +49,7 @@ import { NcrPanel } from '@/components/design/NcrPanel';
 import { TestsPanel } from '@/components/design/TestsPanel';
 import { InterfacesPanel } from '@/components/design/InterfacesPanel';
 import { HiddenWorksPanel } from '@/components/design/HiddenWorksPanel';
+import { EotPanel } from '@/components/design/EotPanel';
 import { MeasurePanel } from '@/components/qs/MeasurePanel';
 import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
@@ -76,6 +77,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'tests', label: 'Tests & hold points' },
   { value: 'hidden', label: 'Hidden works' },
   { value: 'interfaces', label: 'Interfaces' },
+  { value: 'eot', label: 'Delays & EOT' },
   { value: 'measure', label: 'Site measurement' },
   { value: 'punch', label: 'Punch list' },
   { value: 'photos', label: 'Site photos' },
@@ -503,6 +505,7 @@ export default function ProjectDetailPage() {
       {tab === 'tests' && roleKnown && !isClient && <TestsPanel projectId={project.id} />}
       {tab === 'hidden' && roleKnown && !isClient && <HiddenWorksPanel projectId={project.id} />}
       {tab === 'interfaces' && roleKnown && !isClient && <InterfacesPanel projectId={project.id} />}
+      {tab === 'eot' && roleKnown && <EotPanel projectId={project.id} />}
       {tab === 'measure' && roleKnown && !isClient && <MeasurePanel projectId={project.id} />}
       {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}

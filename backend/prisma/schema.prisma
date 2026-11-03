@@ -371,6 +371,8 @@ model User {
   interfacesAgreed            ProjectInterface[]           @relation("InterfaceAgreedBy")
   hiddenWorksRequested        HiddenWork[]                 @relation("HiddenWorkRequestedBy")
   hiddenWorksDecided          HiddenWork[]                 @relation("HiddenWorkDecidedBy")
+  timeClaimsNotified          TimeClaim[]                  @relation("TimeClaimNotifiedBy")
+  timeClaimsDecided           TimeClaim[]                  @relation("TimeClaimDecidedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -709,6 +711,7 @@ model Project {
   holdPoints               HoldPoint[]
   interfaces               ProjectInterface[]
   hiddenWorks              HiddenWork[]
+  timeClaims               TimeClaim[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -895,6 +898,7 @@ model ScheduleActivity {
   holdPoints            HoldPoint[]
   interfaces            ProjectInterface[]
   hiddenWorks           HiddenWork[]
+  timeClaims            TimeClaim[]
   documents             ProjectDocument[]
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
@@ -1073,6 +1077,7 @@ enum CommentEntityType {
   HOLD_POINT
   INTERFACE
   HIDDEN_WORK
+  TIME_CLAIM
 }
 
 model Comment {
@@ -1180,6 +1185,10 @@ enum NotificationType {
   INTERFACE_DECIDED
   HIDDEN_WORK_REQUESTED
   HIDDEN_WORK_DECIDED
+  TIME_CLAIM_NOTIFIED
+  TIME_CLAIM_SUBMITTED
+  TIME_CLAIM_DECIDED
+  TIME_CLAIM_RESPONDED
 }
 
 model Notification {
@@ -1459,6 +1468,7 @@ model Rfi {
   rfiNumber                   String
   title                       String
   interfaces                  ProjectInterface[]
+  timeClaims                  TimeClaim[]
   question                    String?
   officialResponse            String?
   respondedAt                 DateTime?
@@ -3119,6 +3129,9 @@ model Variation {
   contractId      String?
   contract        ProjectContract?      @relation(fields: [contractId], references: [id], onDelete: SetNull)
   valuationLines  ValuationLine[]
+  // An extension-of-time claim it caused, or whose costs it carries.
+  delayClaims     TimeClaim[]           @relation("TimeClaimCause")
+  costOfClaim     TimeClaim[]           @relation("TimeClaimCostVariation")
 
   @@unique([projectId, number])
   @@index([projectId])
@@ -4281,6 +4294,10 @@ model ProjectContract {
   measured            Boolean            @default(false)
   siteMeasurements    SiteMeasurement[]
   dayworkSheets       DayworkSheet[]
+  // Penalties for late completion, per calendar day (contract data), and the
+  // contractor's claims for more time.
+  penaltyPerDay       Float?
+  timeClaims          TimeClaim[]
   // Contract price adjustment (CPAP): the month the tender was priced at,
   // the share that isn't adjusted, how many months the indices lag the
   // valuation, and each index's weighting. No weightings, no adjustment.
@@ -4770,6 +4787,92 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- Delay notices and extension-of-time claims (2026-11-03) ---------------
+// From the user's role-by-role review of the donor app (its variations
+// module's notices and EOT claims). The contractor gives notice of a delay
+// event within the form of contract's period, then submits the claim; the
+// Setjeka PM assesses it and grants days, which move the contract's
+// completion date. Granted costs go to the client as a variation, so the
+// client alone approves money (Meeting 3).
+enum DelayCause {
+  VARIATION
+  LATE_INFORMATION
+  CLIENT_DELAY
+  SITE_ACCESS
+  WEATHER
+  STATUTORY
+  FORCE_MAJEURE
+  OTHER
+}
+
+enum TimeClaimStatus {
+  NOTIFIED
+  SUBMITTED
+  GRANTED
+  PARTLY_GRANTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ClaimResponse {
+  ACCEPTED
+  DISPUTED
+}
+
+model TimeClaim {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contractId         String
+  contract           ProjectContract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  title              String
+  cause              DelayCause
+  description        String
+  eventStartedAt     DateTime
+  eventEndedAt       DateTime?
+  notifiedAt         DateTime
+  notifiedById       String
+  notifiedBy         User              @relation("TimeClaimNotifiedBy", fields: [notifiedById], references: [id])
+  // Days the notice came after the form's notice period, when it was late.
+  lateNoticeDays     Int?
+  claimDueAt         DateTime
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  variationId        String?
+  variation          Variation?        @relation("TimeClaimCause", fields: [variationId], references: [id], onDelete: SetNull)
+  rfiId              String?
+  rfi                Rfi?              @relation(fields: [rfiId], references: [id], onDelete: SetNull)
+  status             TimeClaimStatus   @default(NOTIFIED)
+  requestedDays      Int?
+  costClaimed        Float?
+  particulars        String?
+  submittedAt        DateTime?
+  assessDueAt        DateTime?
+  grantedDays        Int?
+  grantedCost        Float?
+  assessment         String?
+  decidedAt          DateTime?
+  decidedById        String?
+  decidedBy          User?             @relation("TimeClaimDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  response           ClaimResponse?
+  responseNote       String?
+  respondedAt        DateTime?
+  // The variation raised for the granted costs, for the client to approve.
+  costVariationId    String?
+  costVariation      Variation?        @relation("TimeClaimCostVariation", fields: [costVariationId], references: [id], onDelete: SetNull)
+  // The Contractual claims register entry kept in step with it.
+  registerEntryId    String?
+  history            Json              @default("[]")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Numbered per project: EOT-001.
+  @@unique([projectId, sequence])
+  @@index([contractId, status])
 }
 
 // ---- Measured contracts: site measurement and dayworks (2026-11-02) -------

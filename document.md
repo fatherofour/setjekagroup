@@ -3074,6 +3074,92 @@ Built on 2026-11-03, the last of the six extras chosen once all roles were built
   - civil (25), structural (25), electrical (26), mechanical (25), NCR (22 API, 4 UI) and QS (92);
   - measured valuations (31), tests and hold points (42 API, 7 UI), escalation (17), minimum quotes (6) and form of contract (10).
 
+### 2.36 Delay notices and extension-of-time claims
+
+Built on 2026-11-03, the first item from the user's role-by-role review of the donor app (its `variations` module's notices and EOT claims). It adds a new project tab, **Delays & EOT** (`time-claims/`, `EotPanel.tsx`). It sits with instructions and letters in the permission matrix: the contractor and the client can read there.
+
+**The periods, by form of contract** (added to `common/contract-forms.ts` and `lib/projectMeta.ts`, in calendar days)
+
+| Form | Notice from the event | Claim from the notice | Assessment from the claim |
+|---|---|---|---|
+| JBCC | 28 (20 working days) | 56 (40 working days) | 42 (30 working days) |
+| GCC | 28 | 28 | 28 |
+| NEC | 56 (8 weeks) | 21 (3 weeks) | 14 (2 weeks) |
+| FIDIC | 28 | 84 | 42 |
+| Other or not set | 28 | 28 | 28 |
+
+These are the usual periods, as defaults. **Setjeka should check them against the editions they use.**
+
+**How a claim runs** (`TimeClaim`, EOT-001 on)
+1. **Notice.** The contractor on the contract (or Setjeka for them) gives notice of a delay event: the cause, when it began, what happened, and the programme activity held up.
+   - Notice is refused for an event that hasn't begun.
+   - Late notice is **flagged, not refused**, for example "Notice 12 days after the 28-day period". Whether late notice bars the claim is the contract's business.
+   - The PM and the QS are alerted, and the claim's due date is set from the form.
+2. **The claim.** The contractor submits the days claimed, any costs, the particulars and when the delay ended.
+   - The assess-by date is set from the form.
+   - The claim goes onto the **Contractual claims register** under review, so the PROCSA claims items tick from it.
+   - The claim screen shows the site weather recorded over the delay: days, wet days and rain. That is evidence for weather claims.
+3. **Assessment.** The Setjeka PM (or DM) grants all, some or none of the days and costs, with reasons, and never more than claimed.
+   - The claim is Granted, Partly granted or Not granted, and the register entry is agreed or rejected with the amount.
+   - The contractor is told. **If days were granted, the client is told the new completion date.**
+   - The PM is reminded from three days before the assess-by date, with the other approvals reminders.
+4. **The contractor's answer.** The contractor accepts the assessment, or disputes it with reasons. A dispute puts the register entry back under review and lets the PM assess again.
+5. **Costs go to the client.** "Send the costs to the client as a variation" raises a draft variation on the contract for the granted costs and days. It then goes through the usual flow, and **the client alone approves money** (Meeting 3). The granted costs can't change once the variation is raised.
+6. **Withdrawal.** An undecided claim can be withdrawn by its contractor.
+
+**Each contract's time position** (cards at the top of the tab)
+- **The dates.** The contract's completion date, the days granted, and the revised date.
+- **Running late.** Days past the revised date and, with the penalty per day that the PM records from the contract data, the penalties to date.
+- **The periods.** The form's notice, claim and assessment periods.
+
+**Who sees what**
+- A contractor sees only their own contracts and claims.
+- The client sees only decided claims and the contract dates, and reads notes only on decided claims.
+- The consultants and the QS see all of it.
+- Claims carry the notes and actions thread.
+
+**Not done here:** no delay analysis on the programme (time impact or critical path). The granted days move the contract's dates, not the programme's activities. Disruption (loss of productivity) claims aren't separate.
+
+**Verified**
+- **API, 37 of 37 checks.**
+  - **Before notice:**
+    - a contractor sees only their own contracts;
+    - JBCC's periods show;
+    - notice on another firm's contract, or of a future event, is refused.
+  - **Notice:**
+    - EOT-001 is in time, with its claim due in 56 days;
+    - notice 40 days after an event is flagged 12 days late;
+    - the PM and QS are alerted;
+    - the client and the other contractor see nothing.
+  - **The claim:**
+    - particulars are required;
+    - 15 days and R 120 000 are claimed, to assess in 42 days, with the weather shown;
+    - it goes on the claims register under review;
+    - the contractor can't assess, and no more than claimed can be granted.
+  - **The assessment:**
+    - 10 days and R 60 000 are partly granted, and the register is agreed;
+    - completion moves to 10 July 2027;
+    - the client sees the claim and is told, and the contractor is told.
+  - **Dispute and reassessment:**
+    - a dispute needs reasons, and puts the register back under review;
+    - the claim is reassessed at 12 days and accepted, moving completion to 12 July 2027.
+  - **Costs:** a draft variation for R 60 000 and 12 days is raised on the contract, once only.
+  - **Withdrawal and penalties:**
+    - the late weather notice is withdrawn;
+    - the contractor can't set the penalty;
+    - the late earthworks show the days late, and penalties at R 5 000 a day.
+  - **Notes and PROCSA:**
+    - notes work, and the client reads them on a decided claim but not an open one;
+    - the PM's PROCSA 5.15 ticks.
+- **Browser, 9 of 9:**
+  - the contractor sees the revised date, gives notice and submits a claim on a phone, with no sideways scrolling;
+  - the PM grants it, and completion moves to 17 July 2027;
+  - the client sees the revised date and the decided claims, but not the open one, and can't give notice.
+- **Regression:**
+  - the architect journey (58), the per-role sweep (0 problems) and the guide (18);
+  - civil (25), structural (25), electrical (26), mechanical (25), NCR (22) and QS (92);
+  - measured valuations (31), tests (42), interfaces and hidden works (42), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

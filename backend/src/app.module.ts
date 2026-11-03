@@ -43,6 +43,7 @@ import { QsModule } from './quantity-surveying/qs.module.js';
 import { NcrsModule } from './ncrs/ncrs.module.js';
 import { QualityTestsModule } from './quality-tests/quality-tests.module.js';
 import { SiteRecordsModule } from './site-records/site-records.module.js';
+import { TimeClaimsModule } from './time-claims/time-claims.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -109,6 +110,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     NcrsModule,
     QualityTestsModule,
     SiteRecordsModule,
+    TimeClaimsModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

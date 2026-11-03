@@ -150,6 +150,7 @@ export const NAV: NavEntry[] = [
       { label: 'BIM hub', href: '/projects', icon: Network, requiresProject: true, projectPathSuffix: '?tab=bim' },
       { label: 'Authorities', href: '/projects', icon: Landmark, requiresProject: true, projectPathSuffix: '?tab=authorities' },
       { label: 'Instructions', href: '/projects', icon: Mail, requiresProject: true, projectPathSuffix: '?tab=instructions' },
+      { label: 'Delays & EOT', href: '/projects', icon: CalendarClock, requiresProject: true, projectPathSuffix: '?tab=eot' },
       { label: 'Inspections', href: '/projects', icon: SearchCheck, requiresProject: true, projectPathSuffix: '?tab=inspections' },
       { label: 'NCRs', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=ncrs' },
       { label: 'Tests & hold points', href: '/projects', icon: FlaskConical, requiresProject: true, projectPathSuffix: '?tab=tests' },

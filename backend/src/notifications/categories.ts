@@ -75,6 +75,12 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   INTERFACE_DECIDED: 'ACTIONS',
   HIDDEN_WORK_REQUESTED: 'APPROVALS',
   HIDDEN_WORK_DECIDED: 'ACTIONS',
+  // A delay notice and a claim are the PM's to deal with; the assessment
+  // and the contractor's answer go back the other way.
+  TIME_CLAIM_NOTIFIED: 'ACTIONS',
+  TIME_CLAIM_SUBMITTED: 'APPROVALS',
+  TIME_CLAIM_DECIDED: 'ACTIONS',
+  TIME_CLAIM_RESPONDED: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',
