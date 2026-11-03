@@ -1028,6 +1028,14 @@ that step gets skipped.
   agree with Setjeka. Also fixed set-state-in-effect lint errors in the
   tests, defects and handover panels. Next on the list: HSE incidents.
 
+- **4 Nov 2026 — HSE incidents (document.md §2.41).** Incidents only, **no
+  near misses** (user). Tab Health & safety (`hse/`, INSPECTIONS permissions,
+  client none, contractor own firm). Reportable (OHS Act s24) auto-flagged
+  for a fatality, lost time over 14 days or a dangerous occurrence; close needs
+  root cause, all actions done and the Department report date. Stats: days
+  without an LTI. Portfolio: open serious incident -> risk red. Next: permits
+  to work.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

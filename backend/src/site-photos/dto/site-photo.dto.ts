@@ -19,6 +19,7 @@ export class CreateSitePhotoDto {
   @IsOptional() @IsUUID() punchItemId?: string;
   @IsOptional() @IsUUID() hiddenWorkId?: string;
   @IsOptional() @IsUUID() contractDefectId?: string;
+  @IsOptional() @IsUUID() hseIncidentId?: string;
 }
 
 export class UpdateSitePhotoDto {
@@ -37,6 +38,7 @@ export class UpdateSitePhotoDto {
   @IsOptional() @IsUUID() punchItemId?: string | null;
   @IsOptional() @IsUUID() hiddenWorkId?: string | null;
   @IsOptional() @IsUUID() contractDefectId?: string | null;
+  @IsOptional() @IsUUID() hseIncidentId?: string | null;
 }
 
 export class PhotoVisibilityDto {
@@ -53,6 +55,7 @@ export interface SitePhotoQuery {
   punchItemId?: string;
   hiddenWorkId?: string;
   contractDefectId?: string;
+  hseIncidentId?: string;
   taskId?: string;
   scheduleActivityId?: string;
   projectNodeId?: string;

@@ -70,12 +70,12 @@ export class InterfacesService {
   async options(projectId: string, userId: string) {
     const w = await siteParty(this.prisma, this.projects, projectId, userId);
     const [members, activities, rfis] = await Promise.all([
-      this.prisma.projectMember.findMany({ where: { projectId, role: { not: 'CLIENT' } }, select: { id: true, role: true, externalName: true, contractor: { select: { name: true } }, user: { select: { fullName: true } } } }),
+      this.prisma.projectMember.findMany({ where: { projectId, role: { not: 'CLIENT' } }, select: { id: true, role: true, externalName: true, contractorId: true, contractor: { select: { name: true } }, user: { select: { fullName: true } } } }),
       this.prisma.scheduleActivity.findMany({ where: { projectId }, select: { id: true, name: true }, orderBy: [{ startDate: 'asc' }, { sortOrder: 'asc' }] }),
       this.prisma.rfi.findMany({ where: { projectId }, select: { id: true, rfiNumber: true, title: true }, orderBy: { createdAt: 'desc' }, take: 200 }),
     ]);
     return {
-      members: members.map((m) => ({ id: m.id, role: m.role, name: m.user?.fullName ?? m.externalName ?? 'Unnamed', firm: m.contractor?.name ?? null })),
+      members: members.map((m) => ({ id: m.id, role: m.role, name: m.user?.fullName ?? m.externalName ?? 'Unnamed', firm: m.contractor?.name ?? null, contractorId: m.contractorId })),
       activities,
       rfis,
       you: { contractor: w.contractor, quality: w.quality, site: w.site, memberIds: [...w.memberIds] },

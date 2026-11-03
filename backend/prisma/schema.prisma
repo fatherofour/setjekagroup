@@ -377,6 +377,8 @@ model User {
   defectsVerified             ContractDefect[]             @relation("DefectVerifiedBy")
   handoverReviewed            HandoverItem[]               @relation("HandoverReviewedBy")
   handoverFiles               HandoverFile[]
+  incidentsReported           HseIncident[]                @relation("IncidentReportedBy")
+  incidentsClosed             HseIncident[]                @relation("IncidentClosedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -422,6 +424,7 @@ model Contractor {
   testResults             TestResult[]
   holdPoints              HoldPoint[]
   hiddenWorks             HiddenWork[]
+  hseIncidents            HseIncident[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -718,6 +721,7 @@ model Project {
   timeClaims               TimeClaim[]
   contractDefects          ContractDefect[]
   handoverItems            HandoverItem[]
+  hseIncidents             HseIncident[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -791,6 +795,7 @@ model ProjectMember {
   interfacesOwned            ProjectInterface[]         @relation("InterfaceOwner")
   interfacesAccepted         ProjectInterface[]         @relation("InterfaceAccepter")
   hiddenWorksToInspect       HiddenWork[]               @relation("HiddenWorkInspector")
+  incidentActions            IncidentAction[]
   rfisBallInCourt            Rfi[]                      @relation("RfiBallInCourt")
   submittalsSubmitted        Submittal[]                @relation("SubmittalSubmittedBy")
   submittalsReviewing        Submittal[]                @relation("SubmittalReviewer")
@@ -1091,6 +1096,7 @@ enum CommentEntityType {
   TIME_CLAIM
   CONTRACT_DEFECT
   HANDOVER_ITEM
+  HSE_INCIDENT
 }
 
 model Comment {
@@ -1211,6 +1217,9 @@ enum NotificationType {
   HANDOVER_SUBMITTED
   HANDOVER_DECIDED
   HANDOVER_DELIVERED
+  INCIDENT_REPORTED
+  INCIDENT_ACTION_ASSIGNED
+  INCIDENT_UPDATED
 }
 
 model Notification {
@@ -3302,6 +3311,8 @@ model SitePhoto {
   hiddenWork         HiddenWork?       @relation(fields: [hiddenWorkId], references: [id], onDelete: SetNull)
   contractDefectId   String?
   contractDefect     ContractDefect?   @relation(fields: [contractDefectId], references: [id], onDelete: SetNull)
+  hseIncidentId      String?
+  hseIncident        HseIncident?      @relation(fields: [hseIncidentId], references: [id], onDelete: SetNull)
 
   @@index([projectId, takenAt])
   @@index([issueId])
@@ -4822,6 +4833,97 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- HSE incidents (2026-11-04) ---------------------------------------------
+// From the user's role-by-role review of the donor app (safety /
+// hse_advanced); incidents only, no near misses (the user, 2026-11-04).
+// Anyone on site reports an incident; the HSE manager (or Setjeka)
+// investigates it, sets corrective actions with owners, and closes it once
+// they are done. Incidents the OHS Act requires to be reported to the
+// Department of Employment and Labour (section 24) are flagged and the
+// report recorded.
+enum IncidentKind {
+  INJURY
+  PROPERTY_DAMAGE
+  ENVIRONMENTAL
+  FIRE
+  DANGEROUS_OCCURRENCE
+  SECURITY
+  OTHER
+}
+
+enum IncidentSeverity {
+  // No injury: damage, a spill, a theft.
+  NO_INJURY
+  FIRST_AID
+  MEDICAL_TREATMENT
+  LOST_TIME
+  FATALITY
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  ACTIONS_OPEN
+  CLOSED
+}
+
+model HseIncident {
+  id                 String           @id @default(uuid())
+  projectId          String
+  project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  title              String
+  kind               IncidentKind
+  severity           IncidentSeverity
+  occurredAt         DateTime
+  location           String?
+  description        String
+  immediateAction    String?
+  // Who was hurt or involved, as written (no personal records kept here).
+  personsInvolved    String?
+  contractorId       String?
+  contractor         Contractor?      @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  lostDays           Int?
+  status             IncidentStatus   @default(REPORTED)
+  // OHS Act section 24: reported to the Department of Employment and Labour.
+  reportable         Boolean          @default(false)
+  reportedToDelAt    DateTime?
+  delReference       String?
+  rootCause          String?
+  investigationNotes String?
+  investigatedAt     DateTime?
+  reportedById       String
+  reportedBy         User             @relation("IncidentReportedBy", fields: [reportedById], references: [id])
+  closedAt           DateTime?
+  closedById         String?
+  closedBy           User?            @relation("IncidentClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  history            Json             @default("[]")
+  actions            IncidentAction[]
+  photos             SitePhoto[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Numbered per project: INC-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+model IncidentAction {
+  id          String         @id @default(uuid())
+  incidentId  String
+  incident    HseIncident    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  description String
+  ownerId     String?
+  owner       ProjectMember? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  dueDate     DateTime?
+  doneAt      DateTime?
+  doneNote    String?
+  createdAt   DateTime       @default(now())
+
+  @@index([incidentId])
 }
 
 // ---- The handover pack (2026-11-03) ----------------------------------------

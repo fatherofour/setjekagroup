@@ -3427,6 +3427,84 @@ Built on 2026-11-04: roadmap item 5's last open part, and the fifth item from th
   - measured valuations (31), interfaces (42), escalation (17), minimum quotes (6) and form of contract (10).
 - **The per-role sweep now covers this week's tabs:** NCRs, tests, hidden works, interfaces, measurement, delays, completion and handover. It found the client's Delays & EOT tab asking for the site options the notice form uses, which was refused (403). That list now loads only for people who can give notice. With the fix, the sweep shows 0 screens with problems.
 
+### 2.41 HSE incidents
+
+Built on 2026-11-04, from the user's role-by-role review (the donor app's `safety` and `hse_advanced` modules). The user chose **incidents only, no near misses**. It adds a new project tab, **Health & safety** (`hse/`, `HsePanel.tsx`). It sits with inspections in the permission matrix: the client doesn't see it, and a contractor sees the incidents involving their firm or reported by them.
+
+**Reporting** (`HseIncident`, INC-001 on)
+- **Who reports.** Anyone on the site team can report an incident (contractors, the site manager, the HSE manager, the consultants, Setjeka).
+- **What they record:**
+  - the type: injury, property or plant damage, environmental, fire, dangerous occurrence, security, or other;
+  - the severity: no injury, first aid, medical treatment, lost time or fatality;
+  - when and where it happened, and what happened;
+  - what was done straight away;
+  - who was involved, as names and roles only (no ID numbers are kept);
+  - the contractor involved (a contractor's own reports are tagged to their firm), and the days lost;
+  - photos, from the record.
+- **Refused:** an incident dated in the future.
+- **Alerts.** The HSE manager and the PM are told; the DM too when it is serious.
+- **Reportable to the Department of Employment and Labour** (OHS Act section 24). Flagged automatically for:
+  - a death;
+  - an injury that keeps someone off work for more than 14 days;
+  - a dangerous occurrence.
+
+  The HSE manager can change the flag; this is a starting suggestion, not legal advice.
+
+**Investigation and close-out**
+- **Investigation.** The HSE manager (or Setjeka's PM, the DM or Setjeka) records the root cause and findings, and can correct the severity and days lost.
+- **Corrective actions** (`IncidentAction`). Each has an owner on the site team and a due date. The owner is told and marks it done; the HSE manager is told when they do.
+- **Closing.** An incident closes only when:
+  - the root cause is recorded;
+  - every action is done;
+  - for a reportable incident, the date of the report to the Department is recorded, with its reference.
+- **Notes and history.** Each incident carries the notes and actions thread and its history.
+
+**The safety record** (`GET hse/incidents/stats`). For what the viewer can see:
+- days without a lost-time injury (since the last one, or since the project started);
+- lost-time injuries and days lost;
+- incidents in all and in the last 12 months;
+- how many are open;
+- how many are reportable.
+
+**The portfolio** (§2.40) shows open incidents under "On site". An open serious incident (lost time, a death, or reportable) turns the project's risk red; any open incident turns it amber.
+
+**Not done here:**
+- near misses (the user's choice);
+- toolbox talks and inductions (not chosen);
+- hours worked, so no lost-time injury frequency rate;
+- permits to work, which are next.
+
+**Verified**
+- **API, 26 of 26 checks.**
+  - **Reporting:**
+    - the client sees nothing; a future incident is refused;
+    - the contractor's first-aid report is INC-001, tagged to their firm and not reportable;
+    - the HSE manager is told;
+    - another contractor can't see it, and the contractor can't investigate.
+  - **Serious incidents:**
+    - a 20-day lost-time injury is flagged reportable, and the PM is told it is serious;
+    - a scaffold collapse with nobody hurt (a dangerous occurrence) is reportable.
+  - **Investigation and close-out:**
+    - the HSE manager investigates and sets an action for the contractor, who is told;
+    - closing is refused while the action is open;
+    - the contractor marks it done (the HSE manager is told), and the incident closes; the reporter is told;
+    - a reportable incident needs its root cause and then the Department report before it closes.
+  - **Photos, notes and the record:**
+    - a photo is added, and notes work; the client can't read them;
+    - the record counts 3 incidents, 1 lost-time injury of 20 days, 2 reportable, and 2 days without a lost-time injury;
+    - the contractor's record counts only their firm's.
+  - **The portfolio** shows the open serious incident and the risk red.
+- **Browser, 7 of 7:**
+  - the contractor reports an incident on a phone, with no sideways scrolling;
+  - the record shows the days without a lost-time injury;
+  - the HSE manager investigates, sets an action, marks it done and closes the incident;
+  - the reportable incident is flagged in the list until reported;
+  - the client doesn't see the tab.
+- **Regression:** these all still pass:
+  - portfolio (13 API, 10 UI), variance (17), handover (36), defects (44), QS (93), the architect journey (58), the guide (18), and the per-role sweep (now covering Health & safety: 0 problems);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests (42), interfaces (42), delays (37), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

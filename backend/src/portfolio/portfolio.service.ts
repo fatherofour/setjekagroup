@@ -6,6 +6,7 @@ import { CostDatabaseService } from '../cost-database/cost-database.service.js';
 import { ScheduleBaselinesService } from '../schedule/schedule-baselines.service.js';
 import { addDays } from '../common/contract-forms.js';
 import { HIGH_SEVERITY_THRESHOLD } from '../project-risks/project-risks.service.js';
+import { openSeriousIncidents } from '../hse/hse.service.js';
 
 export type Health = 'GREEN' | 'AMBER' | 'RED' | 'NONE';
 const RANK: Record<Health, number> = { NONE: 0, GREEN: 1, AMBER: 2, RED: 3 };
@@ -99,6 +100,8 @@ export class PortfolioService {
         this.prisma.contractDefect.count({ where: { projectId: p.id, status: { in: ['REPORTED', 'OPEN', 'RECTIFIED'] } } }),
         this.prisma.timeClaim.count({ where: { projectId: p.id, status: { in: ['NOTIFIED', 'SUBMITTED'] } } }),
         this.prisma.handoverItem.count({ where: { projectId: p.id, status: { in: ['OUTSTANDING', 'SUBMITTED', 'RETURNED'] } } }),
+        this.prisma.hseIncident.count({ where: { projectId: p.id, status: { not: 'CLOSED' } } }),
+        openSeriousIncidents(this.prisma, p.id),
       ]),
     ]);
 
@@ -127,7 +130,9 @@ export class PortfolioService {
     const late = overdue.reduce((a, b) => a + b, 0);
     const approvalsHealth: Health = late ? 'RED' : waiting ? 'AMBER' : 'GREEN';
     const high = risks.filter((r) => r.probability * r.impact >= HIGH_SEVERITY_THRESHOLD).length;
-    const riskHealth: Health = high ? 'RED' : risks.length ? 'AMBER' : 'GREEN';
+    // An open serious incident (lost time, a death, or reportable) is a risk
+    // the portfolio should not miss; any open incident is one to watch.
+    const riskHealth: Health = high || site[5] ? 'RED' : risks.length || site[4] ? 'AMBER' : 'GREEN';
     const pm = p.members[0];
 
     return {
@@ -163,7 +168,7 @@ export class PortfolioService {
       },
       approvals: { waiting, overdue: late },
       risks: { open: risks.length, high },
-      site: { ncrs: site[0], defects: site[1], claims: site[2], handover: site[3] },
+      site: { ncrs: site[0], defects: site[1], claims: site[2], handover: site[3], incidents: site[4], seriousIncidents: site[5] },
       health: { cost: costHealth, time: timeHealth, approvals: approvalsHealth, risk: riskHealth, overall: worst(costHealth, timeHealth, approvalsHealth, riskHealth) },
     };
   }

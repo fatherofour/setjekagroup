@@ -15,7 +15,7 @@ const PHOTO_INCLUDE = {
   issue: { select: { id: true, title: true } },
 } as const;
 
-type Links = Pick<UpdateSitePhotoDto, 'projectNodeId' | 'scheduleActivityId' | 'taskId' | 'issueId' | 'inspectionId' | 'punchItemId' | 'hiddenWorkId' | 'contractDefectId'>;
+type Links = Pick<UpdateSitePhotoDto, 'projectNodeId' | 'scheduleActivityId' | 'taskId' | 'issueId' | 'inspectionId' | 'punchItemId' | 'hiddenWorkId' | 'contractDefectId' | 'hseIncidentId'>;
 
 function cleanTags(tags: string[] | undefined): string[] | undefined {
   if (!tags) return undefined;
@@ -55,6 +55,7 @@ export class SitePhotosService {
       [links.punchItemId, () => this.prisma.punchItem.findFirst({ where: { id: links.punchItemId!, projectId } }), 'Punch item'],
       [links.hiddenWorkId, () => this.prisma.hiddenWork.findFirst({ where: { id: links.hiddenWorkId!, projectId } }), 'Hidden work'],
       [links.contractDefectId, () => this.prisma.contractDefect.findFirst({ where: { id: links.contractDefectId!, projectId } }), 'Defect'],
+      [links.hseIncidentId, () => this.prisma.hseIncident.findFirst({ where: { id: links.hseIncidentId!, projectId } }), 'Incident'],
     ];
     for (const [id, find, label] of checks) {
       if (id && !(await find())) throw new BadRequestException(`${label} not found in this project`);
@@ -85,7 +86,7 @@ export class SitePhotosService {
       const to = new Date(/^\d{4}-\d{2}-\d{2}$/.test(query.to) ? `${query.to}T23:59:59.999+02:00` : query.to);
       and.push({ takenAt: { lte: to } });
     }
-    for (const key of ['issueId', 'inspectionId', 'punchItemId', 'hiddenWorkId', 'contractDefectId', 'taskId', 'scheduleActivityId', 'projectNodeId', 'uploadedById'] as const) {
+    for (const key of ['issueId', 'inspectionId', 'punchItemId', 'hiddenWorkId', 'contractDefectId', 'hseIncidentId', 'taskId', 'scheduleActivityId', 'projectNodeId', 'uploadedById'] as const) {
       if (query[key]) and.push({ [key]: query[key] });
     }
     const q = query.q?.trim();
@@ -118,7 +119,7 @@ export class SitePhotosService {
 
   async create(projectId: string, userId: string, dto: CreateSitePhotoDto, file: Express.Multer.File, thumb?: Express.Multer.File) {
     const { internal } = await this.viewer(projectId, userId);
-    const links: Links = { projectNodeId: dto.projectNodeId, scheduleActivityId: dto.scheduleActivityId, taskId: dto.taskId, issueId: dto.issueId, inspectionId: dto.inspectionId, punchItemId: dto.punchItemId, hiddenWorkId: dto.hiddenWorkId, contractDefectId: dto.contractDefectId };
+    const links: Links = { projectNodeId: dto.projectNodeId, scheduleActivityId: dto.scheduleActivityId, taskId: dto.taskId, issueId: dto.issueId, inspectionId: dto.inspectionId, punchItemId: dto.punchItemId, hiddenWorkId: dto.hiddenWorkId, contractDefectId: dto.contractDefectId, hseIncidentId: dto.hseIncidentId };
     try {
       await this.assertLinks(projectId, links);
     } catch (e) {
@@ -184,6 +185,7 @@ export class SitePhotosService {
         punchItemId: dto.punchItemId,
         hiddenWorkId: dto.hiddenWorkId,
         contractDefectId: dto.contractDefectId,
+        hseIncidentId: dto.hseIncidentId,
       },
       include: PHOTO_INCLUDE,
     });

@@ -37,7 +37,8 @@ type CommentEntityType =
   | 'HIDDEN_WORK'
   | 'TIME_CLAIM'
   | 'CONTRACT_DEFECT'
-  | 'HANDOVER_ITEM';
+  | 'HANDOVER_ITEM'
+  | 'HSE_INCIDENT';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

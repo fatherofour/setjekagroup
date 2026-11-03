@@ -372,6 +372,16 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.hse': {
+    all: {
+      title: 'Health & safety',
+      steps: [
+        s('Report it', 'Report any incident on site as soon as it is safe to: what happened, when, where, and what was done straight away. Add photos.'),
+        s('Investigate', 'The HSE manager records the root cause, sets corrective actions with owners and dates, and closes the incident once they are done.'),
+        s('The Department', 'Deaths, injuries off work for more than 14 days and dangerous occurrences are flagged as reportable under the OHS Act; record when you reported it.'),
+      ],
+    },
+  },
   'project.handover': {
     contractor: {
       title: 'Handover pack',
