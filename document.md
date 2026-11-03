@@ -2945,6 +2945,66 @@ Built on 2026-11-02 (the user's choice from the list kept until all roles were b
   - sets up price adjustment on another contract (Save waits until the weightings add to 1).
 - **Regression:** the architect journey (58/58), the per-role sweep (0 problems), the guide (18/18), and the QS (92/92), measured valuations (31/31), civil (25/25), NCR (22/22), minimum quotes (6/6) and form of contract (10/10) checks all still pass.
 
+### 2.34 Test results, and hold and witness points
+
+Built on 2026-11-03 (the user's choice from the list kept until all roles were built; the donor app's `construction_control`). The register marked test records "No (standby)". Everything lives on a new project tab, **Tests & hold points** (`quality-tests/`, `TestsPanel.tsx`), next to Inspections and NCRs. It uses the same permissions as inspections. The client sees none of it, and a contractor sees only their own work.
+
+**Acceptance criteria** (`TestCriterion`, per project)
+- **What each test must achieve.** A code, a name, the standard, the unit, and a rule: at least, at most, between, or pass/fail. Also how often to test.
+- **A starting set.** "Add the usual SA tests" adds what the project doesn't have yet:
+  - 28-day cubes, at least 30 MPa (SANS 5863);
+  - slump, 75–125 mm;
+  - base, subbase and fill compaction, at least 98, 95 and 93% Mod AASHTO;
+  - water main pressure tests and drainage tests, pass/fail;
+  - insulation resistance, at least 1 MΩ.
+  The engineer edits them to the specification. A criterion can be retired and used again.
+- **Who sets them.** Setjeka, the design consultants and QA/QC.
+
+**Test results** (`TestResult`, TR-001 on)
+- **Recording.** The contractor, the site manager, the engineers or QA/QC record each result with what was tested, the sample, the laboratory and the dates. A contractor's results are tagged to their own firm.
+- **Judged on entry.** A measured value is checked against its criterion, and pass/fail tests are stated. For example, a cube at 27.5 MPa against 30 fails.
+- **Retests.** A failure can be retested (cores after failed cubes, say), and both results show the link.
+- **Review.** The engineer, QA/QC or Setjeka marks each result reviewed, with a comment.
+- **NCRs.** A failure has a "Raise an NCR" button. It opens the NCR form filled in from the test, and the NCR and the test link to each other (`NonConformance.testResultId`).
+- **Alerts.** A failure alerts the PM, QA/QC, the point's releaser and the contractor. A result a contractor records alerts the reviewers.
+
+**Hold and witness points** (`HoldPoint`, HP-001 / WP-002, one sequence)
+- **Setting one up.** Setjeka, the design consultants or QA/QC set the stops in the inspection and test plan. Each one can name:
+  - the contractor;
+  - who releases it;
+  - the notice in hours (24 by default);
+  - the programme activity it holds;
+  - a test needed before release.
+- **Notice.** The contractor gives notice of when the work will be ready, at least the notice period ahead, and the releaser is alerted. The releaser can turn it back as not ready, with a reason.
+- **A hold point** is released by the named releaser or Setjeka. If it names a test, a passing result has to be recorded against it first. **Until it is released, its programme activity can't progress**: raising the % complete is refused and names the hold point.
+- **A witness point** can be witnessed and released the same way. If nobody comes by the notified time, the contractor may go ahead, and the point records that it went ahead unwitnessed. A hold point never can.
+- **History.** Each point keeps its history.
+
+**Notes, alerts and PROCSA**
+- Test results and hold points carry the notes and actions thread.
+- The alert types are TEST_RECORDED, TEST_FAILED, HOLD_POINT_NOTIFIED and HOLD_POINT_DECIDED.
+- These PROCSA items now also tick on a test result reviewed or a hold point released (by the role itself, where the item needs it): the architect's 5.8, and 5.9 for the civil, structural, electrical and mechanical engineers ("witness and review all tests").
+
+**Verified**
+- **API, 42 of 42 checks.**
+  - **Criteria:** the starting set, added once; duplicate codes and bad ranges refused; the contractor can't set criteria; the client sees no results.
+  - **A hold point on a slab pour:**
+    - the held activity can't progress;
+    - notice inside 24 hours is refused, and the contractor can't release it;
+    - release is refused until a passing cube test is recorded;
+    - the cube at 27.5 fails, an NCR is raised from it, the retest at 33 passes, and the engineer reviews it;
+    - the point is released, and the activity then progresses.
+  - **Witness points:** they go ahead after the notified time unwitnessed; a hold point never does; a point can be turned back or cancelled.
+  - **Other checks:** another contractor sees none of it; notes work, and the client can't read them; the alerts arrive; civil PROCSA 5.9 ticks.
+- **Browser, 7 of 7:**
+  - the engineer sees the criteria, adds a hold point and records a passing slump;
+  - "Raise an NCR" starts from the failed test and issues an NCR naming it;
+  - the contractor gives notice on a phone, with no sideways scrolling.
+- **Regression:** these all still pass:
+  - the architect journey (58/58), the per-role sweep (0 problems) and the guide (18/18);
+  - civil (25), structural (25), electrical (26), mechanical (25), NCR (22 API, 4 UI) and QS (92);
+  - measured valuations (31), escalation (17), minimum quotes (6) and form of contract (10).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

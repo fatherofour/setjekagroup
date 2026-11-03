@@ -362,6 +362,11 @@ model User {
   measurementsResponded       SiteMeasurement[]            @relation("MeasurementRespondedBy")
   dayworksSubmitted           DayworkSheet[]               @relation("DayworkSubmittedBy")
   dayworksDecided             DayworkSheet[]               @relation("DayworkDecidedBy")
+  testsRecorded               TestResult[]                 @relation("TestRecordedBy")
+  testsReviewed               TestResult[]                 @relation("TestReviewedBy")
+  holdPointsCreated           HoldPoint[]                  @relation("HoldPointCreatedBy")
+  holdPointsNotified          HoldPoint[]                  @relation("HoldPointNotifiedBy")
+  holdPointsReleased          HoldPoint[]                  @relation("HoldPointReleasedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -404,6 +409,8 @@ model Contractor {
   id                      String                             @id @default(uuid())
   registerEntries         ProjectRegisterEntry[]
   projectContracts        ProjectContract[]
+  testResults             TestResult[]
+  holdPoints              HoldPoint[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -692,6 +699,9 @@ model Project {
   variations               Variation[]
   costPlans                CostPlan[]
   ncrs                     NonConformance[]
+  testCriteria             TestCriterion[]
+  testResults              TestResult[]
+  holdPoints               HoldPoint[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -761,6 +771,7 @@ model ProjectMember {
   rfisRaised                 Rfi[]                      @relation("RfiRaisedBy")
   rfisAssigned               Rfi[]                      @relation("RfiAssignedTo")
   ncrsAssigned               NonConformance[]           @relation("NcrAssignee")
+  holdPointsToRelease        HoldPoint[]                @relation("HoldPointReleaser")
   rfisBallInCourt            Rfi[]                      @relation("RfiBallInCourt")
   submittalsSubmitted        Submittal[]                @relation("SubmittalSubmittedBy")
   submittalsReviewing        Submittal[]                @relation("SubmittalReviewer")
@@ -870,6 +881,8 @@ model ScheduleActivity {
   asSuccessorOf         ScheduleDependency[]       @relation("DependencySuccessor")
   baselineSnapshots     ScheduleBaselineSnapshot[]
   tasks                 ProjectTask[]
+  testResults           TestResult[]
+  holdPoints            HoldPoint[]
   documents             ProjectDocument[]
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
@@ -1044,6 +1057,8 @@ enum CommentEntityType {
   VALUATION
   NCR
   DAYWORK
+  TEST_RESULT
+  HOLD_POINT
 }
 
 model Comment {
@@ -1142,6 +1157,10 @@ enum NotificationType {
   MEASUREMENT_DISPUTED
   DAYWORK_SUBMITTED
   DAYWORK_DECIDED
+  TEST_RECORDED
+  TEST_FAILED
+  HOLD_POINT_NOTIFIED
+  HOLD_POINT_DECIDED
 }
 
 model Notification {
@@ -4428,6 +4447,8 @@ model NonConformance {
   assignee          ProjectMember?  @relation("NcrAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   inspectionId      String?
   inspection        SiteInspection? @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+  testResultId      String?
+  testResult        TestResult?     @relation(fields: [testResultId], references: [id], onDelete: SetNull)
   dueDate           DateTime?
   rootCauseCategory String?
   rootCause         String?
@@ -4463,6 +4484,155 @@ model NcrEvent {
   createdAt  DateTime       @default(now())
 
   @@index([ncrId])
+}
+
+// ---- Test results and hold / witness points (2026-11-03) ------------------
+// From the list kept until all roles were built (the donor app's
+// construction_control). Each project keeps its acceptance criteria; a test
+// result is checked against its criterion and passes or fails, the reviewing
+// engineer or QA/QC signs it off, and a fail can raise an NCR. Hold and
+// witness points are the inspection and test plan's stops: the contractor
+// gives notice, and a hold point must be released before its programme
+// activity can progress.
+enum TestRule {
+  MIN
+  MAX
+  RANGE
+  PASS_FAIL
+}
+
+model TestCriterion {
+  id          String       @id @default(uuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  standardRef String?
+  unit        String?
+  rule        TestRule
+  minValue    Float?
+  maxValue    Float?
+  // How often to test, e.g. "1 set of 3 cubes per 50 m3 or per pour".
+  frequency   String?
+  active      Boolean      @default(true)
+  results     TestResult[]
+  holdPoints  HoldPoint[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([projectId, code])
+}
+
+enum TestOutcome {
+  PASS
+  FAIL
+}
+
+enum TestResultStatus {
+  RECORDED
+  REVIEWED
+}
+
+model TestResult {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  criterionId        String
+  criterion          TestCriterion     @relation(fields: [criterionId], references: [id])
+  // What was tested, e.g. "Ground floor slab, bay C".
+  title              String
+  location           String?
+  contractorId       String?
+  contractor         Contractor?       @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  holdPointId        String?
+  holdPoint          HoldPoint?        @relation(fields: [holdPointId], references: [id], onDelete: SetNull)
+  // A retest of an earlier result (cores after failed cubes, say).
+  retestOfId         String?
+  retestOf           TestResult?       @relation("TestRetest", fields: [retestOfId], references: [id], onDelete: SetNull)
+  retests            TestResult[]      @relation("TestRetest")
+  sampleRef          String?
+  laboratory         String?
+  sampledAt          DateTime?
+  testedAt           DateTime
+  value              Float?
+  outcome            TestOutcome
+  remarks            String?
+  status             TestResultStatus  @default(RECORDED)
+  recordedById       String
+  recordedBy         User              @relation("TestRecordedBy", fields: [recordedById], references: [id])
+  reviewedById       String?
+  reviewedBy         User?             @relation("TestReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt         DateTime?
+  reviewComment      String?
+  ncrs               NonConformance[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Numbered per project: TR-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+enum HoldPointKind {
+  HOLD
+  WITNESS
+}
+
+enum HoldPointStatus {
+  PLANNED
+  NOTIFIED
+  RELEASED
+  // A witness point whose witness did not come: the contractor went ahead.
+  PROCEEDED
+  CANCELLED
+}
+
+model HoldPoint {
+  id                 String            @id @default(uuid())
+  projectId          String
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence           Int
+  number             String
+  kind               HoldPointKind
+  title              String
+  description        String?
+  location           String?
+  scheduleActivityId String?
+  scheduleActivity   ScheduleActivity? @relation(fields: [scheduleActivityId], references: [id], onDelete: SetNull)
+  criterionId        String?
+  criterion          TestCriterion?    @relation(fields: [criterionId], references: [id], onDelete: SetNull)
+  // The contractor whose work stops here, and who releases or witnesses it.
+  contractorId       String?
+  contractor         Contractor?       @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  releaserId         String?
+  releaser           ProjectMember?    @relation("HoldPointReleaser", fields: [releaserId], references: [id], onDelete: SetNull)
+  noticeHours        Int               @default(24)
+  status             HoldPointStatus   @default(PLANNED)
+  readyAt            DateTime?
+  notifiedAt         DateTime?
+  notifiedById       String?
+  notifiedBy         User?             @relation("HoldPointNotifiedBy", fields: [notifiedById], references: [id], onDelete: SetNull)
+  releasedAt         DateTime?
+  releasedById       String?
+  releasedBy         User?             @relation("HoldPointReleasedBy", fields: [releasedById], references: [id], onDelete: SetNull)
+  releaseComment     String?
+  cancelReason       String?
+  // [{ status, at, by, comment }], oldest first.
+  history            Json              @default("[]")
+  createdById        String
+  createdBy          User              @relation("HoldPointCreatedBy", fields: [createdById], references: [id])
+  tests              TestResult[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Numbered per project, one sequence for both: HP-001, WP-002.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+  @@index([scheduleActivityId])
 }
 
 // ---- Measured contracts: site measurement and dayworks (2026-11-02) -------

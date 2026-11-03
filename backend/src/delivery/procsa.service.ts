@@ -59,6 +59,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     investigations,
     advice,
     ncrs,
+    testsReviewed,
+    pointsReleased,
   ] = await Promise.all([
     prisma.projectRegisterEntry.findMany({ where: { projectId }, select: { id: true, register: true, category: true, status: true, createdById: true } }),
     prisma.meeting.findMany({ where: { projectId, status: { not: 'CANCELLED' } }, select: { meetingType: true, status: true, minutesIssuedAt: true } }),
@@ -105,6 +107,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     prisma.siteInvestigation.findMany({ where: { projectId }, select: { recommendedById: true } }),
     prisma.consultantAdvice.findMany({ where: { projectId }, select: { topic: true, authorId: true } }),
     prisma.nonConformance.findMany({ where: { projectId, status: { not: 'VOID' } }, select: { status: true, raisedById: true } }),
+    prisma.testResult.findMany({ where: { projectId, status: 'REVIEWED' }, select: { reviewedById: true } }),
+    prisma.holdPoint.findMany({ where: { projectId, status: 'RELEASED' }, select: { releasedById: true } }),
   ]);
   return {
     entries,
@@ -149,6 +153,8 @@ async function loadFacts(prisma: PrismaService, projectId: string) {
     investigations,
     advice,
     ncrs,
+    testsReviewed,
+    pointsReleased,
   };
 }
 
@@ -341,6 +347,12 @@ function evidenceFor(f: Facts, e: DeliveryEvidence, who: RoleHolders | null = nu
     case 'ncrs': {
       const n = f.ncrs.filter((x) => mine(x.raisedById) && (!e.closed || x.status === 'CLOSED')).length;
       return n ? `${plural(n, 'NCR')} ${e.closed ? 'closed' : 'raised'}` : null;
+    }
+    case 'qualityTests': {
+      const tests = f.testsReviewed.filter((t) => mine(t.reviewedById)).length;
+      const points = f.pointsReleased.filter((p) => mine(p.releasedById)).length;
+      if (!tests && !points) return null;
+      return [tests ? `${plural(tests, 'test result')} reviewed` : '', points ? `${plural(points, 'hold point')} released` : ''].filter(Boolean).join(', ');
     }
     case 'any': {
       for (const x of e.of) {

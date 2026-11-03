@@ -957,6 +957,18 @@ that step gets skipped.
   in the gross; a missing month uses the latest index and is flagged
   provisional. Next: test results, then interfaces & hidden works.
 
+- **3 Nov 2026 — test results and hold/witness points (document.md §2.34).**
+  New tab "Tests & hold points" (`quality-tests/`), INSPECTIONS permissions,
+  hidden from clients, contractors see their own firm's only. Per-project
+  acceptance criteria (with a starter set of SA tests); results are judged on
+  entry, retested, reviewed, and a failure raises a linked NCR. Hold points
+  block the linked schedule activity's % complete until released (and need a
+  passing test if one is named); witness points may proceed once the notified
+  time passes. The user then chose a wider list from a role-by-role donor
+  review: interfaces & hidden works, delay/EOT claims, defects liability,
+  handover pack, baseline variance, portfolio dashboard, HSE incidents,
+  permits to work, then the site manager's diary, look-ahead and plant.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

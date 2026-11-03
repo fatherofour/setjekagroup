@@ -355,6 +355,23 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.tests': {
+    contractor: {
+      title: 'Tests & hold points',
+      steps: [
+        s('Give notice', 'When work reaches a hold or witness point, give notice of when it will be ready, at least the hours asked. Work waits at a hold point until it is released.'),
+        s('Record your results', 'Record each test result: cubes, compaction, pressure tests. It passes or fails against the specification as you enter it.'),
+      ],
+    },
+    all: {
+      title: 'Tests & hold points',
+      steps: [
+        s('Set the criteria', 'Add what each test must achieve on this project. Start from the usual SA tests and edit them to the specification.'),
+        s('Hold and witness points', 'Add the stops in the inspection and test plan. A hold point linked to a programme activity stops it progressing until you release it.'),
+        s('Review results', 'Each result passes or fails on entry. Review them, and raise an NCR straight from a failure.'),
+      ],
+    },
+  },
   'project.measure': {
     contractor: {
       title: 'Site measurement',

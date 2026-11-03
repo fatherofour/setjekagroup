@@ -30,7 +30,9 @@ type CommentEntityType =
   | 'PROJECT_CONTRACT'
   | 'VALUATION'
   | 'NCR'
-  | 'DAYWORK';
+  | 'DAYWORK'
+  | 'TEST_RESULT'
+  | 'HOLD_POINT';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

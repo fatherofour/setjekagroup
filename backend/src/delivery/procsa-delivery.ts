@@ -38,6 +38,8 @@ export type DeliveryEvidence =
   | { kind: 'drawingRegister' }
   | { kind: 'communications'; kinds: CommunicationKind[]; byRole?: boolean }
   | { kind: 'inspections'; kinds: InspectionKind[]; byRole?: boolean }
+  // A test result reviewed, or a hold or witness point released.
+  | { kind: 'qualityTests'; byRole?: boolean }
   | { kind: 'consentRounds'; events: ConsentEventKind[]; category?: RegExp; byRole?: boolean }
   | { kind: 'meetingsAttended'; types: string[] }
   | { kind: 'transmittalsByRole' }
@@ -377,7 +379,7 @@ const ARCHITECT_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
     { code: '5.5', text: 'Inspect the works for conformity to contract documentation', evidence: { kind: 'any', of: [{ kind: 'inspections', kinds: ['DESIGN_SUPERVISION', 'QUALITY'], byRole: true }, { kind: 'ncrs' }] }, tickedBy: 'A site inspection completed, or an NCR raised, by the architect', go: tab('inspections', 'Inspections') },
     { code: '5.6', text: 'Clarify details and descriptions during construction as required', evidence: { kind: 'rfisAnswered', byRole: true }, tickedBy: 'An RFI answered', go: tab('technical', 'RFIs') },
     { code: '5.7', text: 'Receive, comment and approve interim payment valuations', evidence: { kind: 'registerReviewed', register: 'payment-certificates' }, tickedBy: 'A payment valuation reviewed and signed by the architect', go: reg('payment-certificates', 'Payment certificates') },
-    { code: '5.8', text: 'Witness and review all tests and mock-ups carried out both on and off site', evidence: { kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'] }, tickedBy: 'A test or mock-up inspection completed', go: tab('inspections', 'Inspections') },
+    { code: '5.8', text: 'Witness and review all tests and mock-ups carried out both on and off site', evidence: { kind: 'any', of: [{ kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'] }, { kind: 'qualityTests' }] }, tickedBy: 'A test or mock-up inspection completed, a test result reviewed, or a hold point released', go: tab('tests', 'Tests & hold points') },
     { code: '5.9', text: 'Check and approve subcontract shop drawings for design intent', evidence: { kind: 'submittalsReviewed', byRole: true }, tickedBy: 'A shop drawing submittal reviewed', go: tab('technical', 'Submittals') },
     { code: '5.10', text: 'Update and issue the drawings register', evidence: { kind: 'drawingRegister' }, tickedBy: 'Numbered drawings on the register, issued on a transmittal', go: DRAWINGS },
     { code: '5.11', text: 'Issue contract instructions as and when required', evidence: { kind: 'communications', kinds: ['CONTRACT_INSTRUCTION'] }, tickedBy: 'A contract instruction issued', go: tab('instructions', 'Instructions') },
@@ -506,7 +508,7 @@ const CIVIL_ITEMS: Partial<Record<ProjectStage, DeliveryItem[]>> = {
     { code: '5.6', text: 'Assist in the resolution of contractual claims by the contractor', evidence: { kind: 'register', register: 'claims' }, tickedBy: 'Claims on the register', go: reg('claims', 'Contractual claims') },
     { code: '5.7', text: 'Clarify details and descriptions during construction as required', evidence: { kind: 'rfisAnswered', byRole: true }, tickedBy: 'An RFI answered', go: tab('technical', 'RFIs') },
     { code: '5.8', text: 'Receive, comment and approve interim payment valuations', evidence: { kind: 'registerReviewed', register: 'payment-certificates' }, tickedBy: 'A valuation reviewed and signed by the civil engineer', go: reg('payment-certificates', 'Payment certificates') },
-    { code: '5.9', text: 'Witnessing and review of all tests and mock ups carried out both on and off site', evidence: { kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, tickedBy: 'A test or mock-up witnessed by the civil engineer', go: tab('inspections', 'Inspections') },
+    { code: '5.9', text: 'Witnessing and review of all tests and mock ups carried out both on and off site', evidence: { kind: 'any', of: [{ kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, { kind: 'qualityTests', byRole: true }] }, tickedBy: 'A test or mock-up witnessed, a test result reviewed, or a hold point released, by the civil engineer', go: tab('tests', 'Tests & hold points') },
     { code: '5.10', text: 'Check and approve subcontract shop drawings for design intent', evidence: { kind: 'submittalsReviewed', byRole: true }, tickedBy: 'A shop drawing submittal reviewed', go: tab('technical', 'Submittals') },
     { code: '5.11', text: 'Update and issue drawings register', evidence: { kind: 'drawingRegister' }, tickedBy: 'Numbered drawings on the register, issued on a transmittal', go: DRAWINGS },
     { code: '5.12', text: 'Issue contract instructions as and when required', evidence: { kind: 'communications', kinds: ['CONTRACT_INSTRUCTION'], byRole: true }, tickedBy: 'A contract instruction from the civil engineer', go: tab('instructions', 'Instructions') },
@@ -670,7 +672,7 @@ function servicesEngineerItems(who: string, text: Record<string, string>): Parti
         item.go = tab('documents', 'Documents');
       }
       if (stage === 'CONSTRUCTION' && i.code === '5.9') {
-        item.evidence = { kind: 'any', of: [{ kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, { kind: 'document', match: /commission/i, byRole: true }] };
+        item.evidence = { kind: 'any', of: [{ kind: 'inspections', kinds: ['TEST_WITNESS', 'MOCK_UP'], byRole: true }, { kind: 'qualityTests', byRole: true }, { kind: 'document', match: /commission/i, byRole: true }] };
         item.tickedBy = `A test or mock-up witnessed, or a commissioning record uploaded, by the ${who}`;
       }
       list.push(item);

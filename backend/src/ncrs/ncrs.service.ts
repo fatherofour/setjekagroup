@@ -13,6 +13,7 @@ const INCLUDE = {
   closedBy: { select: { fullName: true } },
   assignee: MEMBER,
   inspection: { select: { id: true, number: true, title: true } },
+  testResult: { select: { id: true, number: true, title: true } },
   events: { include: { actor: { select: { fullName: true } } }, orderBy: { createdAt: 'asc' as const } },
 } satisfies Prisma.NonConformanceInclude;
 
@@ -116,6 +117,7 @@ export class NcrsService {
     if (!w.canRaise) throw new ForbiddenException('Setjeka and the design consultants raise NCRs');
     await this.assignee(projectId, dto.assigneeId);
     if (dto.inspectionId && !(await this.prisma.siteInspection.findFirst({ where: { id: dto.inspectionId, projectId } }))) throw new BadRequestException('Inspection not found on this project');
+    if (dto.testResultId && !(await this.prisma.testResult.findFirst({ where: { id: dto.testResultId, projectId } }))) throw new BadRequestException('Test result not found on this project');
     const last = await this.prisma.nonConformance.findFirst({ where: { projectId }, orderBy: { sequence: 'desc' }, select: { sequence: true } });
     const sequence = (last?.sequence ?? 0) + 1;
     const n = await this.prisma.nonConformance.create({

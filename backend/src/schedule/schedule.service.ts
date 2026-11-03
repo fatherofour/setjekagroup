@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { unreleasedHolds } from '../quality-tests/quality-tests.service.js';
 import { assertAcyclic, computeSchedule, endDateFromStart, type CpmActivityInput, type CpmDependencyInput } from './schedule-cpm.util.js';
 import type { CreateActivityDto } from './dto/create-activity.dto.js';
 import type { UpdateActivityDto } from './dto/update-activity.dto.js';
@@ -109,6 +110,10 @@ export class ScheduleService {
     if (dto.projectNodeId) await this.assertBelongsToProject('projectNode', dto.projectNodeId, projectId);
     if (dto.contractorId) await this.assertBelongsToProject('contractor', dto.contractorId, projectId);
     if (dto.assignedToId) await this.assertBelongsToProject('projectMember', dto.assignedToId, projectId);
+    if (dto.percentComplete != null && dto.percentComplete > existing.percentComplete) {
+      const holds = await unreleasedHolds(this.prisma, activityId);
+      if (holds.length) throw new BadRequestException(`${holds.map((h) => `${h.number} "${h.title}"`).join(', ')} must be released before this activity can progress`);
+    }
 
     const nextType = dto.activityType ?? existing.activityType;
     const isMilestone = nextType === 'MILESTONE';

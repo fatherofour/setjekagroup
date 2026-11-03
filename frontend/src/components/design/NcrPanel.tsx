@@ -36,6 +36,7 @@ interface Ncr {
   closedBy: { fullName: string } | null;
   assignee: { id: string; role: string; externalName: string | null; user: { fullName: string } | null } | null;
   inspection: { id: string; number: string; title: string } | null;
+  testResult: { id: string; number: string; title: string } | null;
   events: { id: string; toStatus: Status; comment: string | null; createdAt: string; actor: { fullName: string } }[];
   can: { edit: boolean; respond: boolean; agree: boolean; reject: boolean; ready: boolean; close: boolean; reopen: boolean; void: boolean };
 }
@@ -94,6 +95,7 @@ function NcrDetail({ projectId, n, onBack, onChanged }: { projectId: string; n: 
             {n.assignee && ` · issued to ${memberName(n.assignee as Member)}`}
             {n.dueDate && ` · answer by ${fmtDay(n.dueDate)}`}
             {n.inspection && ` · from ${n.inspection.number} ${n.inspection.title}`}
+            {n.testResult && ` · from test ${n.testResult.number} ${n.testResult.title}`}
           </p>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS[n.status].tone}`}>{STATUS[n.status].label}</span>
@@ -227,8 +229,8 @@ export function NcrPanel({ projectId }: { projectId: string }) {
   const [rows, setRows] = useState<Ncr[] | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(params.get('ncr'));
-  const [raising, setRaising] = useState(Boolean(params.get('fromInspection')));
-  const [form, setForm] = useState({ title: '', description: '', kind: 'WORKMANSHIP' as Kind, severity: 'MINOR' as Severity, location: '', assigneeId: '', dueDate: '', inspectionId: params.get('fromInspection') ?? '' });
+  const [raising, setRaising] = useState(Boolean(params.get('fromInspection') || params.get('fromTest')));
+  const [form, setForm] = useState({ title: '', description: '', kind: 'WORKMANSHIP' as Kind, severity: 'MINOR' as Severity, location: '', assigneeId: '', dueDate: '', inspectionId: params.get('fromInspection') ?? '', testResultId: params.get('fromTest') ?? '' });
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const [error, setError] = useState<string | null>(null);
 
@@ -250,6 +252,25 @@ export function NcrPanel({ projectId }: { projectId: string }) {
       .catch(() => {});
   }, [authedFetch, params, projectId]);
 
+  // Raised from a failed test: what failed, against what.
+  useEffect(() => {
+    const id = params.get('fromTest');
+    if (!id) return;
+    authedFetch<{ number: string; title: string; location: string | null; value: number | null; criterion: { code: string; name: string; unit: string | null }; contractor: { id: string } | null }>(`/projects/${projectId}/quality/tests/${id}`)
+      .then((t) => {
+        const assignee = members.find((m) => m.role === 'CONTRACTOR' && t.contractor && (m as Member & { contractorId?: string | null }).contractorId === t.contractor.id);
+        setForm((f) => ({
+          ...f,
+          kind: 'MATERIAL',
+          assigneeId: f.assigneeId || (assignee?.id ?? ''),
+          title: f.title || `${t.criterion.name} failed: ${t.title}`,
+          location: f.location || (t.location ?? ''),
+          description: f.description || `Test ${t.number} (${t.criterion.code}) failed${t.value != null ? ` at ${t.value}${t.criterion.unit ? ` ${t.criterion.unit}` : ''}` : ''}.`,
+        }));
+      })
+      .catch(() => {});
+  }, [authedFetch, params, projectId, members]);
+
   const contractors = members.filter((m) => m.role === 'CONTRACTOR');
   const mineAsContractor = members.some((m) => m.userId === user?.id && m.role === 'CONTRACTOR');
 
@@ -259,7 +280,7 @@ export function NcrPanel({ projectId }: { projectId: string }) {
     try {
       const n = await authedFetch<Ncr>(`/projects/${projectId}/ncrs`, {
         method: 'POST',
-        body: { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim() || undefined, dueDate: form.dueDate || undefined, inspectionId: form.inspectionId || undefined },
+        body: { ...form, title: form.title.trim(), description: form.description.trim(), location: form.location.trim() || undefined, dueDate: form.dueDate || undefined, inspectionId: form.inspectionId || undefined, testResultId: form.testResultId || undefined },
       });
       setRows((r) => [n, ...(r ?? [])]);
       setRaising(false);
