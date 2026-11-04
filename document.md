@@ -3789,6 +3789,52 @@ Found while writing up the permission matrix. In the local database the contract
 - Setjeka's site manager and Setjeka remove others';
 - a contractor can't remove a folder; Setjeka can.
 
+
+### 2.48 The menu: modules, screens and their parts (2026-11-04)
+
+The user asked for the menu to be reorganised: modules in the sidebar, their screens opening under them, and a screen's own parts on the screen. The project page's row of every screen (36 tabs that scrolled sideways) is gone. The user's condition: **nothing anyone can reach today may disappear.** A clickable mock was agreed first; Programme is its own module, and procurement sits under Commercial.
+
+**Two menus** (`components/nav.ts`, `components/Sidebar.tsx`):
+- **Off a project:** My work (My Day, Notifications, Dashboard, Approvals), Portfolio, the Portal (clients and vendors), Opportunities, Projects (the project last opened, all projects, document search), Commercial (cost database, estimates, rough estimates, contractors) and Administration (admins only).
+- **On a project:** "All of Setjeka", the project's name and stage, then its modules:
+
+| Module | Its screens |
+|---|---|
+| Overview | Summary, PROCSA tracker, Team, Project structure |
+| Inception | Inception (Stage 1), Authorities |
+| Coordination | Meetings, Actions, Tasks, Issues, Risks, Instructions & letters |
+| Design & documents | Documents, Search documents, Drawings, Models, BIM hub, RFIs & Submittals |
+| Programme | Schedule, Look-ahead, Delays & EOT |
+| Site | Site diary, Plant & equipment, Site photos, Site measurement |
+| Quality & safety | Inspections, NCRs, Tests & hold points, Hidden works, Interfaces, Punch list, Health & safety |
+| Commercial | Project commercials, Bills & cost plans, Contracts & valuations, Price indices, Procurement (RFQs & POs) |
+| Completion | Completion & defects, Handover pack |
+| Reports & registers | Reports, Registers |
+
+**How it behaves**
+- **Modules:** only the module in use is open. A module is marked **Now** in the project's current stage:
+  - Inception at Stages 0–1;
+  - Design & documents at Stages 2–4, and Commercial at Stage 4;
+  - Programme, Site, and Quality & safety at Stage 5;
+  - Completion at Stage 6.
+- **On the screen:** a breadcrumb (project › module › screen) and a short row with the module's other screens. Commercial screens show only their own tabs (cost report, budget, variations, bills…), which are the third level.
+- **Who sees what:** the same rule as the project page (`lib/project-access.ts`, now shared by both). The client still doesn't see the site records; Commercial shows only to Setjeka, the QS and the client. Every address is unchanged, so links in notifications and the guide still land where they did.
+
+**Verified, 42 of 42 browser checks:**
+- For each of the admin, architect, client, contractor, engineer and QS:
+  - every screen the old row offered them is in the project sidebar (36, 35, 24, 35, 35 and 36), plus the schedule;
+  - nothing they couldn't open before is offered;
+  - every company page they had is still in the company menu;
+  - the project last opened is one click away.
+- **On the screen:**
+  - the breadcrumb names the module and screen;
+  - only that module is open in the sidebar;
+  - the module's screens form a short row that opens them;
+  - Commercial's bills keep their own place;
+  - there is no sideways scrolling on a phone.
+- **Regression:** all 24 journeys and every browser test (country, plant, look-ahead, diary, tests, defects, HSE, interfaces, NCRs, permits, QS), the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
+- **Not new screens:** four screens (Summary, Actions, Team and Project structure) were only in the old row before; they now have sidebar entries too.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

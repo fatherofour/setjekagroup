@@ -63,7 +63,63 @@ import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
 import { BimHubPanel } from '@/components/bim/BimHubPanel';
 import { Select } from '@/components/ui/Select';
-import { Tabs, type TabItem } from '@/components/ui/Tabs';
+import type { TabItem } from '@/components/ui/Tabs';
+import { useProjectAccess } from '@/lib/project-access';
+import { PROJECT_NAV, projectPlace, projectTabOf } from '@/components/nav';
+
+/** Where this screen sits (project, module, screen) and the other screens
+ * of its module, in place of the old row of every screen: the sidebar
+ * holds the rest (the navigation review, 2026-11-04). */
+function ScreenBar({ projectId, projectName, tab, ctab, canOpen }: { projectId: string; projectName: string; tab: string; ctab: string | null; canOpen: (tab: string) => boolean }) {
+  const place = projectPlace(tab, ctab) ?? projectPlace(tab, null);
+  const group = PROJECT_NAV.find((g) => g.label === place?.module);
+  const screens = (group?.children ?? []).filter((c) => {
+    const t = projectTabOf(c);
+    return t !== null && canOpen(t);
+  });
+  return (
+    <div className="space-y-2">
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+        <Link href={`/projects/${projectId}`} className="hover:text-slate-800 dark:hover:text-slate-200">
+          {projectName}
+        </Link>
+        {place && (
+          <>
+            <span aria-hidden>›</span>
+            <span>{place.module}</span>
+            <span aria-hidden>›</span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">{place.screen}</span>
+          </>
+        )}
+      </nav>
+      {/* Commercial's screens are its own tabs (cost report, bills...), so a
+          second row would repeat them. */}
+      {screens.length > 1 && tab !== 'commercial' && (
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+          {screens.map((c) => {
+            const t = projectTabOf(c)!;
+            const leafCtab = new URLSearchParams((c.projectPathSuffix ?? '').replace(/^\?/, '')).get('ctab');
+            const active = t === tab && (leafCtab === null ? !ctab || !screens.some((o) => projectTabOf(o) === t && o !== c && (o.projectPathSuffix ?? '').includes(`ctab=${ctab}`)) : leafCtab === ctab);
+            return (
+              <Link
+                key={c.label}
+                href={`/projects/${projectId}${c.projectPathSuffix ?? ''}`}
+                aria-current={active ? 'page' : undefined}
+                className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const WORKSPACE_TABS: TabItem[] = [
   { value: 'overview', label: 'Overview' },
@@ -144,24 +200,8 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authedFetch, user } = useAuth();
-  const isExternal = user?.accountType === 'EXTERNAL';
-  // An outside party's role on this project: a client may sign in through a
-  // client organisation or simply be on the team as the client.
-  const [mine, setMine] = useState<{ projectId: string; roles: string[] } | null>(null);
-  useEffect(() => {
-    if (!isExternal || !user) return;
-    authedFetch<{ userId: string | null; role: string }[]>(`/projects/${id}/members`)
-      .then((m) => setMine({ projectId: id, roles: m.filter((x) => x.userId === user.id).map((x) => x.role) }))
-      .catch(() => {});
-  }, [authedFetch, id, isExternal, user]);
-  const clientByRole = mine?.projectId === id && mine.roles.includes('CLIENT');
-  const qsByRole = mine?.projectId === id && mine.roles.includes('QUANTITY_SURVEYOR');
-  // Budgets, variations and fees: Setjeka staff, the QS and the client.
-  const seesCommercial = !isExternal || user?.role === 'ADMIN' || Boolean(user?.clientId) || clientByRole || qsByRole;
-  const isClient = isExternal && (Boolean(user?.clientId) || clientByRole);
-  // Until an outside party's role here is known, client-hidden screens wait.
-  const roleKnown = !isExternal || Boolean(user?.clientId) || mine?.projectId === id;
-  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'ncrs' && t.value !== 'tests' && t.value !== 'hse' && t.value !== 'diary' && t.value !== 'lookahead' && t.value !== 'plant' && t.value !== 'hidden' && t.value !== 'interfaces' && t.value !== 'measure' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
+  // Who may open which screen here: the same rule the sidebar offers them by.
+  const { isExternal, isClient, seesCommercial, roleKnown, canOpen } = useProjectAccess(id);
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -304,7 +344,7 @@ export default function ProjectDetailPage() {
         </p>
       )}
 
-      <Tabs tabs={visibleTabs} value={tab} onChange={setTab} />
+      <ScreenBar projectId={project.id} projectName={project.name} tab={tab} ctab={searchParams.get('ctab')} canOpen={canOpen} />
 
       {tab === 'overview' && (
       <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">

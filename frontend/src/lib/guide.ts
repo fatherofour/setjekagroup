@@ -43,14 +43,17 @@ export function screenKey(pathname: string, tab: string | null): string | null {
 // Welcome tour: the first time someone signs in.
 // ---------------------------------------------------------------------------
 
+// The menu has two faces (2026-11-04): company-wide off a project, and a
+// project's own modules (Overview, Coordination, Design & documents,
+// Programme, Site, Quality & safety, Commercial, Completion...) inside one.
 const MENU: Record<GuidePersona, string> = {
-  setjeka: 'Opportunities, clients and every project live here. Project screens open for the project chosen at the top.',
-  architect: 'Your work is under Design & site: drawings, models, the BIM hub, authorities, instructions, inspections and the punch list. Your PROCSA list is under Projects.',
-  engineer: 'Your work is under Design & site: drawings, models, the BIM hub, authorities, instructions, inspections and the punch list. Your PROCSA list and the registers you keep are under Projects.',
-  qs: "Your work is in each project's Commercial tab: bills and cost plans, variations, contracts, valuations and final accounts. Your PROCSA list is under Projects.",
-  contractor: 'Instructions, inspections, RFIs and submittals, the punch list and site photos are your day to day.',
-  client: 'Your projects, what is waiting for your approval, drawings, photos and your requests to Setjeka.',
-  consultant: 'Everything for the projects you are on: meetings, documents, drawings, inspections and registers.',
+  setjeka: 'Off a project the menu holds opportunities, clients, the portfolio and Setjeka’s own tools. Open a project and it shows that project’s modules; open a module to see its screens.',
+  architect: 'Open a project and your work is under Design & documents (drawings, models, the BIM hub, RFIs) and Quality & safety (inspections, the punch list). Your PROCSA list is under Overview.',
+  engineer: 'Open a project and your work is under Design & documents (drawings, models, the BIM hub, RFIs) and Quality & safety (inspections, tests, the punch list). Your PROCSA list is under Overview, your registers under Reports & registers.',
+  qs: 'Open a project and your work is under Commercial: bills and cost plans, contracts and valuations, price indices and procurement. Your PROCSA list is under Overview.',
+  contractor: 'Open a project for your day to day: instructions under Coordination, RFIs and submittals under Design & documents, the look-ahead under Programme, plant and photos under Site, inspections and the punch list under Quality & safety.',
+  client: 'Your projects, what is waiting for your approval, drawings, photos and your requests to Setjeka. Open a project to see its modules.',
+  consultant: 'Everything for the projects you are on: open one to see its meetings, documents, drawings, inspections and registers, grouped by module.',
   vendor: 'Requests for quotation sent to you, and the quotes you have sent back.',
 };
 

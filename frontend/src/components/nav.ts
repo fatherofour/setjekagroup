@@ -51,6 +51,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AuthUser } from '@/lib/auth-context';
+import type { ProjectStage } from '@/lib/projectStages';
 
 // Who an entry is shown to. Internal = Setjeka staff (and admins); client /
 // vendor = an external login tied to a client or a registered vendor. The
@@ -81,6 +82,9 @@ export interface NavGroup {
   // (see Sidebar.tsx) - used for the Administration group only.
   adminOnly?: boolean;
   audience?: NavAudience;
+  // Project modules: the stages where this module is the day-to-day work,
+  // marked "Now" in the sidebar while the project is in one of them.
+  stages?: ProjectStage[];
 }
 
 export type NavEntry = NavLeaf | NavGroup;
@@ -97,18 +101,23 @@ export function canSee(audience: NavAudience | undefined, user: AuthUser | null)
   return !internal && Boolean(user?.contractorId);
 }
 
-export const NAV: NavEntry[] = [
+// Two menus (the navigation review, 2026-11-04): the company-wide one,
+// and inside a project that project's own modules. Every screen the old
+// single menu offered is still in one of them, at the same address.
+
+/** Off a project's pages: work across projects, and Setjeka's own tools. */
+export const COMPANY_NAV: NavEntry[] = [
   {
-    label: 'Overview',
-    icon: LayoutDashboard,
+    label: 'My work',
+    icon: Sun,
     children: [
       { label: 'My Day', href: '/my-day', icon: Sun },
       { label: 'Notifications', href: '/notifications', icon: Bell },
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Portfolio', href: '/portfolio', icon: Layers, audience: 'internal' },
       { label: 'Approvals', href: '/approvals', icon: Stamp },
     ],
   },
+  { label: 'Portfolio', href: '/portfolio', icon: Layers, audience: 'internal' },
   {
     label: 'Portal',
     icon: DoorOpen,
@@ -128,73 +137,25 @@ export const NAV: NavEntry[] = [
     ],
   },
   {
+    // The Sidebar adds the project last opened at the top of this group.
     label: 'Projects',
     icon: FolderKanban,
     children: [
-      { label: 'Overview', href: '/projects', icon: FolderKanban },
-      { label: 'Inception (Stage 1)', href: '/projects', icon: ClipboardCheck, requiresProject: true, projectPathSuffix: '?tab=inception' },
-      { label: 'PROCSA tracker', href: '/projects', icon: ListTodo, requiresProject: true, projectPathSuffix: '?tab=procsa' },
-      { label: 'Registers', href: '/projects', icon: ClipboardList, requiresProject: true, projectPathSuffix: '?tab=registers' },
-      { label: 'Reports', href: '/projects', icon: Presentation, requiresProject: true, projectPathSuffix: '?tab=reports' },
-      { label: 'Meetings', href: '/projects', icon: CalendarClock, requiresProject: true, projectPathSuffix: '?tab=meetings' },
-      { label: 'Schedule', href: '/projects', icon: GanttChart, requiresProject: true, projectPathSuffix: '/schedule' },
-      { label: 'Tasks', href: '/projects', icon: ListChecks, requiresProject: true, projectPathSuffix: '?tab=tasks' },
-      { label: 'Issues', href: '/projects', icon: AlertTriangle, requiresProject: true, projectPathSuffix: '?tab=issues' },
-      { label: 'Risks', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=risks' },
-      { label: 'Documents', href: '/projects', icon: FileText, requiresProject: true, projectPathSuffix: '?tab=documents' },
+      { label: 'All projects', href: '/projects', icon: FolderKanban },
       { label: 'Search documents', href: '/search', icon: FileSearch },
-      { label: 'Site photos', href: '/projects', icon: Camera, requiresProject: true, projectPathSuffix: '?tab=photos' },
-      { label: 'RFIs & Submittals', href: '/projects', icon: HelpCircle, requiresProject: true, projectPathSuffix: '?tab=technical' },
     ],
   },
   {
-    // The architect's working set (26 Oct 2026), used by Setjeka too.
-    label: 'Design & site',
-    icon: PenTool,
-    children: [
-      { label: 'Drawings', href: '/projects', icon: PenTool, requiresProject: true, projectPathSuffix: '?tab=drawings' },
-      { label: 'Models', href: '/projects', icon: Box, requiresProject: true, projectPathSuffix: '?tab=models' },
-      { label: 'BIM hub', href: '/projects', icon: Network, requiresProject: true, projectPathSuffix: '?tab=bim' },
-      { label: 'Authorities', href: '/projects', icon: Landmark, requiresProject: true, projectPathSuffix: '?tab=authorities' },
-      { label: 'Instructions', href: '/projects', icon: Mail, requiresProject: true, projectPathSuffix: '?tab=instructions' },
-      { label: 'Delays & EOT', href: '/projects', icon: CalendarClock, requiresProject: true, projectPathSuffix: '?tab=eot' },
-      { label: 'Inspections', href: '/projects', icon: SearchCheck, requiresProject: true, projectPathSuffix: '?tab=inspections' },
-      { label: 'NCRs', href: '/projects', icon: ShieldAlert, requiresProject: true, projectPathSuffix: '?tab=ncrs' },
-      { label: 'Tests & hold points', href: '/projects', icon: FlaskConical, requiresProject: true, projectPathSuffix: '?tab=tests' },
-      { label: 'Hidden works', href: '/projects', icon: EyeOff, requiresProject: true, projectPathSuffix: '?tab=hidden' },
-      { label: 'Interfaces', href: '/projects', icon: Waypoints, requiresProject: true, projectPathSuffix: '?tab=interfaces' },
-      { label: 'Site measurement', href: '/projects', icon: Ruler, requiresProject: true, projectPathSuffix: '?tab=measure' },
-      { label: 'Punch list', href: '/projects', icon: ListX, requiresProject: true, projectPathSuffix: '?tab=punch' },
-      { label: 'Completion & defects', href: '/projects', icon: BadgeCheck, requiresProject: true, projectPathSuffix: '?tab=defects' },
-      { label: 'Handover pack', href: '/projects', icon: FolderCheck, requiresProject: true, projectPathSuffix: '?tab=handover' },
-      { label: 'Health & safety', href: '/projects', icon: HardHat, requiresProject: true, projectPathSuffix: '?tab=hse' },
-      { label: 'Site diary', href: '/projects', icon: BookOpenText, requiresProject: true, projectPathSuffix: '?tab=diary' },
-      { label: 'Look-ahead', href: '/projects', icon: CalendarRange, requiresProject: true, projectPathSuffix: '?tab=lookahead' },
-      { label: 'Plant & equipment', href: '/projects', icon: Tractor, requiresProject: true, projectPathSuffix: '?tab=plant' },
-    ],
-  },
-  {
+    // Setjeka's own price data and estimates, and the firms it procures
+    // from (procurement sits under Commercial: the user, 2026-11-04).
     label: 'Commercial',
     icon: Coins,
-    // The QS (an outside firm) works here too since 28 Oct 2026; Setjeka's
-    // own price data and estimates stay internal. The project page itself
-    // hides Commercial from those with no access to it.
+    audience: 'internal',
     children: [
-      { label: 'Project commercials', href: '/projects', icon: Coins, requiresProject: true, projectPathSuffix: '?tab=commercial' },
-      { label: 'Bills & cost plans', href: '/projects', icon: Calculator, requiresProject: true, projectPathSuffix: '?tab=commercial&ctab=bills' },
-      { label: 'Contracts & valuations', href: '/projects', icon: FileSignature, requiresProject: true, projectPathSuffix: '?tab=commercial&ctab=contracts' },
-      { label: 'Price indices', href: '/projects', icon: TrendingUp, requiresProject: true, projectPathSuffix: '?tab=commercial&ctab=indices' },
-      { label: 'Cost database', href: '/cost-database', icon: Database, audience: 'internal' },
-      { label: 'Estimates', href: '/estimates', icon: Calculator, audience: 'internal' },
-      { label: 'Rough estimates', href: '/rough-estimates', icon: Calculator, audience: 'internal' },
-    ],
-  },
-  {
-    label: 'Procurement',
-    icon: Handshake,
-    children: [
-      { label: 'Contractors', href: '/contractors', icon: HardHat, audience: 'internal' },
-      { label: 'RFQs & POs', href: '/projects', icon: Handshake, requiresProject: true, projectPathSuffix: '?tab=procurement' },
+      { label: 'Cost database', href: '/cost-database', icon: Database },
+      { label: 'Estimates', href: '/estimates', icon: Calculator },
+      { label: 'Rough estimates', href: '/rough-estimates', icon: Calculator },
+      { label: 'Contractors', href: '/contractors', icon: HardHat },
     ],
   },
   {
@@ -209,3 +170,130 @@ export const NAV: NavEntry[] = [
     ],
   },
 ];
+
+const p = (label: string, icon: LucideIcon, projectPathSuffix: string): NavLeaf => ({ label, href: '/projects', icon, requiresProject: true, projectPathSuffix });
+
+/** On a project's pages: its modules, each opening to its screens. A
+ * screen's own parts (Commercial's cost report, budget, bills...; Health &
+ * safety's incidents and permits) are tabs on that screen. The Sidebar
+ * shows a person only the screens the project page lets them open. */
+export const PROJECT_NAV: NavGroup[] = [
+  {
+    label: 'Overview',
+    icon: LayoutDashboard,
+    children: [
+      p('Summary', LayoutDashboard, ''),
+      p('PROCSA tracker', ListTodo, '?tab=procsa'),
+      p('Team', Users, '?tab=team'),
+      p('Project structure', Network, '?tab=structure'),
+    ],
+  },
+  {
+    label: 'Inception',
+    icon: ClipboardCheck,
+    stages: ['INITIATION', 'INCEPTION'],
+    children: [p('Inception (Stage 1)', ClipboardCheck, '?tab=inception'), p('Authorities', Landmark, '?tab=authorities')],
+  },
+  {
+    label: 'Coordination',
+    icon: CalendarClock,
+    children: [
+      p('Meetings', CalendarClock, '?tab=meetings'),
+      p('Actions', ClipboardList, '?tab=actions'),
+      p('Tasks', ListChecks, '?tab=tasks'),
+      p('Issues', AlertTriangle, '?tab=issues'),
+      p('Risks', ShieldAlert, '?tab=risks'),
+      p('Instructions & letters', Mail, '?tab=instructions'),
+    ],
+  },
+  {
+    label: 'Design & documents',
+    icon: PenTool,
+    stages: ['CONCEPT', 'DESIGN', 'DOCUMENTATION_PROCUREMENT'],
+    children: [
+      p('Documents', FileText, '?tab=documents'),
+      { label: 'Search documents', href: '/search', icon: FileSearch },
+      p('Drawings', PenTool, '?tab=drawings'),
+      p('Models', Box, '?tab=models'),
+      p('BIM hub', Network, '?tab=bim'),
+      p('RFIs & Submittals', HelpCircle, '?tab=technical'),
+    ],
+  },
+  {
+    label: 'Programme',
+    icon: GanttChart,
+    stages: ['CONSTRUCTION'],
+    children: [p('Schedule', GanttChart, '/schedule'), p('Look-ahead', CalendarRange, '?tab=lookahead'), p('Delays & EOT', CalendarClock, '?tab=eot')],
+  },
+  {
+    label: 'Site',
+    icon: HardHat,
+    stages: ['CONSTRUCTION'],
+    children: [
+      p('Site diary', BookOpenText, '?tab=diary'),
+      p('Plant & equipment', Tractor, '?tab=plant'),
+      p('Site photos', Camera, '?tab=photos'),
+      p('Site measurement', Ruler, '?tab=measure'),
+    ],
+  },
+  {
+    label: 'Quality & safety',
+    icon: SearchCheck,
+    stages: ['CONSTRUCTION'],
+    children: [
+      p('Inspections', SearchCheck, '?tab=inspections'),
+      p('NCRs', ShieldAlert, '?tab=ncrs'),
+      p('Tests & hold points', FlaskConical, '?tab=tests'),
+      p('Hidden works', EyeOff, '?tab=hidden'),
+      p('Interfaces', Waypoints, '?tab=interfaces'),
+      p('Punch list', ListX, '?tab=punch'),
+      p('Health & safety', HardHat, '?tab=hse'),
+    ],
+  },
+  {
+    label: 'Commercial',
+    icon: Coins,
+    stages: ['DOCUMENTATION_PROCUREMENT'],
+    children: [
+      p('Project commercials', Coins, '?tab=commercial'),
+      p('Bills & cost plans', Calculator, '?tab=commercial&ctab=bills'),
+      p('Contracts & valuations', FileSignature, '?tab=commercial&ctab=contracts'),
+      p('Price indices', TrendingUp, '?tab=commercial&ctab=indices'),
+      p('Procurement (RFQs & POs)', Handshake, '?tab=procurement'),
+    ],
+  },
+  {
+    label: 'Completion',
+    icon: BadgeCheck,
+    stages: ['CLOSEOUT'],
+    children: [p('Completion & defects', BadgeCheck, '?tab=defects'), p('Handover pack', FolderCheck, '?tab=handover')],
+  },
+  {
+    label: 'Reports & registers',
+    icon: Presentation,
+    children: [p('Reports', Presentation, '?tab=reports'), p('Registers', ClipboardList, '?tab=registers')],
+  },
+];
+
+/** The workspace tab a project entry opens ('overview' for the project
+ * itself, 'schedule' for its own page), or null for a non-project page. */
+export function projectTabOf(leaf: NavLeaf): string | null {
+  if (!leaf.requiresProject) return null;
+  const suffix = leaf.projectPathSuffix ?? '';
+  if (suffix.startsWith('/')) return suffix.slice(1);
+  return new URLSearchParams(suffix.replace(/^\?/, '')).get('tab') ?? 'overview';
+}
+
+/** Where a project entry sits: its module and screen, for the page's
+ * breadcrumb. */
+export function projectPlace(tab: string, ctab: string | null): { module: string; screen: string } | null {
+  const ctabOf = (leaf: NavLeaf) => new URLSearchParams((leaf.projectPathSuffix ?? '').replace(/^\?/, '')).get('ctab');
+  // A screen's own sub-tab (Commercial's bills) wins over the screen itself.
+  for (const want of [ctab, null]) {
+    for (const group of PROJECT_NAV) {
+      const leaf = group.children.find((l) => projectTabOf(l) === tab && ctabOf(l) === want);
+      if (leaf) return { module: group.label, screen: leaf.label };
+    }
+  }
+  return null;
+}
