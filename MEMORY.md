@@ -1063,6 +1063,15 @@ that step gets skipped.
   ScheduleProgressEntry history; diary shows the day's progress. Next: plant
   & equipment.
 
+- **4 Nov 2026 — plant & equipment (document.md §2.45).** Tab Plant &
+  equipment (`plant/`, INSPECTIONS permissions, PLANT_ITEM notes,
+  PLANT_OUT_OF_USE alerts). Register PL-001.. with owner/hire, firm,
+  operator + cert, arrival/off-hire, state; inspections every N days (failed
+  = out of use until passed); lifting/access need a certificate; flags for
+  due/expired/off-hire. Contractor sees and keeps only their firm's. The
+  diary's plant list now starts from the register (`plantOnSite`). Last of
+  the site manager's items; field-ops scope still to confirm with Setjeka.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

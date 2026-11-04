@@ -50,6 +50,7 @@ import { PortfolioModule } from './portfolio/portfolio.module.js';
 import { HseModule } from './hse/hse.module.js';
 import { PermitsModule } from './permits/permits.module.js';
 import { SiteDiaryModule } from './site-diary/site-diary.module.js';
+import { PlantModule } from './plant/plant.module.js';
 import { TransmittalsModule } from './transmittals/transmittals.module.js';
 import { ProjectRisksModule } from './project-risks/project-risks.module.js';
 import { RfisModule } from './rfis/rfis.module.js';
@@ -123,6 +124,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     HseModule,
     PermitsModule,
     SiteDiaryModule,
+    PlantModule,
     TransmittalsModule,
     ProjectRisksModule,
     RfisModule,

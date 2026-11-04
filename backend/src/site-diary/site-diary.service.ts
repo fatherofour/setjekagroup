@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import type { SaveDiaryDto } from './dto/site-diary.dto.js';
 import { progressOn } from './look-ahead.service.js';
+import { plantOnSite } from '../plant/plant.service.js';
 
 const WRITERS: ProjectMemberRole[] = ['SITE_MANAGER', 'PROJECT_MANAGER', 'DEVELOPMENT_MANAGER'];
 const INCLUDE = { author: { select: { fullName: true } }, signedBy: { select: { fullName: true } } } satisfies Prisma.SiteDiaryInclude;
@@ -22,7 +23,8 @@ const headcount = (labour: unknown) => ((labour as Labour[]) ?? []).reduce((n, l
 /** The daily site diary (the site manager's items, 2026-11-04). The site
  * manager, Setjeka's PM or DM, or Setjeka writes one per day; the site
  * team and the consultants read it; the client does not. A new day starts
- * from the last day's labour and plant, with the weather recorded on site.
+ * from the last day's labour, the plant on the register (or the last day's
+ * plant when the register is empty), and the weather recorded on site.
  * Signed, a day is locked; later notes go in its thread. */
 @Injectable()
 export class SiteDiaryService {
@@ -70,14 +72,18 @@ export class SiteDiaryService {
     const date = siteDate(dateStr);
     const [entry, weather, progress] = await Promise.all([this.prisma.siteDiary.findUnique({ where: { projectId_date: { projectId, date } }, include: INCLUDE }), this.weather(projectId, date), progressOn(this.prisma, projectId, date)]);
     if (entry) return { ...entry, exists: true, weather, progress, headcount: headcount(entry.labour), can: { edit: w.writer && entry.status === 'DRAFT', sign: w.writer && entry.status === 'DRAFT' } };
-    const last = await this.prisma.siteDiary.findFirst({ where: { projectId, date: { lt: date } }, orderBy: { date: 'desc' }, select: { labour: true, plant: true, workingHours: true, date: true } });
+    const [last, register] = await Promise.all([
+      this.prisma.siteDiary.findFirst({ where: { projectId, date: { lt: date } }, orderBy: { date: 'desc' }, select: { labour: true, plant: true, workingHours: true, date: true } }),
+      plantOnSite(this.prisma, projectId, date),
+    ]);
     return {
       exists: false,
       date,
       status: 'DRAFT',
       workingHours: last?.workingHours ?? 9,
       labour: last?.labour ?? [],
-      plant: last?.plant ?? [],
+      plant: register.length ? register : (last?.plant ?? []),
+      plantFromRegister: register.length > 0,
       carriedFrom: last?.date ?? null,
       weather,
       progress,
@@ -108,9 +114,14 @@ export class SiteDiaryService {
     };
     if (existing) await this.prisma.siteDiary.update({ where: { id: existing.id }, data });
     else {
-      // A new day starts from the last day's labour and plant unless given.
-      const last = await this.prisma.siteDiary.findFirst({ where: { projectId, date: { lt: date } }, orderBy: { date: 'desc' }, select: { labour: true, plant: true, workingHours: true } });
-      await this.prisma.siteDiary.create({ data: { projectId, date, authorId: userId, ...data, labour: data.labour ?? (last?.labour as Prisma.InputJsonValue) ?? [], plant: data.plant ?? (last?.plant as Prisma.InputJsonValue) ?? [], workingHours: data.workingHours ?? last?.workingHours ?? 9 } });
+      // A new day starts from the last day's labour, and the register's plant
+      // (or the last day's), unless given.
+      const [last, register] = await Promise.all([
+        this.prisma.siteDiary.findFirst({ where: { projectId, date: { lt: date } }, orderBy: { date: 'desc' }, select: { labour: true, plant: true, workingHours: true } }),
+        plantOnSite(this.prisma, projectId, date),
+      ]);
+      const plant = data.plant ?? (register.length ? (register as Prisma.InputJsonValue) : (last?.plant as Prisma.InputJsonValue)) ?? [];
+      await this.prisma.siteDiary.create({ data: { projectId, date, authorId: userId, ...data, labour: data.labour ?? (last?.labour as Prisma.InputJsonValue) ?? [], plant, workingHours: data.workingHours ?? last?.workingHours ?? 9 } });
     }
     return this.day(projectId, userId, dateStr);
   }

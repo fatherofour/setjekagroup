@@ -3675,6 +3675,71 @@ Built on 2026-11-04, the second of the site manager's items. It adds a new proje
   - the site manager looks six weeks ahead.
 - **Regression:** all 21 role journeys, the look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
 
+### 2.45 Plant and equipment on site
+
+Built on 2026-11-04, the last of the site manager's items, kept lean while the field operations scope is confirmed with Setjeka. It adds a new project tab, **Plant & equipment** (`plant/`, `PlantPanel.tsx`; `/projects/:id/plant`). It sits with the site records: the client doesn't see it.
+
+**The register** (`PlantItem`, numbered PL-001)
+- **Each item records:**
+  - what it is and its kind: earthmoving, lifting, access, concrete, compaction, transport, power, small plant or other;
+  - its fleet number or registration;
+  - whether it is owned or hired, and from whom;
+  - whose it is (a contractor, or Setjeka / the site);
+  - the operator and the expiry of their certificate;
+  - when it arrived and when it is due off hire.
+- **Its state:** working, standing, broken down or off site. Breaking down needs a reason, and the site manager, PM, HSE manager and the firm are told (`PLANT_OUT_OF_USE`).
+- **Who keeps it:** the site manager, Setjeka's PM or DM, the HSE manager or Setjeka, for any firm. A contractor adds and updates only their own firm's plant, and sees only that.
+
+**Inspections and certificates**
+- **Inspections.** Each item can be inspected every so many days; the next one is worked out from the last.
+  - A passed inspection sets the next due date.
+  - A failed one needs a reason, takes the plant **out of use** (broken down), and tells the site team. It can't be set working again until it passes an inspection.
+- **Certificates.** Lifting and access equipment (cranes, hoists, MEWPs, scaffold towers) need a certificate (a load test or certificate of fitness); one can be renewed with an inspection.
+- **What is flagged:**
+  - an inspection overdue, or due within 7 days;
+  - a certificate expired, due within 30 days, or missing on lifting or access equipment;
+  - an operator's certificate expired or due within 30 days;
+  - hired plant still on site past its off-hire date;
+  - plant out of use.
+- **Off site.** Plant leaving site is recorded with the date; it then can't be changed, and stays in the register's history.
+
+**On the diary.** A new day in the site diary (§2.43) starts its plant list from the register: the plant on site that day, grouped by description and state. When the register is empty, it carries the last day's list as before.
+
+**Not done here** (to confirm with Setjeka, 1.1):
+- no hire costs, rates or off-hire orders;
+- no fuel or hours-meter readings;
+- no daily pre-use checklists (operators' daily checks under the Construction Regulations, reg. 23);
+- no scheduled reminder emails; the flags show on the register.
+
+**Verified**
+- **API, 37 of 37 checks.**
+  - **The register:**
+    - the client sees nothing;
+    - the excavator's next inspection is worked out from its interval, and it is flagged overdue and past its off-hire date;
+    - a crane with no certificate is flagged;
+    - plant arriving in the future, and off hire before arrival, are refused.
+  - **Contractors:**
+    - a contractor can't add plant for another firm;
+    - they add their own compactors under their firm;
+    - they see their firm's plant only, and can't open or change the steel erector's crane.
+  - **Breakdowns:**
+    - breaking down needs a reason, and the site manager is told;
+    - plant goes back to work once fixed; the same state again is refused.
+  - **Inspections:**
+    - a failed inspection needs a reason, takes the excavator out of use, keeps it from working, and tells the contractor;
+    - a passed one puts it back to work with the next due in 7 days;
+    - an inspection in the future is refused;
+    - the crane's load test clears its missing-certificate flag and shows it due within 30 days.
+  - **Operator and hire:** a new operator is kept in the history, their expired certificate is flagged, and extending the hire clears the off-hire flag.
+  - **The board** counts what is on site, working and flagged; the site manager can file plant to any firm.
+  - **The diary:** yesterday's page takes its plant from the register, and today's groups the two compactors. The crane still shows on the day it left.
+  - **Off site:** leaving before arrival is refused; the steel erector records the crane off site, after which it can't change, and the board drops it.
+  - **Notes:** the contractor adds a note; the client can't read it.
+- **Browser, 7 of 7:**
+  - on a phone, the contractor sees their excavator's operator flag and not the crane, and marks a compactor broken down, with no sideways scrolling;
+  - the site manager sees the breakdown on the board, adds a scissor lift (flagged without a certificate), and clears the flag with an inspection.
+- **Regression:** all 22 journeys, the plant, look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep with the new tab (0 problems) and the guide (18 of 18) pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

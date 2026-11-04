@@ -103,6 +103,8 @@ const CATEGORY: Record<NotificationType, AlertCategory> = {
   PERMIT_REQUESTED: 'APPROVALS',
   PERMIT_DECIDED: 'APPROVALS',
   PERMIT_HANDED_BACK: 'ACTIONS',
+  // Plant broken down or failed its inspection: the site team acts on it.
+  PLANT_OUT_OF_USE: 'ACTIONS',
   NOTE_FOR_YOU: 'ACTIONS',
   ACTION_ASSIGNED: 'ACTIONS',
   ACTION_COMPLETED: 'ACTIONS',

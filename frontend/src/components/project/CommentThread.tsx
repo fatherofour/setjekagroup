@@ -40,7 +40,8 @@ type CommentEntityType =
   | 'HANDOVER_ITEM'
   | 'HSE_INCIDENT'
   | 'WORK_PERMIT'
-  | 'SITE_DIARY';
+  | 'SITE_DIARY'
+  | 'PLANT_ITEM';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

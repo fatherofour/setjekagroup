@@ -35,6 +35,7 @@ interface Day {
   safety?: string | null;
   notes?: string | null;
   carriedFrom?: string | null;
+  plantFromRegister?: boolean;
   headcount: number;
   weather: { tempMaxC: number | null; tempMinC: number | null; precipitationMm: number | null; windMaxKmh: number | null } | null;
   progress?: { percentComplete: number; previousPercent: number; note: string | null; activity: { name: string }; recordedBy: { fullName: string } }[];
@@ -171,7 +172,7 @@ export function SiteDiaryPanel({ projectId }: { projectId: string }) {
             <div>
               <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{fmtDay(date)}</p>
               <p className="text-xs text-slate-500">
-                {form.exists ? `Written by ${form.author?.fullName}` : form.carriedFrom ? `New page: labour and plant carried from ${fmtDay(form.carriedFrom)}` : 'New page'}
+                {form.exists ? `Written by ${form.author?.fullName}` : form.plantFromRegister ? `New page: ${form.carriedFrom ? `labour carried from ${fmtDay(form.carriedFrom)}, ` : ''}plant from the register` : form.carriedFrom ? `New page: labour and plant carried from ${fmtDay(form.carriedFrom)}` : 'New page'}
                 {form.signedBy && ` · signed by ${form.signedBy.fullName}, ${fmtDayTime(form.signedAt)}`}
               </p>
             </div>

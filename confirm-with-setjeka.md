@@ -10,7 +10,7 @@ Status key: **Decide** means only Setjeka can make the call. **Confirm** means w
 
 | # | Item | Why it matters | Status |
 |---|---|---|---|
-| 1.1 | **Field operations and QHSE scope.** These were included at Meeting 3 but are not in the signed scope of work. Is this release 2, or a change request? | Already built so the platform is complete while this is agreed: tests and hold points, hidden works, HSE incidents, permits to work, and the site manager's daily diary and look-ahead. The plant register is being built next. The commercial position still needs agreeing. | Decide |
+| 1.1 | **Field operations and QHSE scope.** These were included at Meeting 3 but are not in the signed scope of work. Is this release 2, or a change request? | Already built so the platform is complete while this is agreed: tests and hold points, hidden works, HSE incidents, permits to work, and the site manager's daily diary, look-ahead and plant register. The commercial position still needs agreeing. | Decide |
 | 1.2 | **Data residency (POPIA).** May project data be stored or processed outside South Africa? | This decides where we host, and whether an AI assistant can use an overseas service (DeepSeek, Claude, OpenAI) or must run on a server in South Africa. | Decide |
 | 1.3 | **E-signatures (ECT Act).** Approvals are signed by drawing, uploading or typing a signature, or by plain acceptance, and are stamped onto the document. Is that enough for Setjeka's approvals, or do some need an advanced electronic signature? | It affects client approvals, payment certificates and stage gates. | Decide |
 | 1.4 | **Document numbering** (parked since October). Should numbers follow originator / type / purpose / sequence / revision? This affects everyone from the client to the contractors. | Today each consultant's own drawing number is read from the title block, and Setjeka documents are numbered per register. | Decide (we owe the proposal, see 6.3) |
@@ -87,6 +87,7 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
   - each permit runs for at most **7 days**;
   - the precaution lists for hot work, working at height, excavation, confined spaces, electrical isolation and lifting come from the Construction Regulations 2014 and should be reviewed by the HSE consultant. Setjeka may also have its own permit forms to match.
 - **Not built (not chosen):** toolbox talks and inductions.
+- **Plant** (§2.45): inspections are flagged when overdue or due within 7 days, certificates within 30. Cranes, hoists and access equipment must have a certificate. Does Setjeka want operators' daily pre-use checks recorded, and hire costs tracked?
 
 ### Programme and portfolio
 - **Baseline variance** (§2.39) counts working days, Monday to Friday. **There is no public-holiday calendar yet.** Does Setjeka want SA public holidays excluded?
@@ -113,9 +114,9 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
 
 1. ~~Site manager's daily diary~~: built 4 Nov (§2.43).
 2. ~~Look-ahead and progress~~: built 4 Nov (§2.44).
-3. **Plant and equipment:** plant on site, hire periods, inspections and breakdowns.
+3. ~~Plant and equipment~~: built 4 Nov (§2.45). Lean: no hire costs, fuel or hours, or daily pre-use checklists yet.
 
-These are being built now on the user's go-ahead; the scope is still to confirm (1.1).
+These were built on the user's go-ahead; the scope is still to confirm (1.1).
 
 **Raised but not chosen** (tell us if any become wanted): GIS / 3D site map, point clouds, temporary works, toolbox talks and inductions, earned value (CPI/SPI), near misses, a delay analysis on the programme, and separate disruption claims.
 

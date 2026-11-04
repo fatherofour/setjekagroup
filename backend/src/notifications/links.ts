@@ -48,6 +48,8 @@ export function recordLink(entityType: CommentEntityType, ids: { projectId?: str
       return ids.entityId ? `${p}?tab=ncrs&ncr=${ids.entityId}` : `${p}?tab=ncrs`;
     case 'TEST_RESULT':
       return ids.entityId ? `${p}?tab=tests&test=${ids.entityId}` : `${p}?tab=tests`;
+    case 'PLANT_ITEM':
+      return ids.entityId ? `${p}?tab=plant&item=${ids.entityId}` : `${p}?tab=plant`;
     case 'SITE_DIARY':
       return `${p}?tab=diary`;
     case 'WORK_PERMIT':

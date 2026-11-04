@@ -384,6 +384,7 @@ model User {
   diariesWritten              SiteDiary[]                  @relation("DiaryAuthor")
   diariesSigned               SiteDiary[]                  @relation("DiarySignedBy")
   progressRecorded            ScheduleProgressEntry[]
+  plantAdded                  PlantItem[]                  @relation("PlantAddedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -431,6 +432,7 @@ model Contractor {
   hiddenWorks             HiddenWork[]
   hseIncidents            HseIncident[]
   workPermits             WorkPermit[]
+  plantItems              PlantItem[]
   name                    String                             @unique
   tradingName             String?
   tradeType               String?
@@ -731,6 +733,7 @@ model Project {
   workPermits              WorkPermit[]
   siteDiaries              SiteDiary[]
   progressEntries          ScheduleProgressEntry[]
+  plantItems               PlantItem[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -1109,6 +1112,7 @@ enum CommentEntityType {
   HSE_INCIDENT
   WORK_PERMIT
   SITE_DIARY
+  PLANT_ITEM
 }
 
 model Comment {
@@ -1235,6 +1239,7 @@ enum NotificationType {
   PERMIT_REQUESTED
   PERMIT_DECIDED
   PERMIT_HANDED_BACK
+  PLANT_OUT_OF_USE
 }
 
 model Notification {
@@ -4913,6 +4918,76 @@ model SiteDiary {
   updatedAt    DateTime    @updatedAt
 
   @@unique([projectId, date])
+}
+
+// ---- Plant and equipment (2026-11-04) ----------------------------------------
+// The last of the site manager's items. The plant on site, owned or hired:
+// when it came and is due off hire, who operates it, whether it is working,
+// standing or broken down, and when its next inspection and certificate
+// (load test, certificate of fitness) fall due. A failed inspection takes it
+// out of use until it passes one. The diary's plant list starts from it.
+enum PlantCategory {
+  EARTHMOVING
+  LIFTING
+  ACCESS
+  CONCRETE
+  COMPACTION
+  TRANSPORT
+  POWER
+  SMALL_PLANT
+  OTHER
+}
+
+enum PlantStatus {
+  WORKING
+  STANDING
+  BROKEN_DOWN
+  OFF_SITE
+}
+
+enum PlantOwnership {
+  OWNED
+  HIRED
+}
+
+model PlantItem {
+  id                     String         @id @default(uuid())
+  projectId              String
+  project                Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence               Int
+  number                 String
+  description            String
+  category               PlantCategory
+  // Fleet number, registration or serial.
+  fleetNumber            String?
+  ownership              PlantOwnership @default(HIRED)
+  // The hire company, or the owner.
+  supplier               String?
+  contractorId           String?
+  contractor             Contractor?    @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  operator               String?
+  operatorCertExpiry     DateTime?      @db.Date
+  arrivedOn              DateTime       @db.Date
+  offHireDue             DateTime?      @db.Date
+  departedOn             DateTime?      @db.Date
+  status                 PlantStatus    @default(WORKING)
+  // Failed its last inspection: out of use until it passes one.
+  outOfUse               Boolean        @default(false)
+  inspectionIntervalDays Int?
+  lastInspectedOn        DateTime?      @db.Date
+  nextInspectionDue      DateTime?      @db.Date
+  certificateExpiry      DateTime?      @db.Date
+  // [{ kind, at, by, name, note, ... }]: arrival, status changes,
+  // inspections and departure.
+  history                Json           @default("[]")
+  addedById              String
+  addedBy                User           @relation("PlantAddedBy", fields: [addedById], references: [id])
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  // Numbered per project: PL-001.
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
 }
 
 // ---- Permits to work (2026-11-04) -------------------------------------------

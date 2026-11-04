@@ -16,6 +16,7 @@ import {
   FolderCheck,
   BookOpenText,
   CalendarRange,
+  Tractor,
   TrendingUp,
   Ruler,
   HelpCircle,
@@ -169,6 +170,7 @@ export const NAV: NavEntry[] = [
       { label: 'Health & safety', href: '/projects', icon: HardHat, requiresProject: true, projectPathSuffix: '?tab=hse' },
       { label: 'Site diary', href: '/projects', icon: BookOpenText, requiresProject: true, projectPathSuffix: '?tab=diary' },
       { label: 'Look-ahead', href: '/projects', icon: CalendarRange, requiresProject: true, projectPathSuffix: '?tab=lookahead' },
+      { label: 'Plant & equipment', href: '/projects', icon: Tractor, requiresProject: true, projectPathSuffix: '?tab=plant' },
     ],
   },
   {

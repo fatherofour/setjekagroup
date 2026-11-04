@@ -385,6 +385,20 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.plant': {
+    contractor: {
+      title: 'Plant & equipment',
+      steps: [s('Your plant', 'Add the plant your firm brings to site and keep its state, operator and inspections up to date. A failed inspection takes it out of use until it passes one.')],
+    },
+    all: {
+      title: 'Plant & equipment',
+      steps: [
+        s('The register', 'Every machine on site, owned or hired, with its operator and hire dates. The site diary starts its plant list from here each day.'),
+        s('Inspections and certificates', 'Set how often each item is inspected. Inspections due, expired certificates and plant past its off-hire date are flagged; cranes, hoists and access equipment need a certificate.'),
+        s('Breakdowns', 'Mark plant broken down with what is wrong; the site team is told. A failed inspection does the same until it passes again.'),
+      ],
+    },
+  },
   'project.diary': {
     all: {
       title: 'Site diary',
