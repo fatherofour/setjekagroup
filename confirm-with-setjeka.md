@@ -18,6 +18,8 @@ Status key: **Decide** means only Setjeka can make the call. **Confirm** means w
 | 1.6 | **Project-scoped sign-in** (scope §4.9). This was explained in October and is waiting for a go-ahead. | It controls what an outside party sees when they belong to several projects. | Decide |
 | 1.7 | **AI assistant.** What budget, and which tasks first (for example drafting minutes and letters, summarising RFIs, checking claims against contract periods)? | The chat button is a placeholder until this is decided. We advised against the "obliterated" DeepSeek model: its safety controls were removed, it needs datacentre hardware, and it knows construction no better. | Decide |
 
+| 1.8 | **Countries.** Setjeka works across Africa, mainly South Africa and Nigeria. The platform's rules are South African today: the OHS Act, POPIA, JBCC/GCC, the SA time zone (UTC+2) and SA working days. Should each project carry its country, with Nigeria's rules (NDPA, Lagos State Safety Commission, West Africa Time, Nigerian public holidays) next? | Incident reporting, permits, data residency, contract defaults and dates depend on the country. Naira is already a currency on projects and contracts. | Decide |
+
 ## 2. How Setjeka works: please confirm what we built
 
 ### Roles and approvals
