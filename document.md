@@ -3707,7 +3707,7 @@ Built on 2026-11-04, the last of the site manager's items, kept lean while the f
 
 **Not done here** (to confirm with Setjeka, 1.1):
 - no hire costs, rates or off-hire orders;
-- no fuel or hours-meter readings;
+- no fuel or hours-meter readings: not needed, since plant is hired at a fixed fee, not by the hour (the user, 2026-11-04);
 - no daily pre-use checklists (operators' daily checks under the Construction Regulations, reg. 23);
 - no scheduled reminder emails; the flags show on the register.
 

@@ -87,7 +87,7 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
   - each permit runs for at most **7 days**;
   - the precaution lists for hot work, working at height, excavation, confined spaces, electrical isolation and lifting come from the Construction Regulations 2014 and should be reviewed by the HSE consultant. Setjeka may also have its own permit forms to match.
 - **Not built (not chosen):** toolbox talks and inductions.
-- **Plant** (§2.45): inspections are flagged when overdue or due within 7 days, certificates within 30. Cranes, hoists and access equipment must have a certificate. Does Setjeka want operators' daily pre-use checks recorded, and hire costs tracked?
+- **Plant** (§2.45): inspections are flagged when overdue or due within 7 days, certificates within 30. Cranes, hoists and access equipment must have a certificate. Does Setjeka want operators' daily pre-use checks recorded, and the fixed hire fee tracked against each item?
 
 ### Programme and portfolio
 - **Baseline variance** (§2.39) counts working days, Monday to Friday. **There is no public-holiday calendar yet.** Does Setjeka want SA public holidays excluded?
@@ -114,7 +114,7 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
 
 1. ~~Site manager's daily diary~~: built 4 Nov (§2.43).
 2. ~~Look-ahead and progress~~: built 4 Nov (§2.44).
-3. ~~Plant and equipment~~: built 4 Nov (§2.45). Lean: no hire costs, fuel or hours, or daily pre-use checklists yet.
+3. ~~Plant and equipment~~: built 4 Nov (§2.45). Lean: no hire costs or daily pre-use checklists yet. No hours-meter readings: plant is hired at a fixed fee (the user, 4 Nov).
 
 These were built on the user's go-ahead; the scope is still to confirm (1.1).
 
