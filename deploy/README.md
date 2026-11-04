@@ -45,6 +45,8 @@ git pull
 docker compose -f docker-compose.prod.yml -f docker-compose.ai.yml up -d --build
 ```
 
+After a change to `deploy/nginx.conf`, run `docker restart setjeka-erp-nginx-1`. The config is mounted as a single file, `git pull` replaces it with a new file, and `nginx -s reload` keeps reading the old one.
+
 Back up the database first: `docker exec setjeka-erp-postgres-1 pg_dump -U setjeka_erp setjeka_erp | gzip > /root/backups/setjeka-erp-db-$(date +%Y%m%d-%H%M).sql.gz`.
 
 ## The assistant's model (docker-compose.ai.yml)
