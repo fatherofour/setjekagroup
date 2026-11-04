@@ -3891,6 +3891,59 @@ Setjeka works mostly as a project manager, and the user asked for the programme 
 
 **A note for local development:** `start:dev` restarts the server whenever a file is uploaded under `uploads/`, despite the exclusion in `tsconfig.build.json`. That breaks the BIM step of long test runs, so tests run against a built server (`npm run build`, then `node dist/main`).
 
+
+### 2.50 The Setjeka assistant, on Qwen (2026-11-04)
+
+The chat button was a placeholder. It now answers questions with a Qwen model running on Setjeka's own server (`assistant/`, `components/ChatWidget.tsx`). The user asked for it to run on the Qwen models already on the VPS. This follows the AI assessment: use the records and worked-out facts rather than fine-tuning.
+
+**How it works**
+- **On a project page**, a question goes to the model with a short summary of that project's records (`projectContext`):
+  - the project, its country, client and value;
+  - the form of contract and its usual periods (§2.31, §2.36);
+  - the programme: progress, forecast finish, late activities, the critical path and the next two weeks;
+  - open RFIs, issues and the highest risks;
+  - the latest instructions and letters;
+  - open NCRs, HSE incidents and live permits;
+  - delay and EOT claims;
+  - open defects, handover documents and contracts.
+- **Elsewhere**, the question goes with the list of open projects.
+- **The last six turns** of the conversation go with each follow-up.
+- **No date arithmetic for the model.** A small model gets date arithmetic wrong. In testing, qwen2.5:3b put a 56-day claim deadline a day late and qwen2.5:7b ten days late. So the platform writes every due date into the summary (an EOT claim's notice date and claim-due date, RFI reply dates and "overdue"), and the model is told to use them rather than work dates out.
+- **Who may ask:** the Setjeka team only for now (internal accounts and the delivery-team roles). Consultants, contractors and the client see only part of a project, and the summary covers all of it. They are told the assistant is for the Setjeka team for now.
+- **API:** `GET /assistant/status` and `POST /assistant/ask` ({question, projectId?, history?} → {answer, model, seconds}).
+
+**The model server**
+- **Settings:** any OpenAI-compatible service works (`AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`, `AI_TIMEOUT_MS`, `AI_MAX_TOKENS`). Without `AI_BASE_URL` the panel says it isn't connected.
+- **On the VPS**, `docker-compose.ai.yml` adds Ollama, on the compose network only. It reads the Qwen models already downloaded for the NACOL portal, mounted read-only, so nothing is downloaded again and NACOL's copy is never changed. Qwen 3's "thinking" text is stripped from answers.
+- **Chosen model: qwen2.5:3b.** Timed on the VPS (4 CPU cores, no GPU, 7.8 GB), on a project question of about 630 tokens:
+
+| Model | Time | Answer |
+|---|---|---|
+| qwen2.5:3b | 41 s (plus about 20 s to load, once per 30 minutes) | Correct, with worked-out dates |
+| qwen3:4b | 2.5 min (it thinks first, even when asked not to) | Correct |
+| qwen2.5:7b | 1.5 min | Wrong date, without worked-out dates |
+
+**Not done here:**
+- answers stream in all at once, not word by word;
+- the assistant doesn't search document contents;
+- it doesn't take actions (drafting a letter, raising an RFI);
+- outside parties are not served yet.
+
+**Verified**
+- **API, 18 of 18**, against a stand-in model that returns what it was given:
+  - the status shows the model, and outsiders are told it is for the Setjeka team;
+  - an answer returns with its time, without the model's thinking;
+  - the summary holds the project, its country and client, the late activity, the next two weeks, the open RFI by number, the highest risk with its score, and FIDIC's periods;
+  - a follow-up carries the conversation;
+  - off a project, the summary lists the open projects;
+  - the site manager may ask; a contractor, the client and the architect may not;
+  - an unknown project and an empty question are refused.
+- **Browser, 6 of 6:**
+  - on a project the panel names the project and the model;
+  - the answer appears without the thinking, and a follow-up carries the conversation;
+  - a contractor is told it is for the Setjeka team, and asking gives the same message.
+- **On the VPS:** the timings above.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
