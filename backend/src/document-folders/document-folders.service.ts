@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { onSetjekaTeam } from '../common/setjeka-team.js';
 import type { CreateFolderDto } from './dto/create-folder.dto.js';
 import type { UpdateFolderDto } from './dto/update-folder.dto.js';
 
@@ -50,6 +51,8 @@ export class DocumentFoldersService {
 
   async remove(projectId: string, ownerId: string, folderId: string) {
     await this.findOwnedFolder(projectId, ownerId, folderId);
+    // The folder structure is Setjeka's, whatever the matrix allows.
+    if (!(await onSetjekaTeam(this.prisma, projectId, ownerId))) throw new ForbiddenException('Only Setjeka removes folders');
     await this.prisma.documentFolder.delete({ where: { id: folderId } });
   }
 }

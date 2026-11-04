@@ -3773,6 +3773,22 @@ Built on 2026-11-04. Setjeka works across Africa, mainly in South Africa and Nig
 - **Browser, 3 of 3:** choosing Nigeria on a new project switches the currency to naira; the project shows Nigeria; its incidents screen explains the Nigerian rule, with no mention of the OHS Act.
 - **Regression:** all 23 journeys, the country, plant, look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
 
+
+### 2.47 Removing documents and folders (a fix, 2026-11-04)
+
+Found while writing up the permission matrix. In the local database the contractor role had been allowed to delete documents, though the seed default doesn't allow it. The document service didn't check whose document it was, so a contractor could remove anyone's drawing.
+
+**Now** (`common/setjeka-team.ts`):
+- **Setjeka** (an internal account, or a delivery-team role) removes any document or folder.
+- **An outside party** (a consultant, a contractor or the client) removes only documents they added, and no folders, whatever the matrix allows their role.
+- Removed documents are still kept with who removed them, as before.
+
+**Verified, 7 of 7:**
+- a contractor can't remove the architect's drawing, and it is still there;
+- the contractor removes their own;
+- Setjeka's site manager and Setjeka remove others';
+- a contractor can't remove a folder; Setjeka can.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

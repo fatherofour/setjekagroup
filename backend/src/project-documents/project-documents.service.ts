@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { onSetjekaTeam } from '../common/setjeka-team.js';
 import type { CreateDocumentDto } from './dto/create-document.dto.js';
 import type { UpdateDocumentDto } from './dto/update-document.dto.js';
 import type { CreateRevisionDto } from './dto/create-revision.dto.js';
@@ -127,7 +128,10 @@ export class ProjectDocumentsService {
    * number can be issued again. */
   async remove(projectId: string, ownerId: string, id: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    await this.getOne(projectId, id);
+    const doc = await this.getOne(projectId, id);
+    // Setjeka removes any document; an outside party only one they added,
+    // even if the permission matrix lets their role delete documents.
+    if (doc.createdById !== ownerId && !(await onSetjekaTeam(this.prisma, projectId, ownerId))) throw new ForbiddenException('You can remove only documents you added');
     await this.prisma.projectDocument.update({ where: { id }, data: { deletedAt: new Date(), deletedById: ownerId, drawingKey: null } });
   }
 
