@@ -36,6 +36,7 @@ services:
       PHOTO_UPLOAD_DIR: /data/site-photos
       SIGNOFF_DIR: /data/signoff
       REPORTS_DIR: /data/reports
+      HANDOVER_UPLOAD_DIR: /data/handover
     # Uploaded files live on named volumes so a rebuild or redeploy never
     # loses them.
     volumes:
@@ -44,6 +45,7 @@ services:
       - site_photos:/data/site-photos
       - signoff:/data/signoff
       - reports:/data/reports
+      - handover:/data/handover
     expose:
       - "4000"
     healthcheck:
@@ -93,3 +95,4 @@ volumes:
   site_photos:
   signoff:
   reports:
+  handover:
