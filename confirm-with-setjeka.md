@@ -128,7 +128,7 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 - **Completion certificates can't be withdrawn** once issued.
 - **Granted extensions of time move the contract's completion date, not the programme's activities.**
 - **The live map uses the free OpenStreetMap tile server,** which isn't allowed for heavy production use. A paid or self-hosted tile source is needed before full roll-out.
-- **The model and drawing converter** (take-offs from Revit, IFC, DWG, DGN and PDF in Estimates) was missing from the server until 4 Nov; it is deployed now. It uses DataDrivenConstruction's free "Community" converters. Please confirm that tier allows Setjeka's commercial use.
+- **The model and drawing converter** (take-offs from Revit, IFC, DWG, DGN and PDF in Estimates) was missing from the server until 4 Nov; it is deployed now. It uses DataDrivenConstruction's free "Community" converters; **confirmed 4 Nov** that this tier covers Setjeka's use. The cost database has one region per country Setjeka works in: South Africa (rand) and Nigeria (naira).
 - **Programme import** reads Microsoft Project XML. **Primavera P6 import isn't built.**
 
 ## 6. Owed by us (the supplier)
