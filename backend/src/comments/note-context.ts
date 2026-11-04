@@ -37,6 +37,7 @@ const TYPE_LABEL: Record<CommentEntityType, string> = {
   HANDOVER_ITEM: 'Handover document',
   HSE_INCIDENT: 'Incident',
   WORK_PERMIT: 'Permit to work',
+  SITE_DIARY: 'Site diary',
 };
 
 /** Human labels for the records notes are attached to, e.g.
@@ -127,6 +128,9 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         break;
       case 'HIDDEN_WORK':
         put(type, (await prisma.hiddenWork.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));
+        break;
+      case 'SITE_DIARY':
+        put(type, (await prisma.siteDiary.findMany({ where, select: { id: true, date: true } })).map((r) => ({ id: r.id, label: r.date.toISOString().slice(0, 10) })));
         break;
       case 'WORK_PERMIT':
         put(type, (await prisma.workPermit.findMany({ where, select: { id: true, number: true, title: true } })).map((r) => ({ id: r.id, label: `${r.number} ${r.title}` })));

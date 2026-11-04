@@ -1046,6 +1046,15 @@ that step gets skipped.
   client so far. Next on the list: the site manager items (diary, look-ahead,
   plant), waiting on the Field operations scope decision.
 
+- **4 Nov 2026 — daily site diary (document.md §2.43).** The user said build
+  the site manager items now, "just what we need", and confirm Field
+  operations scope with Setjeka later. Tab Site diary (`site-diary/`,
+  INSPECTIONS permissions, client none). One page per project per SA day,
+  written by site manager / PM / DM / Setjeka; copies forward labour and
+  plant; signed = locked. Feeds HSE hours worked + LTIFR per 200 000 hours,
+  and delay claims show the diary over the delay. Next: look-ahead &
+  progress.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

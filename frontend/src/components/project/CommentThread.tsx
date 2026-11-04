@@ -39,7 +39,8 @@ type CommentEntityType =
   | 'CONTRACT_DEFECT'
   | 'HANDOVER_ITEM'
   | 'HSE_INCIDENT'
-  | 'WORK_PERMIT';
+  | 'WORK_PERMIT'
+  | 'SITE_DIARY';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

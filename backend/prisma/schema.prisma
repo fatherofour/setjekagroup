@@ -381,6 +381,8 @@ model User {
   incidentsClosed             HseIncident[]                @relation("IncidentClosedBy")
   permitsRequested            WorkPermit[]                 @relation("PermitRequestedBy")
   permitsIssued               WorkPermit[]                 @relation("PermitIssuedBy")
+  diariesWritten              SiteDiary[]                  @relation("DiaryAuthor")
+  diariesSigned               SiteDiary[]                  @relation("DiarySignedBy")
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -726,6 +728,7 @@ model Project {
   handoverItems            HandoverItem[]
   hseIncidents             HseIncident[]
   workPermits              WorkPermit[]
+  siteDiaries              SiteDiary[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -1102,6 +1105,7 @@ enum CommentEntityType {
   HANDOVER_ITEM
   HSE_INCIDENT
   WORK_PERMIT
+  SITE_DIARY
 }
 
 model Comment {
@@ -4841,6 +4845,49 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- The daily site diary (2026-11-04) --------------------------------------
+// The site manager's items, built on the user's go-ahead (2026-11-04) with
+// the Field operations scope to confirm with Setjeka later. One diary per
+// project per day: who was on site, the plant, the weather, visitors,
+// deliveries, delays, instructions and safety. Signed, it is locked: the
+// record a delay claim and the safety statistics lean on.
+enum DiaryStatus {
+  DRAFT
+  SIGNED
+}
+
+model SiteDiary {
+  id           String      @id @default(uuid())
+  projectId    String
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // The calendar day on site.
+  date         DateTime    @db.Date
+  workingHours Float       @default(9)
+  weatherNote  String?
+  // [{ party, trade, count }]: people on site by firm and trade.
+  labour       Json        @default("[]")
+  // [{ description, count, state: WORKING | STANDING | BROKEN_DOWN }]
+  plant        Json        @default("[]")
+  visitors     String?
+  deliveries   String?
+  // Anything that held the work up: weather, information, access, the
+  // client - what a delay claim later points to.
+  delays       String?
+  instructions String?
+  safety       String?
+  notes        String?
+  status       DiaryStatus @default(DRAFT)
+  authorId     String
+  author       User        @relation("DiaryAuthor", fields: [authorId], references: [id])
+  signedAt     DateTime?
+  signedById   String?
+  signedBy     User?       @relation("DiarySignedBy", fields: [signedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([projectId, date])
 }
 
 // ---- Permits to work (2026-11-04) -------------------------------------------

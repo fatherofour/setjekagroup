@@ -14,6 +14,7 @@ import {
   Waypoints,
   BadgeCheck,
   FolderCheck,
+  BookOpenText,
   TrendingUp,
   Ruler,
   HelpCircle,
@@ -165,6 +166,7 @@ export const NAV: NavEntry[] = [
       { label: 'Completion & defects', href: '/projects', icon: BadgeCheck, requiresProject: true, projectPathSuffix: '?tab=defects' },
       { label: 'Handover pack', href: '/projects', icon: FolderCheck, requiresProject: true, projectPathSuffix: '?tab=handover' },
       { label: 'Health & safety', href: '/projects', icon: HardHat, requiresProject: true, projectPathSuffix: '?tab=hse' },
+      { label: 'Site diary', href: '/projects', icon: BookOpenText, requiresProject: true, projectPathSuffix: '?tab=diary' },
     ],
   },
   {

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { IncidentActionDto, InvestigateIncidentDto, ReportIncidentDto } from './dto/hse.dto.js';
+import { diaryManHours } from '../site-diary/site-diary.service.js';
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -125,6 +126,11 @@ export class HseService {
       lostDays: rows.reduce((s, i) => s + (i.lostDays ?? 0), 0),
       reportable: rows.filter((i) => i.reportable).length,
       daysSinceLostTime: Math.max(0, Math.floor((Date.now() - since.getTime()) / DAY)),
+      // From the signed site diaries: people on site times the working day.
+      ...(await (async () => {
+        const manHours = Math.round(await diaryManHours(this.prisma, projectId));
+        return { manHours, ltifr: manHours ? Math.round(((lti.length * 200_000) / manHours) * 100) / 100 : null };
+      })()),
       sinceLostTimeFrom: lti[0] ? 'LAST_LOST_TIME' : 'PROJECT_START',
       bySeverity,
     };

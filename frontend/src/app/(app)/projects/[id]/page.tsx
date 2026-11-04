@@ -53,6 +53,7 @@ import { EotPanel } from '@/components/design/EotPanel';
 import { DefectsPanel } from '@/components/design/DefectsPanel';
 import { HandoverPanel } from '@/components/design/HandoverPanel';
 import { HseWorkspace } from '@/components/design/PermitsPanel';
+import { SiteDiaryPanel } from '@/components/design/SiteDiaryPanel';
 import { MeasurePanel } from '@/components/qs/MeasurePanel';
 import { ModelsPanel } from '@/components/design/ModelsPanel';
 import { PunchPanel } from '@/components/design/PunchPanel';
@@ -84,6 +85,7 @@ const WORKSPACE_TABS: TabItem[] = [
   { value: 'defects', label: 'Completion & defects' },
   { value: 'handover', label: 'Handover pack' },
   { value: 'hse', label: 'Health & safety' },
+  { value: 'diary', label: 'Site diary' },
   { value: 'measure', label: 'Site measurement' },
   { value: 'punch', label: 'Punch list' },
   { value: 'photos', label: 'Site photos' },
@@ -152,7 +154,7 @@ export default function ProjectDetailPage() {
   const isClient = isExternal && (Boolean(user?.clientId) || clientByRole);
   // Until an outside party's role here is known, client-hidden screens wait.
   const roleKnown = !isExternal || Boolean(user?.clientId) || mine?.projectId === id;
-  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'ncrs' && t.value !== 'tests' && t.value !== 'hse' && t.value !== 'hidden' && t.value !== 'interfaces' && t.value !== 'measure' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
+  const visibleTabs = WORKSPACE_TABS.filter((t) => (t.value !== 'commercial' || seesCommercial) && ((t.value !== 'inspections' && t.value !== 'ncrs' && t.value !== 'tests' && t.value !== 'hse' && t.value !== 'diary' && t.value !== 'hidden' && t.value !== 'interfaces' && t.value !== 'measure' && t.value !== 'punch' && t.value !== 'bim') || !isClient));
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -515,6 +517,7 @@ export default function ProjectDetailPage() {
       {tab === 'defects' && roleKnown && <DefectsPanel projectId={project.id} />}
       {tab === 'handover' && roleKnown && <HandoverPanel projectId={project.id} />}
       {tab === 'hse' && roleKnown && !isClient && <HseWorkspace projectId={project.id} />}
+      {tab === 'diary' && roleKnown && !isClient && <SiteDiaryPanel projectId={project.id} />}
       {tab === 'measure' && roleKnown && !isClient && <MeasurePanel projectId={project.id} />}
       {tab === 'punch' && roleKnown && !isClient && <PunchPanel projectId={project.id} />}
       {tab === 'bim' && roleKnown && !isClient && <BimHubPanel projectId={project.id} />}

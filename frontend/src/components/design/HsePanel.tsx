@@ -61,6 +61,8 @@ interface Stats {
   reportable: number;
   daysSinceLostTime: number;
   sinceLostTimeFrom: 'LAST_LOST_TIME' | 'PROJECT_START';
+  manHours: number;
+  ltifr: number | null;
 }
 
 interface Options {
@@ -538,7 +540,10 @@ export function HsePanel({ projectId }: { projectId: string }) {
           <div className={`${cardCls} p-3`}>
             <p className="text-xs text-slate-500">Lost-time injuries</p>
             <p className={`mt-1 text-lg font-semibold ${stats.lostTimeInjuries ? 'text-red-700 dark:text-red-400' : 'text-slate-900 dark:text-slate-100'}`}>{stats.lostTimeInjuries}</p>
-            <p className="text-xs text-slate-500">{stats.lostDays} days lost in all</p>
+            <p className="text-xs text-slate-500">
+              {stats.lostDays} days lost in all
+              {stats.ltifr != null && ` · LTIFR ${stats.ltifr} per 200 000 hours (${stats.manHours.toLocaleString('en-ZA')} hours from the site diary)`}
+            </p>
           </div>
           <div className={`${cardCls} p-3`}>
             <p className="text-xs text-slate-500">Incidents</p>

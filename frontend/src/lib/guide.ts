@@ -372,6 +372,16 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.diary': {
+    all: {
+      title: 'Site diary',
+      steps: [
+        s('One page a day', 'Record who was on site by firm and trade, the plant, and the weather. A new day starts from yesterday\'s labour and plant, so you only change what moved.'),
+        s('Delays', 'Write down anything that held the work up, with times. A delay claim later shows what the diary recorded over its period.'),
+        s('Sign it', 'Sign each day once it is complete; it is then locked. Add anything further as a note on the day.'),
+      ],
+    },
+  },
   'project.hse': {
     all: {
       title: 'Health & safety',

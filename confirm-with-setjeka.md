@@ -10,7 +10,7 @@ Status key: **Decide** means only Setjeka can make the call. **Confirm** means w
 
 | # | Item | Why it matters | Status |
 |---|---|---|---|
-| 1.1 | **Field operations and QHSE scope.** These were included at Meeting 3 but are not in the signed scope of work. Is this release 2, or a change request? | Tests and hold points, hidden works, HSE incidents and permits to work are already built. The site manager's daily diary, look-ahead and plant register are next and waiting on this. | Decide |
+| 1.1 | **Field operations and QHSE scope.** These were included at Meeting 3 but are not in the signed scope of work. Is this release 2, or a change request? | Already built so the platform is complete while this is agreed: tests and hold points, hidden works, HSE incidents, permits to work, and the site manager's daily diary. The look-ahead and plant register are being built next. The commercial position still needs agreeing. | Decide |
 | 1.2 | **Data residency (POPIA).** May project data be stored or processed outside South Africa? | This decides where we host, and whether an AI assistant can use an overseas service (DeepSeek, Claude, OpenAI) or must run on a server in South Africa. | Decide |
 | 1.3 | **E-signatures (ECT Act).** Approvals are signed by drawing, uploading or typing a signature, or by plain acceptance, and are stamped onto the document. Is that enough for Setjeka's approvals, or do some need an advanced electronic signature? | It affects client approvals, payment certificates and stage gates. | Decide |
 | 1.4 | **Document numbering** (parked since October). Should numbers follow originator / type / purpose / sequence / revision? This affects everyone from the client to the contractors. | Today each consultant's own drawing number is read from the title block, and Setjeka documents are numbered per register. | Decide (we owe the proposal, see 6.3) |
@@ -82,7 +82,7 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
   - a dangerous occurrence.
 
   This is a starting rule, so please have Setjeka's HSE consultant confirm it.
-- **Frequency rates need hours worked.** The platform doesn't record hours worked, so it can't calculate a lost-time injury frequency rate (LTIFR). Does Setjeka want hours worked recorded?
+- **Lost-time injury frequency rate (LTIFR)** is now worked out per **200 000 hours**, from hours worked in the signed site diaries (§2.43). Does Setjeka report it per 200 000 or per 1 000 000 hours?
 - **Permits to work** (§2.42):
   - each permit runs for at most **7 days**;
   - the precaution lists for hot work, working at height, excavation, confined spaces, electrical isolation and lifting come from the Construction Regulations 2014 and should be reviewed by the HSE consultant. Setjeka may also have its own permit forms to match.
@@ -111,11 +111,11 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
 
 ## 4. Still to build (agreed, in order)
 
-1. **Site manager's daily diary:** labour and plant on site, weather, visitors, deliveries, delays and events.
+1. ~~Site manager's daily diary~~: built 4 Nov (§2.43).
 2. **Look-ahead and progress:** a 2–6 week look-ahead from the programme, with progress recorded on site.
 3. **Plant and equipment:** plant on site, hire periods, inspections and breakdowns.
 
-These wait on decision 1.1.
+These are being built now on the user's go-ahead; the scope is still to confirm (1.1).
 
 **Raised but not chosen** (tell us if any become wanted): GIS / 3D site map, point clouds, temporary works, toolbox talks and inductions, earned value (CPI/SPI), near misses, a delay analysis on the programme, and separate disruption claims.
 

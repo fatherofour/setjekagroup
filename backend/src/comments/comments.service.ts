@@ -60,6 +60,7 @@ export class CommentsService {
       HANDOVER_ITEM: () => this.prisma.handoverItem.findFirst({ where: { id: entityId, projectId } }),
       HSE_INCIDENT: () => this.prisma.hseIncident.findFirst({ where: { id: entityId, projectId } }),
       WORK_PERMIT: () => this.prisma.workPermit.findFirst({ where: { id: entityId, projectId } }),
+      SITE_DIARY: () => this.prisma.siteDiary.findFirst({ where: { id: entityId, projectId } }),
       // The brief thread and general project notes are keyed by the project
       // id itself.
       PROJECT_BRIEF: async () => (entityId === projectId ? this.prisma.project.findUnique({ where: { id: projectId } }) : null),
@@ -134,14 +135,14 @@ export class CommentsService {
    * inspection to everyone but the client, and a photo to the client only
    * once Setjeka has shared it. */
   private async canSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
-    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'TIME_CLAIM', 'HANDOVER_ITEM', 'HSE_INCIDENT', 'WORK_PERMIT'].includes(entityType)) return true;
+    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'TIME_CLAIM', 'HANDOVER_ITEM', 'HSE_INCIDENT', 'WORK_PERMIT', 'SITE_DIARY'].includes(entityType)) return true;
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
     if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
     const client = Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
     let visible = true;
     if (entityType === 'COMMUNICATION') {
       visible = Boolean(await this.prisma.projectCommunication.findFirst({ where: { id: entityId, projectId, OR: [{ authorId: userId }, { recipients: { some: { userId } } }] } }));
-    } else if (['INSPECTION', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'HSE_INCIDENT', 'WORK_PERMIT'].includes(entityType)) {
+    } else if (['INSPECTION', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'HSE_INCIDENT', 'WORK_PERMIT', 'SITE_DIARY'].includes(entityType)) {
       visible = !client;
     } else if (entityType === 'HANDOVER_ITEM' && client) {
       visible = Boolean(await this.prisma.handoverItem.findFirst({ where: { id: entityId, projectId, status: 'HANDED_OVER' } }));

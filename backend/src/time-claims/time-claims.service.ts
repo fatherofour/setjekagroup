@@ -6,6 +6,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { addDays, contractTerms } from '../common/contract-forms.js';
 import type { AssessClaimDto, NotifyDelayDto, RespondClaimDto, SubmitClaimDto } from './dto/time-claims.dto.js';
+import { diaryOver } from '../site-diary/site-diary.service.js';
 
 const DAY = 86_400_000;
 const INCLUDE = {
@@ -157,7 +158,8 @@ export class TimeClaimsService {
     // The rain recorded on site while the delay ran: evidence for a weather claim.
     const to = c.eventEndedAt ?? new Date();
     const weather = await this.prisma.siteWeatherDay.findMany({ where: { projectId, date: { gte: new Date(c.eventStartedAt.toISOString().slice(0, 10)), lte: to } }, select: { date: true, precipitationMm: true } });
-    return { ...this.shape(w, c), weather: { days: weather.length, wetDays: weather.filter((d) => (d.precipitationMm ?? 0) >= 10).length, rainMm: Math.round(weather.reduce((s, d) => s + (d.precipitationMm ?? 0), 0)) } };
+    const diary = await diaryOver(this.prisma, projectId, c.eventStartedAt, to);
+    return { ...this.shape(w, c), weather: { days: weather.length, wetDays: weather.filter((d) => (d.precipitationMm ?? 0) >= 10).length, rainMm: Math.round(weather.reduce((s, d) => s + (d.precipitationMm ?? 0), 0)) }, diary: w.client ? null : diary };
   }
 
   private history(w: Awaited<ReturnType<TimeClaimsService['who']>>, c: { history: unknown }, status: string, comment?: string | null) {

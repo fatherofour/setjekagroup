@@ -3567,6 +3567,63 @@ Built on 2026-11-04, the last HSE item from the user's role-by-role review (the 
   - measured valuations (31), tests (42), interfaces (42), escalation (17), minimum quotes (6) and form of contract (10);
   - delays (37). Its test briefly expected 12 days late when it ran just after midnight South African time: it worked out event dates in UTC, while the app (rightly) counts South African calendar days. The test now dates events by the SA calendar.
 
+### 2.43 The daily site diary
+
+Built on 2026-11-04, the first of the site manager's items. The user said to build them now, with only what is needed, and to confirm the Field operations scope with Setjeka later (`confirm-with-setjeka.md` 1.1). It adds a new project tab, **Site diary** (`site-diary/`, `SiteDiaryPanel.tsx`). It sits with the site records under inspections: the client doesn't see it, and the site team and consultants can read it.
+
+**One page a day** (`SiteDiary`, unique per project and date, kept as the South African calendar day)
+- **Who writes it.** The site manager, Setjeka's PM or DM, or Setjeka.
+- **Refused:** a page for a day that hasn't begun.
+- **What a page holds:**
+  - the working hours (9 by default);
+  - the weather recorded on site that day (§2.17), plus a note of what it was like;
+  - labour by firm and trade, with a headcount;
+  - plant, with how many and whether working, standing or broken down;
+  - delays and what held the work up;
+  - instructions received, deliveries, visitors and safety;
+  - work done and other notes.
+- **Copied forward.** A new day starts from the last day's labour, plant and working hours, so only what changed needs typing.
+- **Signing.** The writer signs the day, which locks it. A day with nobody on site and no note isn't signed. Further entries go in the day's notes and actions thread.
+- **On a phone.** The page is built to be filled in on site: previous and next day, a date picker, and a list of recent days showing who wrote each, the headcount and whether delays were noted.
+
+**Where else the diary shows**
+- **The safety record** (§2.41) now gives hours worked, from the signed diaries (people on site times the working day). It also gives the **lost-time injury frequency rate per 200 000 hours**. Hours worked was an open question in `confirm-with-setjeka.md`.
+- **A delay claim** (§2.36) shows the signed diary days over the delay and the days that noted one, with the entries, as evidence. The client doesn't see these.
+
+**Not done here:**
+- No per-person timesheets: the diary records headcounts, not names or clock-ins.
+- No link to the plant register, which comes with plant and equipment.
+- Progress on activities is next: the look-ahead.
+
+**Verified**
+- **API, 17 of 17 checks.**
+  - **Access and dates:**
+    - the client sees nothing;
+    - today starts blank for the site manager;
+    - the contractor reads the diary but can't write it;
+    - a future day and a badly given date are refused.
+  - **Writing and signing:**
+    - the site manager writes a day: 17 on site, plant, a rain delay, a delivery and a visitor;
+    - the next day starts from it and keeps it on saving;
+    - the day is signed and then locked;
+    - an empty day isn't signed;
+    - the list shows three days, and the rain day notes a delay.
+  - **The safety record:** hours worked are 306 (2 signed days × 17 people × 9 hours), and the frequency rate is per 200 000 hours.
+  - **A weather claim** over those days shows 2 signed days, one noting the delay.
+  - **Notes** on a signed day work, and the client can't read them.
+- **Browser, 7 of 7:**
+  - the site manager's phone starts today from yesterday's labour;
+  - they add a plumbing crew and a power-outage delay (19 on site), sign the day, and the page locks;
+  - no sideways scrolling;
+  - the previous day reads back signed, and the recent days list shows the delays;
+  - the client doesn't see the tab.
+- **Regression:** these all still pass:
+  - permits (27), incidents (26 API, 7 UI), delays (37 API, 9 UI), portfolio (13), variance (17), handover (36), defects (44) and QS (93);
+  - civil (25), structural (25), electrical (26), mechanical (25) and NCR (22);
+  - measured valuations (31), tests (42), interfaces (42), escalation (17), minimum quotes (6) and form of contract (10);
+  - the guide (18), and the per-role sweep (now covering the Site diary: 0 problems);
+  - the architect journey (58). Its BIM step failed until the converter service, stopped by an earlier session restart, was started again (`converter-service/`: `python -m uvicorn app.main:app --port 8100`).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

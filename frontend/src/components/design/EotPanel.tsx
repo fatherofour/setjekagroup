@@ -63,6 +63,7 @@ interface Claim {
   costVariation: { id: string; number: string; status: string } | null;
   history: { status: string; at: string; name: string; comment: string | null }[];
   weather?: { days: number; wetDays: number; rainMm: number };
+  diary?: { days: number; delayDays: number; delays: { date: string; delays: string }[] } | null;
   can: { submit: boolean; withdraw: boolean; assess: boolean; respond: boolean; raiseVariation: boolean };
 }
 
@@ -152,6 +153,20 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
         <p className="mt-1 text-xs text-slate-500">
           Site weather over the delay: {c.weather.days} days recorded, {c.weather.wetDays} with 10 mm of rain or more, {c.weather.rainMm} mm in all.
         </p>
+      )}
+      {c.diary && c.diary.days > 0 && (
+        <details className="mt-1 text-xs text-slate-500">
+          <summary className="cursor-pointer">
+            Site diary over the delay: {c.diary.days} signed days, {c.diary.delayDays} noting a delay
+          </summary>
+          <ul className="mt-1 space-y-0.5 pl-3">
+            {c.diary.delays.map((d) => (
+              <li key={d.date}>
+                {fmtDay(d.date)}: {d.delays}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {c.requestedDays != null && (
