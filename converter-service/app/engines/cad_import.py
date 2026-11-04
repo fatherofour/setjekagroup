@@ -173,7 +173,11 @@ def _find_ddc_toolkit_bin() -> Path | None:
     # 4. ALSO scan sibling directories of the launch CWD (wheel install +
     #    user runs from their project root). Both anchors are tried with
     #    the same set of common toolkit directory names.
-    this_project = Path(__file__).resolve().parents[4]  # backend/app/modules/boq -> repo root
+    # Four levels up is the repo root in a source tree; in the container the
+    # file is only /app/app/engines/cad_import.py, so stop at the filesystem
+    # root rather than fail to start (IndexError on the VPS, 2026-11-04).
+    parents = Path(__file__).resolve().parents
+    this_project = parents[min(4, len(parents) - 1)]
     cwd = Path.cwd().resolve()
     sibling_names = ("ddc_toolkit", "ddc-toolkit", "DDC_Toolkit")
     anchors: tuple[Path, ...] = (this_project.parent, cwd.parent, cwd)
