@@ -31,9 +31,11 @@ interface Baseline {
   createdAt: string;
 }
 
+// The Gantt comes first: Setjeka runs projects, and the programme reads like
+// Microsoft Project there (2026-11-04).
 const VIEW_TABS: TabItem[] = [
-  { value: 'grid', label: 'Grid' },
   { value: 'gantt', label: 'Gantt' },
+  { value: 'grid', label: 'Grid' },
   { value: 'calendar', label: 'Calendar' },
   { value: 'card', label: 'Card' },
   { value: 'variance', label: 'Baseline variance' },
@@ -126,7 +128,7 @@ export default function ProjectSchedulePage() {
   const { authedFetch } = useAuth();
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<ProjectSummary | null>(null);
-  const [view, setView] = useState('grid');
+  const [view, setView] = useState('gantt');
   const [panelMode, setPanelMode] = useState<ActivityPanelMode | null>(null);
   const scheduleData = useScheduleData(id);
 
@@ -193,7 +195,7 @@ export default function ProjectSchedulePage() {
           onAddChild={(parentId) => setPanelMode({ kind: 'create', parentId })}
         />
       )}
-      {view === 'gantt' && <ScheduleGanttView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
+      {view === 'gantt' && <ScheduleGanttView data={scheduleData} projectId={id} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
       {view === 'calendar' && <ScheduleCalendarView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
       {view === 'card' && <ScheduleCardView data={scheduleData} onSelect={(activityId) => setPanelMode({ kind: 'edit', activityId })} />}
       {view === 'variance' && <ScheduleVarianceView projectId={id} data={scheduleData} />}

@@ -3835,6 +3835,62 @@ The user asked for the menu to be reorganised: modules in the sidebar, their scr
 - **Regression:** all 24 journeys and every browser test (country, plant, look-ahead, diary, tests, defects, HSE, interfaces, NCRs, permits, QS), the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
 - **Not new screens:** four screens (Summary, Actions, Team and Project structure) were only in the old row before; they now have sidebar entries too.
 
+
+### 2.49 The Gantt, like Microsoft Project and Smartsheet (2026-11-04)
+
+Setjeka works mostly as a project manager, and the user asked for the programme to look and work like Microsoft Project and Smartsheet. The schedule page now opens on a rebuilt **Gantt** (`components/schedule/ScheduleGanttView.tsx`). The grid, calendar, card and baseline-variance views are unchanged.
+
+**The task table** (left, stays put while the timeline scrolls)
+- **Columns:** row number, task name, duration, start, finish, predecessors, % complete, and (optionally) resource.
+  - Columns are chosen under **Columns**, and the choice is remembered per person.
+  - The task name column is resized by dragging its edge.
+- **Predecessors** read the way Microsoft Project writes them, by row number: `3`, `7SS+5d`.
+- **Summary rows** (activities with sub-activities):
+  - shown in bold, folding and unfolding (**Expand all / Collapse all**);
+  - their dates and duration span their children;
+  - their % complete is weighted by duration.
+- **Editing in place (Smartsheet style):** click a duration, start or % complete to type a new value; Enter saves it and Escape cancels. The task name opens the full activity panel as before.
+
+**The timeline** (right)
+- **Zoom:** days, weeks (the default), months or quarters, with a two-tier heading (month over days or weeks; year over months or quarters).
+- **Background:** weekends are shaded and today's line is drawn; **Today** scrolls to it. The view opens at the start of the work.
+- **Bars:**
+  - tasks are blue, with progress darker inside;
+  - with **Critical path** on (the default), critical tasks and their links turn red;
+  - summaries are black brackets with their progress;
+  - milestones are diamonds with their date;
+  - the contractor or person assigned is written beside the bar.
+- **Links:** dependency lines run out of one bar's end and into the next one's start (or the matching ends for SS, FF and SF), with arrowheads.
+- **Baseline:** choose a saved baseline and a grey bar under each task shows where it was planned (from the baseline variance data, §2.39).
+- **Dragging:**
+  - drag a bar to move it;
+  - drag its right end to change the duration in working days.
+  - A task with predecessors has its start set by them, as in Microsoft Project's automatic scheduling, so it can be stretched but not moved.
+  - Each change goes through the programme's own update, so the critical path is recalculated and successors follow.
+
+**Not done here** (the remaining Microsoft Project features):
+- adding or linking tasks directly on the chart (use **Add activity** and the activity panel);
+- resource levelling and a resource view;
+- printing or exporting the chart;
+- a holiday calendar (Monday to Friday, as before).
+
+**Verified, browser, 14 of 14**, on a sample programme with three phases, linked tasks, a start-to-start lag, a milestone, progress and a saved baseline:
+- **Opening:** the Gantt opens by default with the task table.
+- **The table:** predecessors read by row number, and the blockwork shows `7SS+5d`; summaries roll up and fold, and expand all brings them back.
+- **The chart:** the milestone is a diamond; critical bars are marked; the baseline draws under the bars; zooming to months changes the scale.
+- **Editing:** a duration typed in the table is saved.
+- **Dragging:** stretching a bar lengthens the task, and its successors move.
+- **Layout:** the page doesn't scroll sideways.
+
+**Regression:** these all pass:
+- the baseline variance and look-ahead journeys and their browser tests;
+- the menu check (42 of 42);
+- the architect journey (58 of 58);
+- the screen sweep (0 problems);
+- the guide (18 of 18).
+
+**A note for local development:** `start:dev` restarts the server whenever a file is uploaded under `uploads/`, despite the exclusion in `tsconfig.build.json`. That breaks the BIM step of long test runs, so tests run against a built server (`npm run build`, then `node dist/main`).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell
