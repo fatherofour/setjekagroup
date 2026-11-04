@@ -136,6 +136,6 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 | # | Deliverable | Status |
 |---|---|---|
 | 6.1 | Stage 0 workflow diagram (item 8.3) | Owed |
-| 6.2 | The permission matrix (who can see and do what, by role) for Setjeka to review (item 8.5) | Owed. The matrix is built into the platform; it needs writing up for review |
+| 6.2 | The permission matrix (who can see and do what, by role) for Setjeka to review (item 8.5) | **Written 4 Nov:** `permission-matrix.md`, with six questions for Setjeka (section 4) |
 | 6.3 | Document numbering proposal (item 8.8) | Owed, ties to 1.4 |
 | 6.4 | Deploy the current platform to the live server once 3.5 and 3.7 are sorted | Waiting on Setjeka |
