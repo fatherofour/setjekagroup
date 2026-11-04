@@ -22,10 +22,10 @@ export function ProjectCardMapInner({ latitude, longitude }: { latitude: number;
       scrollWheelZoom={false}
       doubleClickZoom={false}
       touchZoom={false}
-      attributionControl={false}
       className="h-full w-full"
     >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      {/* OpenStreetMap's tile policy asks for its credit on every map. */}
+      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <Marker position={[latitude, longitude]} icon={markerIcon} />
     </MapContainer>
   );
