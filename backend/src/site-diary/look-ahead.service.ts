@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { ProjectMemberRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { projectCountry, siteToday } from '../common/countries.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { ScheduleService } from '../schedule/schedule.service.js';
 import { workingDaysBetween } from '../schedule/schedule-cpm.util.js';
@@ -9,7 +10,8 @@ import { unreleasedHolds } from '../quality-tests/quality-tests.service.js';
 const DAY = 86_400_000;
 const UPDATERS: ProjectMemberRole[] = ['SITE_MANAGER', 'PROJECT_MANAGER', 'DEVELOPMENT_MANAGER', 'PLANNER_SCHEDULER'];
 const day = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-const todaySa = () => day(new Date(Date.now() + 2 * 3_600_000));
+/** Today on site, in the project's country, as a date-only value. */
+const todayOn = async (prisma: PrismaService, projectId: string) => new Date(`${siteToday(await projectCountry(prisma, projectId))}T00:00:00.000Z`);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Where the programme has an activity by today, straight-line over its
@@ -57,7 +59,7 @@ export class LookAheadService {
   async lookAhead(projectId: string, userId: string, weeks = 3) {
     const w = await this.who(projectId, userId);
     const span = Math.min(Math.max(Math.round(weeks) || 3, 1), 6);
-    const today = todaySa();
+    const today = (await todayOn(this.prisma, projectId));
     // Weeks run Monday to Sunday, starting this week.
     const monday = new Date(today.getTime() - ((today.getUTCDay() + 6) % 7) * DAY);
     const horizon = new Date(monday.getTime() + span * 7 * DAY - DAY);
@@ -130,7 +132,7 @@ export class LookAheadService {
     // Through the programme, so hold points stop progress and the dates and
     // critical path are worked out again.
     await this.schedule.updateActivity(projectId, userId, activityId, { percentComplete: percent, status: percent >= 100 ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED' });
-    await this.prisma.scheduleProgressEntry.create({ data: { projectId, activityId, date: todaySa(), percentComplete: percent, previousPercent: a.percentComplete, note: note?.trim() || null, recordedById: userId } });
+    await this.prisma.scheduleProgressEntry.create({ data: { projectId, activityId, date: (await todayOn(this.prisma, projectId)), percentComplete: percent, previousPercent: a.percentComplete, note: note?.trim() || null, recordedById: userId } });
     return this.history(projectId, userId, activityId);
   }
 

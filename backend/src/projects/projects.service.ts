@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { rulesFor } from '../common/countries.js';
 import type { CreateProjectDto } from './dto/create-project.dto.js';
 import type { UpdateProjectDto } from './dto/update-project.dto.js';
 
@@ -75,7 +76,9 @@ export class ProjectsService {
         stage: dto.stage,
         projectType: dto.projectType,
         contractForm: dto.contractForm,
-        currency: dto.currency,
+        // A Nigerian project starts in naira unless told otherwise.
+        currency: dto.currency ?? (dto.country ? rulesFor(dto.country).currency : undefined),
+        country: dto.country,
         classificationStandard: dto.classificationStandard,
         client: dto.client,
         developer: dto.developer,
@@ -103,6 +106,7 @@ export class ProjectsService {
         projectType: dto.projectType,
         contractForm: dto.contractForm,
         currency: dto.currency,
+        country: dto.country,
         classificationStandard: dto.classificationStandard,
         client: dto.client,
         developer: dto.developer,

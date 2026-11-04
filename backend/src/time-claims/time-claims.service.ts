@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { NotificationType, TimeClaimStatus } from '../generated/prisma/enums.js';
+import type { Country, NotificationType, TimeClaimStatus } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { projectCountry, siteDayNumber } from '../common/countries.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { addDays, contractTerms } from '../common/contract-forms.js';
@@ -22,11 +23,10 @@ type Row = Prisma.TimeClaimGetPayload<{ include: typeof INCLUDE }>;
 
 const DECIDED: TimeClaimStatus[] = ['GRANTED', 'PARTLY_GRANTED', 'REJECTED'];
 const GRANTED: TimeClaimStatus[] = ['GRANTED', 'PARTLY_GRANTED'];
-// Whole calendar days between two moments, counted on South African dates
-// (UTC+2), so a notice late in the evening isn't rounded into the next day.
-const SA = 2 * 3_600_000;
-const saDay = (d: Date) => Math.floor((d.getTime() + SA) / DAY);
-const days = (a: Date, b: Date) => saDay(a) - saDay(b);
+// Whole calendar days between two moments, counted on the dates of the
+// project's country, so a notice late in the evening isn't rounded into the
+// next day.
+const days = (country: Country, a: Date, b: Date) => siteDayNumber(country, a) - siteDayNumber(country, b);
 
 /** Delay notices and extension-of-time claims (the user's choice from the
  * role-by-role review, 2026-11-03; the donor app's notices and EOT claims).
@@ -107,6 +107,7 @@ export class TimeClaimsService {
    * the revised date, and any days late with the penalty to date. */
   async contracts(projectId: string, userId: string) {
     const w = await this.who(projectId, userId);
+    const country = await projectCountry(this.prisma, projectId);
     const rows = await this.prisma.projectContract.findMany({
       where: { projectId, ...(w.contractor ? { contractorId: { in: [...w.contractorIds] } } : {}) },
       select: { id: true, title: true, contractForm: true, contractorId: true, startDate: true, completionDate: true, penaltyPerDay: true, contractor: { select: { name: true } }, timeClaims: { select: { status: true, grantedDays: true } } },
@@ -116,7 +117,7 @@ export class TimeClaimsService {
     return rows.map(({ timeClaims, ...c }) => {
       const granted = timeClaims.filter((t) => GRANTED.includes(t.status)).reduce((s, t) => s + (t.grantedDays ?? 0), 0);
       const revised = c.completionDate ? addDays(c.completionDate, granted) : null;
-      const late = revised ? Math.max(0, days(today, revised)) : 0;
+      const late = revised ? Math.max(0, days(country, today, revised)) : 0;
       const terms = contractTerms(c.contractForm);
       return {
         ...c,
@@ -168,6 +169,7 @@ export class TimeClaimsService {
 
   async notify(projectId: string, userId: string, dto: NotifyDelayDto) {
     const w = await this.who(projectId, userId);
+    const country = await projectCountry(this.prisma, projectId);
     const contract = await this.prisma.projectContract.findFirst({ where: { id: dto.contractId, projectId }, select: { id: true, title: true, contractForm: true, contractorId: true } });
     if (!contract) throw new BadRequestException('Contract not found on this project');
     if (!this.claimant(w, contract.contractorId)) throw new ForbiddenException('The contractor on the contract gives notice of a delay');
@@ -178,7 +180,7 @@ export class TimeClaimsService {
     const now = new Date();
     if (started.getTime() > now.getTime() + DAY) throw new BadRequestException('Notice is given of an event that has begun');
     const terms = contractTerms(contract.contractForm);
-    const late = days(now, addDays(started, terms.noticeWithinDays));
+    const late = days(country, now, addDays(started, terms.noticeWithinDays));
     const last = await this.prisma.timeClaim.findFirst({ where: { projectId }, orderBy: { sequence: 'desc' }, select: { sequence: true } });
     const sequence = (last?.sequence ?? 0) + 1;
     const c = await this.prisma.timeClaim.create({
@@ -223,6 +225,7 @@ export class TimeClaimsService {
 
   async submit(projectId: string, userId: string, id: string, dto: SubmitClaimDto) {
     const w = await this.who(projectId, userId);
+    const country = await projectCountry(this.prisma, projectId);
     const c = await this.load(w, projectId, id);
     if (!this.claimant(w, c.contract.contractorId)) throw new ForbiddenException('The contractor on the contract submits the claim');
     if (c.status !== 'NOTIFIED') throw new BadRequestException('The claim has already been submitted');
@@ -230,7 +233,7 @@ export class TimeClaimsService {
     if (ended && ended < c.eventStartedAt) throw new BadRequestException('The delay ends after it begins');
     const now = new Date();
     const terms = contractTerms(c.contract.contractForm);
-    const late = days(now, c.claimDueAt);
+    const late = days(country, now, c.claimDueAt);
     const updated = await this.prisma.timeClaim.update({
       where: { id },
       data: {

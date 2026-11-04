@@ -11,11 +11,13 @@ import { projectStageInfo, type ProjectStage } from '@/lib/projectStages';
 import {
   PROJECT_TYPE_LABEL,
   CONTRACT_FORM_LABEL,
+  COUNTRY_LABEL,
   CURRENCY_LABEL,
   CLASSIFICATION_STANDARD_LABEL,
   pmTitleForContractForm,
   type ProjectType,
   type ContractForm,
+  type Country,
   type Currency,
   type ClassificationStandard,
 } from '@/lib/projectMeta';
@@ -112,6 +114,7 @@ interface Project {
   projectType: ProjectType | null;
   contractForm: ContractForm | null;
   currency: Currency;
+  country: Country;
   classificationStandard: ClassificationStandard;
   client: string | null;
   developer: string | null;
@@ -226,6 +229,7 @@ export default function ProjectDetailPage() {
           value: form.value != null && String(form.value) !== '' ? Number(form.value) : null,
           contingencyPct: form.contingencyPct != null && String(form.contingencyPct) !== '' ? Number(form.contingencyPct) : null,
           currency: form.currency || undefined,
+          country: form.country || undefined,
           classificationStandard: form.classificationStandard || undefined,
           projectType: form.projectType || null,
           contractForm: form.contractForm || null,
@@ -347,6 +351,16 @@ export default function ProjectDetailPage() {
               <input className={inputClass} value={form.location ?? ''} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </div>
             <div>
+              <label className="text-xs text-slate-400 dark:text-slate-500">Country</label>
+              <Select
+                aria-label="Country"
+                className={inputClass}
+                value={form.country ?? 'ZA'}
+                onChange={(v) => setForm({ ...form, country: v as Country })}
+                options={Object.entries(COUNTRY_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+            </div>
+            <div>
               <label className="text-xs text-slate-400 dark:text-slate-500">Currency</label>
               <Select
                 className={inputClass}
@@ -452,6 +466,7 @@ export default function ProjectDetailPage() {
             <Field label="Client" value={project.client ?? ''} />
             <Field label="Developer" value={project.developer ?? ''} />
             <Field label="Location" value={project.location ?? ''} />
+            <Field label="Country" value={COUNTRY_LABEL[project.country ?? 'ZA']} />
             <Field label="Currency" value={CURRENCY_LABEL[project.currency]} />
             <Field
               label="Project value"

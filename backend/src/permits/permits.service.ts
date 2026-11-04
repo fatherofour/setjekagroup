@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { NotificationType, PermitStatus, PermitType, ProjectMemberRole } from '../generated/prisma/enums.js';
+import type { Country, NotificationType, PermitStatus, PermitType, ProjectMemberRole } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { projectCountry, rulesFor } from '../common/countries.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { RequestPermitDto } from './dto/permits.dto.js';
@@ -19,6 +20,14 @@ export const PERMIT_CHECKS: Record<PermitType, string[]> = {
   LIFTING: ['Lift plan prepared', 'Crane and lifting tackle inspected and certified', 'Operator and rigger competent', 'Exclusion zone set up', 'Wind speed within the crane limit'],
   OTHER: ['Risk assessment done for the task', 'Workers briefed on the precautions'],
 };
+
+/** The precautions as they read in the project's country: the South
+ * African regulations are cited only on South African projects. */
+export function permitChecks(country: Country): Record<PermitType, string[]> {
+  if (rulesFor(country).citeSaRegulations) return PERMIT_CHECKS;
+  const plain = (t: string) => t.replace(/ \((?:Construction Regulations|Electrical Installation Regulations)[^)]*\)/, '');
+  return Object.fromEntries(Object.entries(PERMIT_CHECKS).map(([k, v]) => [k, v.map(plain)])) as Record<PermitType, string[]>;
+}
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -108,8 +117,8 @@ export class PermitsService {
   }
 
   /** The type's precautions, for the request form. */
-  checks() {
-    return PERMIT_CHECKS;
+  async checks(projectId: string) {
+    return permitChecks(await projectCountry(this.prisma, projectId));
   }
 
   async list(projectId: string, userId: string) {
@@ -153,7 +162,7 @@ export class PermitsService {
     if (to <= from) throw new BadRequestException('A permit ends after it starts');
     if (to.getTime() - from.getTime() > MAX_DAYS * 86_400_000) throw new BadRequestException(`A permit runs for at most ${MAX_DAYS} days; ask for a new one after that`);
     if (to.getTime() < Date.now()) throw new BadRequestException('That period is already over');
-    const required = PERMIT_CHECKS[dto.type];
+    const required = permitChecks(await projectCountry(this.prisma, projectId))[dto.type];
     const missing = required.filter((t) => !dto.checklist.some((c) => c.text === t && c.done));
     if (missing.length) throw new BadRequestException(`Confirm every precaution first: ${missing.join('; ')}`);
     if (dto.checklist.some((c) => !c.done)) throw new BadRequestException('Confirm every precaution on the list, or take off the ones that do not apply');

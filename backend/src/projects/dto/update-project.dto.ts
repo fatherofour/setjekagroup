@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ClassificationStandard,
   ContractForm,
+  Country,
   Currency,
   ProjectStatus,
   ProjectType,
@@ -41,6 +42,10 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsEnum(Currency)
   currency?: Currency;
+
+  @IsOptional()
+  @IsEnum(Country)
+  country?: Country;
 
   @IsOptional()
   @IsEnum(ClassificationStandard)

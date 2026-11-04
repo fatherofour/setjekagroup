@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ClassificationStandard,
   ContractForm,
+  Country,
   Currency,
   ProjectStage,
   ProjectStatus,
@@ -41,6 +42,12 @@ export class CreateProjectDto {
   @IsOptional()
   @IsEnum(Currency)
   currency?: Currency;
+
+  /** Sets the site day, the incident rules and (when no currency is given)
+   * the currency. South Africa by default. */
+  @IsOptional()
+  @IsEnum(Country)
+  country?: Country;
 
   @IsOptional()
   @IsEnum(ClassificationStandard)

@@ -122,6 +122,14 @@ enum ContractForm {
 
 // Setjeka works with only dollar and rand (carried over, trimmed, from the
 // OpenConstructionERP create-project form).
+// The country a project is in, which sets its site day (time zone), its
+// incident-reporting rules and permit wording, and the default currency
+// (2026-11-04: Setjeka works mainly in South Africa and Nigeria).
+enum Country {
+  ZA
+  NG
+}
+
 enum Currency {
   USD
   ZAR
@@ -660,6 +668,7 @@ model Project {
   projectType              ProjectType?
   contractForm             ContractForm?
   currency                 Currency                         @default(ZAR)
+  country                  Country                          @default(ZA)
   classificationStandard   ClassificationStandard           @default(ASAQS)
   client                   String?
   developer                String?

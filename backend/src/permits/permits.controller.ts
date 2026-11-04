@@ -17,8 +17,8 @@ export class PermitsController {
 
   @Get('checks')
   @RequirePermission('INSPECTIONS', 'VIEW')
-  checks() {
-    return this.permits.checks();
+  checks(@Param('projectId') projectId: string) {
+    return this.permits.checks(projectId);
   }
 
   @Get()

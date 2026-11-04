@@ -1072,6 +1072,15 @@ that step gets skipped.
   diary's plant list now starts from the register (`plantOnSite`). Last of
   the site manager's items; field-ops scope still to confirm with Setjeka.
 
+- **4 Nov 2026 — country per project (document.md §2.46).** Setjeka works
+  mainly in SA and Nigeria; registered in SA, data stays in SA; e-signatures
+  as built are accepted (the user). `Project.country` ZA|NG (default ZA) ->
+  `common/countries.ts`: site day UTC+2/UTC+1 (`siteToday`,
+  `siteDayNumber`; diary, look-ahead, plant, EOT), new-project currency,
+  incident authority/law/lost-days limit (14 vs 3), permit wording (SA
+  citations only on SA projects). Not yet: public holidays, PDF dates still
+  SA time, number formatting en-ZA. Plant hire is a fixed fee (no hours).
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

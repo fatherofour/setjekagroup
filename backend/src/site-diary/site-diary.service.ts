@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { Prisma } from '../generated/prisma/client.js';
 import type { ProjectMemberRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { projectCountry, siteToday } from '../common/countries.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import type { SaveDiaryDto } from './dto/site-diary.dto.js';
 import { progressOn } from './look-ahead.service.js';
@@ -12,12 +13,13 @@ const INCLUDE = { author: { select: { fullName: true } }, signedBy: { select: { 
 type Labour = { party: string; trade?: string; count: number };
 type Plant = { description: string; count: number; state: string };
 
-/** The day on site, as South Africa (UTC+2) has it, as a date-only value. */
+/** A day on site (YYYY-MM-DD) as a date-only value. */
 export function siteDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException('Give the day as YYYY-MM-DD');
   return new Date(`${value}T00:00:00.000Z`);
 }
-const todaySa = () => new Date(Date.now() + 2 * 3_600_000).toISOString().slice(0, 10);
+/** Today on site, in the project's country. */
+const todayOn = async (prisma: PrismaService, projectId: string) => siteToday(await projectCountry(prisma, projectId));
 const headcount = (labour: unknown) => ((labour as Labour[]) ?? []).reduce((n, l) => n + (l.count ?? 0), 0);
 
 /** The daily site diary (the site manager's items, 2026-11-04). The site
@@ -59,7 +61,7 @@ export class SiteDiaryService {
       select: { id: true, date: true, status: true, labour: true, delays: true, workingHours: true, author: { select: { fullName: true } } },
     });
     return {
-      today: todaySa(),
+      today: (await todayOn(this.prisma, projectId)),
       canWrite: w.writer,
       days: rows.map((r) => ({ id: r.id, date: r.date, status: r.status, headcount: headcount(r.labour), manHours: headcount(r.labour) * r.workingHours, hasDelays: Boolean(r.delays?.trim()), author: r.author.fullName })),
     };
@@ -88,14 +90,14 @@ export class SiteDiaryService {
       weather,
       progress,
       headcount: headcount(last?.labour),
-      can: { edit: w.writer && dateStr <= todaySa(), sign: false },
+      can: { edit: w.writer && dateStr <= (await todayOn(this.prisma, projectId)), sign: false },
     };
   }
 
   async save(projectId: string, userId: string, dateStr: string, dto: SaveDiaryDto) {
     const w = await this.who(projectId, userId);
     if (!w.writer) throw new ForbiddenException('The site manager, Setjeka’s PM or DM, or Setjeka keeps the diary');
-    if (dateStr > todaySa()) throw new BadRequestException('A diary is kept for a day that has begun');
+    if (dateStr > (await todayOn(this.prisma, projectId))) throw new BadRequestException('A diary is kept for a day that has begun');
     const date = siteDate(dateStr);
     const existing = await this.prisma.siteDiary.findUnique({ where: { projectId_date: { projectId, date } } });
     if (existing?.status === 'SIGNED') throw new BadRequestException('This day is signed; add anything further as a note on it');

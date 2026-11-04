@@ -1,11 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { IncidentKind, IncidentSeverity, NotificationType, ProjectMemberRole } from '../generated/prisma/enums.js';
+import type { Country, IncidentKind, IncidentSeverity, NotificationType, ProjectMemberRole } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { IncidentActionDto, InvestigateIncidentDto, ReportIncidentDto } from './dto/hse.dto.js';
 import { diaryManHours } from '../site-diary/site-diary.service.js';
+import { rulesFor } from '../common/countries.js';
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -19,12 +20,13 @@ type Row = Prisma.HseIncidentGetPayload<{ include: typeof INCLUDE }>;
 const SERIOUS: IncidentSeverity[] = ['LOST_TIME', 'FATALITY'];
 const DAY = 86_400_000;
 
-/** Whether the OHS Act (section 24) wants the incident reported to the
- * Department of Employment and Labour: a death, or an injury that keeps
- * someone off work for more than 14 days, or a dangerous occurrence. A
- * starting suggestion; the HSE manager decides. */
-export function reportableByDefault(kind: IncidentKind, severity: IncidentSeverity, lostDays?: number | null) {
-  return severity === 'FATALITY' || kind === 'DANGEROUS_OCCURRENCE' || (severity === 'LOST_TIME' && (lostDays ?? 0) > 14);
+/** Whether the project's country wants the incident reported to its
+ * authority: a death, a dangerous occurrence, or an injury that keeps
+ * someone off work for longer than the country's limit (South Africa: more
+ * than 14 days, OHS Act s24; Nigeria: more than 3 days, Factories Act s51).
+ * A starting suggestion; the HSE manager decides. */
+export function reportableByDefault(kind: IncidentKind, severity: IncidentSeverity, lostDays: number | null | undefined, country: Country) {
+  return severity === 'FATALITY' || kind === 'DANGEROUS_OCCURRENCE' || (severity === 'LOST_TIME' && (lostDays ?? 0) > rulesFor(country).incidents.lostDaysOver);
 }
 
 /** HSE incidents (the user's choice from the role-by-role review,
@@ -44,9 +46,10 @@ export class HseService {
 
   private async who(projectId: string, userId: string) {
     await this.projects.findOneForOwner(projectId, userId);
-    const [user, members] = await Promise.all([
+    const [user, members, project] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true, fullName: true } }),
       this.prisma.projectMember.findMany({ where: { projectId, userId }, select: { id: true, role: true, contractorId: true } }),
+      this.prisma.project.findUnique({ where: { id: projectId }, select: { country: true } }),
     ]);
     const internal = user?.role === 'ADMIN' || user?.accountType === 'INTERNAL';
     const roles = members.map((m) => m.role);
@@ -57,6 +60,7 @@ export class HseService {
       name: user?.fullName ?? 'Someone',
       internal,
       manager,
+      country: project?.country ?? 'ZA',
       memberIds: new Set(members.map((m) => m.id)),
       contractor: !manager && roles.includes('CONTRACTOR'),
       contractorIds: new Set(members.flatMap((m) => (m.contractorId ? [m.contractorId] : []))),
@@ -73,6 +77,9 @@ export class HseService {
       photoCount: i._count.photos,
       openActions: open,
       serious: SERIOUS.includes(i.severity) || i.reportable,
+      // Who reportable incidents go to, and under which law, in the
+      // project's country.
+      rules: rulesFor(w.country).incidents,
       can: {
         investigate: w.manager && i.status !== 'CLOSED',
         addAction: w.manager && i.status !== 'CLOSED',
@@ -133,6 +140,7 @@ export class HseService {
       })()),
       sinceLostTimeFrom: lti[0] ? 'LAST_LOST_TIME' : 'PROJECT_START',
       bySeverity,
+      rules: rulesFor(w.country).incidents,
     };
   }
 
@@ -159,7 +167,8 @@ export class HseService {
     if (occurredAt.getTime() > Date.now() + 3_600_000) throw new BadRequestException('An incident is reported after it happens');
     const last = await this.prisma.hseIncident.findFirst({ where: { projectId }, orderBy: { sequence: 'desc' }, select: { sequence: true } });
     const sequence = (last?.sequence ?? 0) + 1;
-    const reportable = reportableByDefault(dto.kind, dto.severity, dto.lostDays);
+    const reportable = reportableByDefault(dto.kind, dto.severity, dto.lostDays, w.country);
+    const authority = rulesFor(w.country).incidents.authority;
     const i = await this.prisma.hseIncident.create({
       data: {
         ...dto,
@@ -175,12 +184,12 @@ export class HseService {
         sequence,
         number: `INC-${String(sequence).padStart(3, '0')}`,
         reportedById: userId,
-        history: [{ status: 'REPORTED', at: new Date().toISOString(), by: userId, name: w.name, comment: reportable ? 'To be reported to the Department of Employment and Labour' : null }],
+        history: [{ status: 'REPORTED', at: new Date().toISOString(), by: userId, name: w.name, comment: reportable ? `To be reported to ${authority}` : null }],
       },
       include: INCLUDE,
     });
     const serious = SERIOUS.includes(i.severity) || reportable;
-    await this.tell(projectId, await this.managers(projectId, serious), userId, 'INCIDENT_REPORTED', i.id, `${serious ? 'Serious incident' : 'Incident'} ${i.number}: ${i.title}${i.location ? ` at ${i.location}` : ''}${reportable ? ' - reportable to the Department of Employment and Labour' : ''}`);
+    await this.tell(projectId, await this.managers(projectId, serious), userId, 'INCIDENT_REPORTED', i.id, `${serious ? 'Serious incident' : 'Incident'} ${i.number}: ${i.title}${i.location ? ` at ${i.location}` : ''}${reportable ? ` - reportable to ${authority}` : ''}`);
     return this.shape(w, i);
   }
 
@@ -195,7 +204,7 @@ export class HseService {
       lostDays,
       rootCause: dto.rootCause === undefined ? undefined : dto.rootCause.trim() || null,
       investigationNotes: dto.investigationNotes === undefined ? undefined : dto.investigationNotes.trim() || null,
-      reportable: dto.reportable ?? (i.reportable || reportableByDefault(i.kind, severity, lostDays)),
+      reportable: dto.reportable ?? (i.reportable || reportableByDefault(i.kind, severity, lostDays, w.country)),
       reportedToDelAt: dto.reportedToDelAt === undefined ? undefined : dto.reportedToDelAt ? new Date(dto.reportedToDelAt) : null,
       delReference: dto.delReference === undefined ? undefined : dto.delReference?.trim() || null,
       investigatedAt: new Date(),
@@ -228,8 +237,8 @@ export class HseService {
     return this.findOne(projectId, userId, id);
   }
 
-  /** Closed once investigated, its actions done and any Department report
-   * recorded. */
+  /** Closed once investigated, its actions done and any report to the
+   * country's authority recorded. */
   async close(projectId: string, userId: string, id: string, note?: string) {
     const w = await this.who(projectId, userId);
     const i = await this.load(w, projectId, id);
@@ -237,7 +246,7 @@ export class HseService {
     if (!i.rootCause) throw new BadRequestException('Record the root cause before closing the incident');
     const open = i.actions.filter((a) => !a.doneAt).length;
     if (open) throw new BadRequestException(`${open} corrective action${open === 1 ? ' is' : 's are'} still open`);
-    if (i.reportable && !i.reportedToDelAt) throw new BadRequestException('Record when it was reported to the Department of Employment and Labour');
+    if (i.reportable && !i.reportedToDelAt) throw new BadRequestException(`Record when it was reported to ${rulesFor(w.country).incidents.authority}`);
     await this.prisma.hseIncident.update({ where: { id }, data: { status: 'CLOSED', closedAt: new Date(), closedById: userId, history: this.history(w, i, 'CLOSED', note) } });
     await this.tell(projectId, [i.reportedById], userId, 'INCIDENT_UPDATED', id, `${i.number} "${i.title}" was investigated and closed`);
     return this.findOne(projectId, userId, id);

@@ -2,6 +2,12 @@ export type ProjectType = 'NEW_BUILD' | 'REFURBISHMENT' | 'REDEVELOPMENT' | 'REN
 export type ContractForm = 'FIDIC' | 'JBCC' | 'GCC' | 'NEC' | 'OTHER';
 export type Currency = 'ZAR' | 'USD' | 'NGN' | 'EUR' | 'GBP' | 'BWP' | 'NAD' | 'KES' | 'GHS';
 export type ClassificationStandard = 'ASAQS' | 'NRM';
+/** The project's country sets its site day, incident rules and default
+ * currency (backend common/countries.ts). */
+export type Country = 'ZA' | 'NG';
+
+export const COUNTRY_LABEL: Record<Country, string> = { ZA: 'South Africa', NG: 'Nigeria' };
+export const COUNTRY_CURRENCY: Record<Country, Currency> = { ZA: 'ZAR', NG: 'NGN' };
 
 export const CURRENCY_LABEL: Record<Currency, string> = {
   ZAR: 'ZAR (R)',

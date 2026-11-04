@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { PlantCategory, PlantStatus, ProjectMemberRole } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { projectCountry, siteToday } from '../common/countries.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { siteDate } from '../site-diary/site-diary.service.js';
@@ -17,7 +18,8 @@ const CERTIFIED: PlantCategory[] = ['LIFTING', 'ACCESS'];
 const DAY = 86_400_000;
 const SOON_INSPECTION = 7;
 const SOON_CERTIFICATE = 30;
-const todaySa = () => new Date(Date.now() + 2 * 3_600_000).toISOString().slice(0, 10);
+/** Today on site, in the project's country. */
+const todayOn = async (prisma: PrismaService, projectId: string) => siteToday(await projectCountry(prisma, projectId));
 const iso = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 const daysTo = (d: Date, today: string) => Math.round((d.getTime() - siteDate(today).getTime()) / DAY);
 const optDate = (v: string | null | undefined) => (v === undefined ? undefined : v ? siteDate(v) : null);
@@ -60,7 +62,7 @@ export class PlantService {
     return !w.contractor || Boolean(p.contractorId && w.contractorIds.has(p.contractorId));
   }
 
-  private shape(w: Awaited<ReturnType<PlantService['who']>>, p: Row, today = todaySa()) {
+  private shape(w: Awaited<ReturnType<PlantService['who']>>, p: Row, today: string) {
     const onSite = p.status !== 'OFF_SITE';
     const flags: string[] = [];
     const due = (d: Date | null, soon: number, late: string, coming: string) => {
@@ -110,7 +112,7 @@ export class PlantService {
   async list(projectId: string, userId: string) {
     const w = await this.who(projectId, userId);
     const rows = await this.prisma.plantItem.findMany({ where: { projectId }, include: INCLUDE, orderBy: [{ status: 'asc' }, { sequence: 'asc' }] });
-    const today = todaySa();
+    const today = await todayOn(this.prisma, projectId);
     const shaped = rows.filter((p) => this.sees(w, p)).map((p) => this.shape(w, p, today));
     const on = shaped.filter((p) => p.onSite);
     const firms = await this.prisma.contractor.findMany({ where: { projectMembers: { some: { projectId } }, ...(w.manager ? {} : { id: { in: [...w.contractorIds] } }) }, select: { id: true, name: true }, orderBy: { name: 'asc' } });
@@ -139,7 +141,7 @@ export class PlantService {
 
   async findOne(projectId: string, userId: string, id: string) {
     const w = await this.who(projectId, userId);
-    return this.shape(w, await this.load(w, projectId, id));
+    return this.shape(w, await this.load(w, projectId, id), await todayOn(this.prisma, projectId));
   }
 
   async add(projectId: string, userId: string, dto: AddPlantDto) {
@@ -151,7 +153,7 @@ export class PlantService {
       contractorId = contractorId ?? [...w.contractorIds][0] ?? null;
     }
     if (contractorId && !(await this.prisma.projectMember.findFirst({ where: { projectId, contractorId } }))) throw new BadRequestException('That contractor is not on this project');
-    const today = todaySa();
+    const today = (await todayOn(this.prisma, projectId));
     if (dto.arrivedOn > today) throw new BadRequestException('Add plant once it is on site');
     if (dto.offHireDue && dto.offHireDue < dto.arrivedOn) throw new BadRequestException('It is due off hire after it arrives');
     const inspected = dto.lastInspectedOn ? siteDate(dto.lastInspectedOn) : null;
@@ -182,14 +184,14 @@ export class PlantService {
       },
       include: INCLUDE,
     });
-    return this.shape(w, p);
+    return this.shape(w, p, await todayOn(this.prisma, projectId));
   }
 
   async update(projectId: string, userId: string, id: string, dto: UpdatePlantDto) {
     const w = await this.who(projectId, userId);
     const p = await this.load(w, projectId, id);
-    if (!this.shape(w, p).can.edit) throw new BadRequestException('Only plant still on site is changed, by whoever keeps it');
-    if (dto.arrivedOn && dto.arrivedOn > todaySa()) throw new BadRequestException('It cannot arrive in the future');
+    if (!this.shape(w, p, await todayOn(this.prisma, projectId)).can.edit) throw new BadRequestException('Only plant still on site is changed, by whoever keeps it');
+    if (dto.arrivedOn && dto.arrivedOn > (await todayOn(this.prisma, projectId))) throw new BadRequestException('It cannot arrive in the future');
     const arrived = dto.arrivedOn ?? iso(p.arrivedOn)!;
     const offHire = dto.offHireDue === undefined ? iso(p.offHireDue) : dto.offHireDue;
     if (offHire && offHire < arrived) throw new BadRequestException('It is due off hire after it arrives');
@@ -213,21 +215,21 @@ export class PlantService {
       },
       include: INCLUDE,
     });
-    return this.shape(w, updated);
+    return this.shape(w, updated, await todayOn(this.prisma, projectId));
   }
 
   /** Working, standing or broken down. */
   async setStatus(projectId: string, userId: string, id: string, dto: PlantStatusDto) {
     const w = await this.who(projectId, userId);
     const p = await this.load(w, projectId, id);
-    if (!this.shape(w, p).can.status) throw new BadRequestException('Only plant on site changes state, by whoever keeps it');
+    if (!this.shape(w, p, await todayOn(this.prisma, projectId)).can.status) throw new BadRequestException('Only plant on site changes state, by whoever keeps it');
     if (dto.status === p.status) throw new BadRequestException('It is already in that state');
     const note = dto.note?.trim() || null;
     if (dto.status === 'BROKEN_DOWN' && !note) throw new BadRequestException('Say what is wrong with it');
     if (p.outOfUse && dto.status === 'WORKING') throw new BadRequestException('It failed its last inspection: record a passed inspection before it works again');
     const updated = await this.prisma.plantItem.update({ where: { id }, data: { status: dto.status, history: this.history(w, p, 'STATUS', { from: p.status, to: dto.status, note }) }, include: INCLUDE });
     if (dto.status === 'BROKEN_DOWN') await this.tellOutOfUse(projectId, updated, userId, `${p.number} ${p.description} has broken down - ${note}`);
-    return this.shape(w, updated);
+    return this.shape(w, updated, await todayOn(this.prisma, projectId));
   }
 
   /** An inspection: passed, the next one falls due; failed, the plant is
@@ -235,8 +237,8 @@ export class PlantService {
   async inspect(projectId: string, userId: string, id: string, dto: InspectPlantDto) {
     const w = await this.who(projectId, userId);
     const p = await this.load(w, projectId, id);
-    if (!this.shape(w, p).can.inspect) throw new BadRequestException('Only plant on site is inspected here');
-    if (dto.date > todaySa()) throw new BadRequestException('Record an inspection once it is done');
+    if (!this.shape(w, p, await todayOn(this.prisma, projectId)).can.inspect) throw new BadRequestException('Only plant on site is inspected here');
+    if (dto.date > (await todayOn(this.prisma, projectId))) throw new BadRequestException('Record an inspection once it is done');
     if (dto.date < iso(p.arrivedOn)!) throw new BadRequestException('The inspection is after it arrived');
     const note = dto.note?.trim() || null;
     if (!dto.passed && !note) throw new BadRequestException('Say what failed');
@@ -260,21 +262,21 @@ export class PlantService {
     }
     const updated = await this.prisma.plantItem.update({ where: { id }, data, include: INCLUDE });
     if (!dto.passed) await this.tellOutOfUse(projectId, updated, userId, `${p.number} ${p.description} failed its inspection and is out of use - ${note}`);
-    return this.shape(w, updated);
+    return this.shape(w, updated, await todayOn(this.prisma, projectId));
   }
 
   async offSite(projectId: string, userId: string, id: string, dto: PlantOffSiteDto) {
     const w = await this.who(projectId, userId);
     const p = await this.load(w, projectId, id);
-    if (!this.shape(w, p).can.offSite) throw new BadRequestException('It is already off site');
-    if (dto.date > todaySa()) throw new BadRequestException('Record it once it has left');
+    if (!this.shape(w, p, await todayOn(this.prisma, projectId)).can.offSite) throw new BadRequestException('It is already off site');
+    if (dto.date > (await todayOn(this.prisma, projectId))) throw new BadRequestException('Record it once it has left');
     if (dto.date < iso(p.arrivedOn)!) throw new BadRequestException('It leaves after it arrived');
     const updated = await this.prisma.plantItem.update({
       where: { id },
       data: { status: 'OFF_SITE', departedOn: siteDate(dto.date), history: this.history(w, p, 'OFF_SITE', { date: dto.date, note: dto.note?.trim() || null }) },
       include: INCLUDE,
     });
-    return this.shape(w, updated);
+    return this.shape(w, updated, await todayOn(this.prisma, projectId));
   }
 }
 

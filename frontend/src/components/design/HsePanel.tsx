@@ -38,6 +38,7 @@ interface Incident {
   reportable: boolean;
   reportedToDelAt: string | null;
   delReference: string | null;
+  rules: { authority: string; short: string; law: string; lostDaysOver: number; rule: string };
   rootCause: string | null;
   investigationNotes: string | null;
   closedAt: string | null;
@@ -63,6 +64,7 @@ interface Stats {
   sinceLostTimeFrom: 'LAST_LOST_TIME' | 'PROJECT_START';
   manHours: number;
   ltifr: number | null;
+  rules: { authority: string; short: string; law: string; lostDaysOver: number; rule: string };
 }
 
 interface Options {
@@ -201,7 +203,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
         <span className="flex flex-wrap gap-1.5">
           {i.reportable && (
             <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${i.reportedToDelAt ? 'bg-slate-100 text-slate-600 dark:bg-slate-800' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
-              {i.reportedToDelAt ? `Reported to the Department ${fmtDay(i.reportedToDelAt)}` : 'Report to the Department'}
+              {i.reportedToDelAt ? `Reported to ${i.rules.short} ${fmtDay(i.reportedToDelAt)}` : `Report to ${i.rules.short}`}
             </span>
           )}
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS[i.status].tone}`}>{STATUS[i.status].label}</span>
@@ -278,7 +280,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
           </label>
           <label className="flex items-end gap-2 pb-2 text-xs font-medium text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={inv.reportable} onChange={(e) => setInv({ ...inv, reportable: e.target.checked })} />
-            Reportable to the Department of Employment and Labour
+            Reportable to {i.rules.authority}
           </label>
           <label className={`${labelCls} sm:col-span-3`}>
             Root cause
@@ -291,7 +293,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
           {inv.reportable && (
             <>
               <label className={labelCls}>
-                Reported to the Department on
+                Reported to {i.rules.short} on
                 <input type="date" className={`${inputCls} mt-0.5`} value={inv.reportedToDelAt} onChange={(e) => setInv({ ...inv, reportedToDelAt: e.target.value })} />
               </label>
               <label className={`${labelCls} sm:col-span-2`}>
@@ -365,7 +367,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
           <button type="button" disabled={busy} onClick={() => run(() => authedFetch<Incident>(`${base}/close`, { method: 'POST', body: {} }))} className={primaryBtn}>
             Close the incident
           </button>
-          <span className="text-xs text-slate-500">Once the root cause is recorded, every action is done and any Department report is recorded.</span>
+          <span className="text-xs text-slate-500">Once the root cause is recorded, every action is done and any report to {i.rules.short} is recorded.</span>
         </div>
       )}
       {i.closedAt && (
@@ -462,7 +464,7 @@ export function HsePanel({ projectId }: { projectId: string }) {
               <HardHat size={16} className="text-emerald-700 dark:text-emerald-400" /> Health &amp; safety incidents
             </h2>
             <p className="mt-1 max-w-2xl text-xs text-slate-500">
-              Report any incident on site as soon as it is safe to: injuries, damage, spills, fires, dangerous occurrences. The HSE manager investigates, sets corrective actions and closes it. Incidents the OHS Act requires to be reported to the Department of Employment and Labour are flagged.
+              Report any incident on site as soon as it is safe to: injuries, damage, spills, fires, dangerous occurrences. The HSE manager investigates, sets corrective actions and closes it. {stats?.rules.rule ?? 'Incidents the law requires to be reported are flagged.'}
             </p>
           </div>
           {!adding && (
@@ -553,9 +555,9 @@ export function HsePanel({ projectId }: { projectId: string }) {
             </p>
           </div>
           <div className={`${cardCls} p-3`}>
-            <p className="text-xs text-slate-500">Reportable to the Department</p>
+            <p className="text-xs text-slate-500">Reportable to {stats.rules.short}</p>
             <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{stats.reportable}</p>
-            <p className="text-xs text-slate-500">OHS Act section 24</p>
+            <p className="text-xs text-slate-500">{stats.rules.law}</p>
           </div>
         </div>
       )}
@@ -582,7 +584,7 @@ export function HsePanel({ projectId }: { projectId: string }) {
                     {r.openActions > 0 && ` · ${r.openActions} action${r.openActions === 1 ? '' : 's'} open`}
                   </span>
                 </span>
-                {r.reportable && !r.reportedToDelAt && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800 dark:bg-red-950 dark:text-red-300">Report to the Department</span>}
+                {r.reportable && !r.reportedToDelAt && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800 dark:bg-red-950 dark:text-red-300">Report to {r.rules.short}</span>}
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS[r.status].tone}`}>{STATUS[r.status].label}</span>
               </button>
             </li>

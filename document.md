@@ -3740,6 +3740,39 @@ Built on 2026-11-04, the last of the site manager's items, kept lean while the f
   - the site manager sees the breakdown on the board, adds a scissor lift (flagged without a certificate), and clears the flag with an inspection.
 - **Regression:** all 22 journeys, the plant, look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep with the new tab (0 problems) and the guide (18 of 18) pass.
 
+### 2.46 Each project's country (South Africa and Nigeria)
+
+Built on 2026-11-04. Setjeka works across Africa, mainly in South Africa and Nigeria, and is registered in South Africa, where its data is kept (the user, 2026-11-04). Each project now carries its **country** (`Project.country`, South Africa by default; `common/countries.ts`). It is chosen on a new project and can be changed under Edit details.
+
+**What the country sets**
+
+| | South Africa | Nigeria |
+|---|---|---|
+| The site's day (diary, look-ahead, plant, late notices on delay claims) | UTC+2 | UTC+1 (West Africa Time) |
+| Currency on a new project (can still be changed) | Rand | Naira |
+| Reportable incidents go to | the Department of Employment and Labour (OHS Act s24) | the Federal Ministry of Labour and Employment (Factories Act s51); the NSITF within 7 days (Employee's Compensation Act); on Lagos projects, the Lagos State Safety Commission |
+| An injury is reportable when it keeps someone off work for more than | 14 days | 3 days |
+| Permit precautions | cite the Construction Regulations 2014 and the Electrical Installation Regulations | the same precautions, without the South African citations |
+
+- Deaths and dangerous occurrences are reportable in both. The incident screens, the safety record and the close-out rule name the country's authority and law.
+- The Nigerian rules are a starting point for Setjeka's HSE consultant there to confirm.
+
+**Not done here** (known limits):
+- **Public holidays:** neither country's holidays are in the programme calendar yet (it counts Monday to Friday).
+- **PDF dates** (certificates, transmittals, valuations, sign-off stamps) are still printed in South African time. That can show the next day for something signed in Nigeria between 23:00 and midnight.
+- **Number formatting** still follows the South African style (for example `₦1 000 000,00`) rather than `₦1,000,000.00`.
+- **Contract forms:** the country doesn't set the contract form. JBCC and GCC are South African; Nigerian projects usually use FIDIC, which is already available.
+- **Other countries:** each new country is one entry in `common/countries.ts` and a migration adding it to the `Country` enum.
+
+**Verified**
+- **API, 17 of 17 checks.**
+  - **The project:** South Africa and rand by default; a Nigerian project starts in naira unless another currency is chosen; an unknown country is refused; a project can be moved.
+  - **The site's day:** UTC+2 in South Africa and UTC+1 in Nigeria, on the diary and the plant register. A diary for tomorrow, Nigerian time, is refused.
+  - **Incidents:** five days off is not reportable in South Africa (more than 14) but is in Nigeria (more than 3), to the Federal Ministry of Labour under the Factories Act, with the NSITF named. Closing it needs the Ministry report. The safety record names Nigeria's law.
+  - **Permits:** South African precautions cite the Construction Regulations; Nigerian ones are the same list without them, and a Nigerian permit is asked for with that list.
+- **Browser, 3 of 3:** choosing Nigeria on a new project switches the currency to naira; the project shows Nigeria; its incidents screen explains the Nigerian rule, with no mention of the OHS Act.
+- **Regression:** all 23 journeys, the country, plant, look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

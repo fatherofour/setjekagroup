@@ -10,10 +10,13 @@ import { Select } from '@/components/ui/Select';
 import {
   CLASSIFICATION_STANDARD_LABEL,
   CONTRACT_FORM_LABEL,
+  COUNTRY_CURRENCY,
+  COUNTRY_LABEL,
   CURRENCY_LABEL,
   PROJECT_TYPE_LABEL,
   type ClassificationStandard,
   type ContractForm,
+  type Country,
   type Currency,
   type ProjectType,
 } from '@/lib/projectMeta';
@@ -37,6 +40,7 @@ export default function NewProjectPage() {
   const [client, setClient] = useState('');
   const [developer, setDeveloper] = useState('');
   const [currency, setCurrency] = useState<Currency>('ZAR');
+  const [country, setCountry] = useState<Country>('ZA');
   const [classificationStandard, setClassificationStandard] = useState<ClassificationStandard>('ASAQS');
   const [projectType, setProjectType] = useState<ProjectType | ''>('');
   const [contractForm, setContractForm] = useState<ContractForm | ''>('');
@@ -85,6 +89,7 @@ export default function NewProjectPage() {
           client: client.trim() || undefined,
           developer: developer.trim() || undefined,
           currency,
+          country,
           classificationStandard,
           projectType: projectType || undefined,
           contractForm: contractForm || undefined,
@@ -163,8 +168,23 @@ export default function NewProjectPage() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Classification & currency</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Country, classification & currency</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Country</label>
+              <Select
+                aria-label="Country"
+                className={inputClass}
+                value={country}
+                onChange={(v) => {
+                  // The country's currency comes with it; it can still be changed.
+                  setCountry(v as Country);
+                  setCurrency(COUNTRY_CURRENCY[v as Country]);
+                }}
+                options={Object.entries(COUNTRY_LABEL).map(([value_, label]) => ({ value: value_, label }))}
+              />
+              <p className="mt-1 text-xs text-slate-500">Sets the site&apos;s day, and who incidents are reported to.</p>
+            </div>
             <div>
               <label className={labelClass}>Currency</label>
               <Select
