@@ -41,9 +41,15 @@ cert — expected until a real domain + Let's Encrypt cert replaces it).
 ## Redeploying after a code change
 
 ```bash
-git pull   # once a remote exists
-docker compose -f docker-compose.prod.yml up -d --build
+git pull
+docker compose -f docker-compose.prod.yml -f docker-compose.ai.yml up -d --build
 ```
+
+Back up the database first: `docker exec setjeka-erp-postgres-1 pg_dump -U setjeka_erp setjeka_erp | gzip > /root/backups/setjeka-erp-db-$(date +%Y%m%d-%H%M).sql.gz`.
+
+## The assistant's model (docker-compose.ai.yml)
+
+The second compose file adds Ollama for the Setjeka assistant (document.md §2.50). On the VPS it reads the Qwen models the NACOL portal's Ollama already downloaded, read-only: `.env` has `OLLAMA_MODELS_VOLUME=nacolm_ollama_models`. The model is `AI_MODEL` (default `qwen2.5:3b`). Leave the file out and the assistant says it isn't connected.
 
 `backend`'s container re-runs `prisma migrate deploy` on every start — safe
 and idempotent (applies only pending migrations).

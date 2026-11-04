@@ -16,7 +16,7 @@ Status key: **Decide** means only Setjeka can make the call. **Confirm** means w
 | 1.4 | **Document numbering** (parked since October). Should numbers follow originator / type / purpose / sequence / revision? This affects everyone from the client to the contractors. | Today each consultant's own drawing number is read from the title block, and Setjeka documents are numbered per register. | Decide (we owe the proposal, see 6.3) |
 | 1.5 | **Drawing numbers from other parties.** The architect's numbers are read from the title block. Should engineers' and contractors' numbers work the same way? | It keeps drawing registers consistent. | Decide |
 | 1.6 | **Project-scoped sign-in** (scope §4.9). This was explained in October and is waiting for a go-ahead. | It controls what an outside party sees when they belong to several projects. | Decide |
-| 1.7 | **AI assistant.** What budget, and which tasks first (for example drafting minutes and letters, summarising RFIs, checking claims against contract periods)? | The chat button is a placeholder until this is decided. We advised against the "obliterated" DeepSeek model: its safety controls were removed, it needs datacentre hardware, and it knows construction no better. | Decide |
+| 1.7 | **AI assistant.** **Built 4 Nov (§2.50):** it answers questions about a project from its records, on the Qwen 2.5 (3B) model running on the VPS itself. Answers take about 40 seconds on its 4 CPU cores, and it is for the Setjeka team only for now. Still to decide: whether outside parties get it, which tasks come next (drafting minutes and letters, summarising RFIs), and whether a faster server or a paid model service is worth the cost. | We advised against the "obliterated" DeepSeek model: its safety controls were removed, it needs datacentre hardware, and it knows construction no better. | Decide |
 
 | 1.8 | **Countries.** Setjeka works across Africa, mainly South Africa and Nigeria. The platform's rules are South African today: the OHS Act, POPIA, JBCC/GCC, the SA time zone (UTC+2) and SA working days. **Built 4 Nov (§2.46):** each project carries its country (South Africa or Nigeria), which sets the site's day, the currency on new projects, who incidents are reported to (and the lost-days limit), and the permit wording. Please have the HSE consultant in Nigeria confirm the Nigerian rules: the Federal Ministry of Labour (Factories Act s51) for deaths, more than 3 days off and dangerous occurrences; the NSITF within 7 days; and the Lagos State Safety Commission on Lagos projects. Which other countries are needed? | Public holidays per country are not in the programme yet. | Confirm |
 
@@ -109,7 +109,7 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
 | 3.4 | **Their own checklists:** inspection and test plans, hold and witness points, permit forms | Replacing our starting lists with Setjeka's | Provide |
 | 3.5 | **Production domain and DNS access** | The live site and its HTTPS certificate (the server is ready; a temporary sslip.io address works) | Provide |
 | 3.6 | **Email sending domain and DNS records** | Email notifications. In-app alerts work today; email is blocked on this | Provide |
-| 3.7 | **Server access:** add our deploy key to the VPS (`173.212.202.149`), or deploy with us in a session | Putting the current platform on the live server. **The live server still runs an early version: nothing from the Schedule module onwards is deployed.** | Provide |
+| 3.7 | ~~**Server access.**~~ **Deployed 4 Nov:** the VPS (`173.212.202.149`) now runs the current platform, with the assistant and three test projects. It looks like a Contabo server, usually in Germany. Real client data should go on a South African server (decision 1.2), so is this VPS for testing only? | | Confirm |
 | 3.8 | **Azure AD app details** (tenant, client ID and secret, SharePoint site and drive) | SharePoint sync for compliance documents, if still wanted | Provide |
 
 ## 4. Still to build (agreed, in order)
@@ -138,4 +138,4 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 | 6.1 | Stage 0 workflow diagram (item 8.3) | Owed |
 | 6.2 | The permission matrix (who can see and do what, by role) for Setjeka to review (item 8.5) | **Written 4 Nov:** `permission-matrix.md`, with six questions for Setjeka (section 4) |
 | 6.3 | Document numbering proposal (item 8.8) | Owed, ties to 1.4 |
-| 6.4 | Deploy the current platform to the live server once 3.5 and 3.7 are sorted | Waiting on Setjeka |
+| 6.4 | Deploy the current platform to the live server | **Done 4 Nov** (`https://173.212.202.149`, self-signed certificate until a domain is set up, 3.5) |
