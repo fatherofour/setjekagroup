@@ -372,6 +372,19 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
+  'project.lookahead': {
+    contractor: {
+      title: 'Look-ahead',
+      steps: [s('Your progress', 'Your activities over the next weeks. Record how far each has got; it updates the programme. Activities held at a hold point wait for it to be released.')],
+    },
+    all: {
+      title: 'Look-ahead',
+      steps: [
+        s('The next weeks', 'The programme from today, week by week, with anything already past its finish first. Each activity shows its progress against where the programme has it today.'),
+        s('Record progress', 'Update % complete on site. Each update is kept with who made it and when, and shows on that day\'s site diary.'),
+      ],
+    },
+  },
   'project.diary': {
     all: {
       title: 'Site diary',

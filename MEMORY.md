@@ -1055,6 +1055,14 @@ that step gets skipped.
   and delay claims show the diary over the delay. Next: look-ahead &
   progress.
 
+- **4 Nov 2026 — look-ahead & progress (document.md §2.44).** Tab Look-ahead
+  (`site-diary/look-ahead.*`, INSPECTIONS permissions). 2-6 weeks from this
+  Monday plus "past their finish"; planned % straight-line; contractor
+  updates only their own activities; progress goes through
+  ScheduleService.updateActivity (hold points still hold) and is kept as
+  ScheduleProgressEntry history; diary shows the day's progress. Next: plant
+  & equipment.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

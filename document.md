@@ -3624,6 +3624,57 @@ Built on 2026-11-04, the first of the site manager's items. The user said to bui
   - the guide (18), and the per-role sweep (now covering the Site diary: 0 problems);
   - the architect journey (58). Its BIM step failed until the converter service, stopped by an earlier session restart, was started again (`converter-service/`: `python -m uvicorn app.main:app --port 8100`).
 
+### 2.44 The look-ahead and progress on site
+
+Built on 2026-11-04, the second of the site manager's items. It adds a new project tab, **Look-ahead** (`site-diary/look-ahead.*`, `LookAheadPanel.tsx`; `/projects/:id/look-ahead`). It sits with the site records: the client doesn't see it, and the contractor can record progress on their own work.
+
+**The look-ahead**
+- **What it shows.** The programme from this Monday, 2, 3 (by default), 4 or 6 weeks ahead, week by week (Monday to Sunday, the South African calendar).
+- **Overdue first.** Anything past its finish and not complete comes first, under **Past their finish**.
+- **What's left out.** Summary rows, finished work and anything beyond the horizon.
+- **Each activity shows:**
+  - its dates, contractor and whether it's critical;
+  - its % complete against where the programme has it today (straight-line over its working days, a milestone all or nothing);
+  - **behind** when 10 points or more short;
+  - the last update and who made it;
+  - any unreleased hold point holding it (§2.34). The update button is hidden until it's released.
+
+**Recording progress** (`ScheduleProgressEntry`)
+- **Who.** The site manager, Setjeka's PM, DM or planner, or Setjeka, on any activity; a contractor only on their own firm's activities.
+- **How it works.** Each update goes through the programme's own update, so:
+  - hold points still stop progress;
+  - the dates and critical path are worked out again;
+  - the status follows (in progress, or completed at 100%).
+- **The history.** Each update is kept as a dated entry with the previous figure, the new one, a note and who made it. An activity's history is at `look-ahead/activities/:id`.
+- **Rules.** Going down needs a reason, and recording the same figure again is refused.
+- **On the diary.** The site diary (§2.43) shows the progress recorded that day.
+
+**Not done here:**
+- No resource levelling and no re-planning from the look-ahead: dates change on the Schedule.
+- No actual-progress S-curve yet; the dated entries make one possible.
+
+**Verified**
+- **API, 19 of 19 checks.**
+  - **The look-ahead:**
+    - the client sees nothing;
+    - three weeks from this Monday by default, six on request;
+    - late brickwork at 20% comes first and is behind 100% planned;
+    - plaster spans this week and next, and the roof is next week;
+    - work beyond the horizon and finished work are left out;
+    - the held slab shows its hold point.
+  - **Recording progress:**
+    - the contractor may update their own work, not the roofer's, and records 40% with a note, which moves the programme to in progress;
+    - the roofer updates theirs;
+    - the same figure is refused, and going down needs a reason (the site manager corrects it with one);
+    - the held slab can't progress;
+    - completed brickwork leaves the look-ahead and shows completed.
+  - **The diary:** today's diary lists the four updates.
+- **Browser, 6 of 6:**
+  - on a phone, the contractor sees this week's plaster at 30%, no update button on the roofer's activity, and what holds the slab;
+  - they record 60% with a note, with no sideways scrolling;
+  - the site manager looks six weeks ahead.
+- **Regression:** all 21 role journeys, the look-ahead, diary and tests browser checks, the architect journey (58 of 58), the screen sweep (0 problems) and the guide (18 of 18) pass.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

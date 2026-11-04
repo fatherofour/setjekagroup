@@ -37,6 +37,7 @@ interface Day {
   carriedFrom?: string | null;
   headcount: number;
   weather: { tempMaxC: number | null; tempMinC: number | null; precipitationMm: number | null; windMaxKmh: number | null } | null;
+  progress?: { percentComplete: number; previousPercent: number; note: string | null; activity: { name: string }; recordedBy: { fullName: string } }[];
   author?: { fullName: string };
   signedBy?: { fullName: string } | null;
   signedAt?: string | null;
@@ -258,6 +259,20 @@ export function SiteDiaryPanel({ projectId }: { projectId: string }) {
               </ul>
             )}
           </section>
+
+          {(form.progress ?? []).length > 0 && (
+            <section aria-label="Progress recorded">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progress recorded this day</h3>
+              <ul className="mt-1 space-y-0.5 text-sm text-slate-700 dark:text-slate-200">
+                {(form.progress ?? []).map((p, i) => (
+                  <li key={i}>
+                    {p.activity.name}: {p.previousPercent}% → {p.percentComplete}%<span className="text-xs text-slate-500"> · {p.recordedBy.fullName}</span>
+                    {p.note && <span className="text-xs text-slate-500"> — {p.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {TEXTS.map((t) =>

@@ -4,6 +4,7 @@ import type { ProjectMemberRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import type { SaveDiaryDto } from './dto/site-diary.dto.js';
+import { progressOn } from './look-ahead.service.js';
 
 const WRITERS: ProjectMemberRole[] = ['SITE_MANAGER', 'PROJECT_MANAGER', 'DEVELOPMENT_MANAGER'];
 const INCLUDE = { author: { select: { fullName: true } }, signedBy: { select: { fullName: true } } } satisfies Prisma.SiteDiaryInclude;
@@ -67,8 +68,8 @@ export class SiteDiaryService {
   async day(projectId: string, userId: string, dateStr: string) {
     const w = await this.who(projectId, userId);
     const date = siteDate(dateStr);
-    const [entry, weather] = await Promise.all([this.prisma.siteDiary.findUnique({ where: { projectId_date: { projectId, date } }, include: INCLUDE }), this.weather(projectId, date)]);
-    if (entry) return { ...entry, exists: true, weather, headcount: headcount(entry.labour), can: { edit: w.writer && entry.status === 'DRAFT', sign: w.writer && entry.status === 'DRAFT' } };
+    const [entry, weather, progress] = await Promise.all([this.prisma.siteDiary.findUnique({ where: { projectId_date: { projectId, date } }, include: INCLUDE }), this.weather(projectId, date), progressOn(this.prisma, projectId, date)]);
+    if (entry) return { ...entry, exists: true, weather, progress, headcount: headcount(entry.labour), can: { edit: w.writer && entry.status === 'DRAFT', sign: w.writer && entry.status === 'DRAFT' } };
     const last = await this.prisma.siteDiary.findFirst({ where: { projectId, date: { lt: date } }, orderBy: { date: 'desc' }, select: { labour: true, plant: true, workingHours: true, date: true } });
     return {
       exists: false,
@@ -79,6 +80,7 @@ export class SiteDiaryService {
       plant: last?.plant ?? [],
       carriedFrom: last?.date ?? null,
       weather,
+      progress,
       headcount: headcount(last?.labour),
       can: { edit: w.writer && dateStr <= todaySa(), sign: false },
     };

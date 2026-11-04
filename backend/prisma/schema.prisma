@@ -383,6 +383,7 @@ model User {
   permitsIssued               WorkPermit[]                 @relation("PermitIssuedBy")
   diariesWritten              SiteDiary[]                  @relation("DiaryAuthor")
   diariesSigned               SiteDiary[]                  @relation("DiarySignedBy")
+  progressRecorded            ScheduleProgressEntry[]
   invoicesRecorded            SupplierInvoice[]            @relation("InvoiceRecordedBy")
   invoicesApproved            SupplierInvoice[]            @relation("InvoiceApprovedBy")
   fxRatesEntered              FxRate[]                     @relation("FxRateEnteredBy")
@@ -729,6 +730,7 @@ model Project {
   hseIncidents             HseIncident[]
   workPermits              WorkPermit[]
   siteDiaries              SiteDiary[]
+  progressEntries          ScheduleProgressEntry[]
   siteMeasurements         SiteMeasurement[]
   dayworkSheets            DayworkSheet[]
   contracts                ProjectContract[]
@@ -914,6 +916,7 @@ model ScheduleActivity {
   tasks                 ProjectTask[]
   testResults           TestResult[]
   holdPoints            HoldPoint[]
+  progressEntries       ScheduleProgressEntry[]
   interfaces            ProjectInterface[]
   hiddenWorks           HiddenWork[]
   timeClaims            TimeClaim[]
@@ -4845,6 +4848,28 @@ model HiddenWork {
   // Numbered per project: HW-001.
   @@unique([projectId, sequence])
   @@index([projectId, status])
+}
+
+// ---- Progress recorded on site (2026-11-04) ---------------------------------
+// The look-ahead's progress updates, kept as a history: who said how far an
+// activity had got, on which day, and why. The activity's % complete moves
+// with each entry (through the programme, so hold points still hold).
+model ScheduleProgressEntry {
+  id              String           @id @default(uuid())
+  projectId       String
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activityId      String
+  activity        ScheduleActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  date            DateTime         @db.Date
+  percentComplete Int
+  previousPercent Int
+  note            String?
+  recordedById    String
+  recordedBy      User             @relation(fields: [recordedById], references: [id])
+  createdAt       DateTime         @default(now())
+
+  @@index([activityId, date])
+  @@index([projectId, date])
 }
 
 // ---- The daily site diary (2026-11-04) --------------------------------------
