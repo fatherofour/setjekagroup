@@ -37,6 +37,9 @@ services:
       SIGNOFF_DIR: /data/signoff
       REPORTS_DIR: /data/reports
       HANDOVER_UPLOAD_DIR: /data/handover
+      # The model and drawing converter, for take-offs in Estimates.
+      CONVERTER_URL: http://converter:8100
+      CONVERTER_INTERNAL_TOKEN: ${CONVERTER_INTERNAL_TOKEN:?Set CONVERTER_INTERNAL_TOKEN}
     # Uploaded files live on named volumes so a rebuild or redeploy never
     # loses them.
     volumes:
@@ -51,6 +54,24 @@ services:
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Turns Revit, IFC, DWG, DGN and PDF drawings into quantities for the
+  # estimates' take-offs (converter-service/). On the compose network only:
+  # the backend alone calls it, with the shared token.
+  converter:
+    build:
+      context: ./converter-service
+    restart: unless-stopped
+    environment:
+      CONVERTER_INTERNAL_TOKEN: ${CONVERTER_INTERNAL_TOKEN:?Set CONVERTER_INTERNAL_TOKEN}
+    expose:
+      - "8100"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8100/health')"]
+      interval: 30s
       timeout: 5s
       retries: 5
       start_period: 20s
