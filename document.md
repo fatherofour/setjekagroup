@@ -3944,6 +3944,26 @@ The chat button was a placeholder. It now answers questions with a Qwen model ru
   - a contractor is told it is for the Setjeka team, and asking gives the same message.
 - **On the VPS:** the timings above.
 
+
+### 2.51 The opportunities board (CRM Kanban, 2026-11-05)
+
+The user asked for a Kanban-style lead board for the CRM. The Opportunities page now has a **List / Board** switch. The list is unchanged, and each person's choice is remembered.
+
+**The board** (`components/opportunities/OpportunityBoard.tsx`)
+- **Columns:** one per stage, in pipeline order: Identified, Under evaluation, Approved, Converted to project, then On hold and Rejected. Each column shows its count and its total estimated value per currency.
+- **Cards** show the lead, its client and area, the estimated value, the owner, and its PROCSA Stage 0 progress (with "decision pending" while an investment decision is open). A converted card links to its project.
+- **Moving a lead:** drag the card, or use the **Move to** menu on it, which works from the keyboard and on a phone. The move is saved through the existing stage change, so the stage history is kept. If the server refuses, the card goes back and the reason is shown.
+- **Approved and Converted keep their own routes.** A lead is approved by an Executive's investment decision, and becomes a project through "Move to Inception". Dropping a card on either column explains this, and the lead stays where it was. The same applies while an investment decision is pending.
+
+**Verified, browser, 9 of 9:**
+- the board has a column per stage;
+- a new lead sits in Identified with its client and value, and the column shows its total;
+- dragging moves the lead and it is saved;
+- dropping on Approved explains the investment decision and the lead stays;
+- the Move to menu moves a lead;
+- the list still shows the leads, and the board is remembered after a reload;
+- on a phone, the board scrolls inside its box and the page doesn't scroll sideways.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

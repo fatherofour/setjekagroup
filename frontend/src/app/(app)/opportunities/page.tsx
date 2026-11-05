@@ -4,11 +4,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { CURRENCY_OPTIONS } from '@/lib/projectMeta';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lightbulb, Plus } from 'lucide-react';
+import { KanbanSquare, Lightbulb, List, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { ClientPicker } from '@/components/clients/ClientPicker';
+import { OpportunityBoard, type BoardOpportunity } from '@/components/opportunities/OpportunityBoard';
 import {
   OPPORTUNITY_STAGE_LABEL,
   OPPORTUNITY_STAGE_TONE,
@@ -17,21 +18,10 @@ import {
   inputClass,
   labelClass,
   primaryButton,
-  type OpportunityStage,
-  type Readiness,
 } from '@/lib/stage0';
 
-interface Opportunity {
-  id: string;
-  name: string;
-  developmentType: string | null;
-  location: string | null;
-  client: { id: string; name: string } | null;
-  estimatedValue: number | null;
-  currency: string | null;
-  stage: OpportunityStage;
-  readiness: Readiness;
-}
+type Opportunity = BoardOpportunity;
+const VIEW_KEY = 'setjeka_opportunities_view';
 
 const EMPTY_FORM = { name: '', clientId: '', needAndDesirability: '', clientVision: '', developmentType: '', location: '', estimatedValue: '', currency: 'ZAR' };
 
@@ -43,6 +33,26 @@ export default function OpportunitiesPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  // The list or the CRM board, remembered per person.
+  const [view, setView] = useState<'list' | 'board'>('list');
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- a per-viewer preference read once from storage
+      if (localStorage.getItem(VIEW_KEY) === 'board') setView('board');
+    } catch {
+      // storage unavailable: the list stays
+    }
+  }, []);
+
+  function chooseView(v: 'list' | 'board') {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     authedFetch<Opportunity[]>('/opportunities')
@@ -85,6 +95,21 @@ export default function OpportunitiesPage() {
             PROCSA Stage 0 — Initiation &amp; Briefing. Capture the client, source the site, appoint consultants, then hand over to Inception.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <div role="group" aria-label="View" className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+            {(['list', 'board'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => chooseView(v)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === v ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
+              >
+                {v === 'list' ? <List size={14} /> : <KanbanSquare size={14} />}
+                {v === 'list' ? 'List' : 'Board'}
+              </button>
+            ))}
+          </div>
         <button
           onClick={() => {
             setShowForm((v) => !v);
@@ -95,6 +120,7 @@ export default function OpportunitiesPage() {
           <Plus size={15} />
           New opportunity
         </button>
+        </div>
       </div>
 
       {error && (
@@ -179,6 +205,8 @@ export default function OpportunitiesPage() {
           <Lightbulb size={28} className="text-slate-300 dark:text-slate-600" />
           <p className="text-sm text-slate-500 dark:text-slate-400">No opportunities yet.</p>
         </div>
+      ) : view === 'board' ? (
+        <OpportunityBoard opportunities={opportunities} onChanged={setOpportunities} />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
