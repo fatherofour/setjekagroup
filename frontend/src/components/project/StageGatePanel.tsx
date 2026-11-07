@@ -13,7 +13,7 @@ interface StageTransition {
   id: string;
   fromStage: ProjectStage;
   toStage: ProjectStage;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ADVANCED_BY_SETJEKA';
   requestComment: string | null;
   decisionComment: string | null;
   decisionOutcome: ApprovalOutcome | null;
@@ -22,6 +22,9 @@ interface StageTransition {
   createdAt: string;
   requestedBy: { id: string; fullName: string };
   decidedBy: { id: string; fullName: string } | null;
+  overriddenByName: string | null;
+  overrideReason: string | null;
+  overriddenAt: string | null;
 }
 
 const inputClass = 'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -40,6 +43,11 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [deciding, setDeciding] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+  const [reason, setReason] = useState('');
+  // Setjeka requests stage moves and can advance without waiting; the client
+  // signs them off (7 Nov 2026).
+  const setjeka = user?.accountType === 'INTERNAL' || user?.role === 'ADMIN';
 
   const load = () => {
     authedFetch<StageTransition[]>(`/projects/${projectId}/stage-transitions`)
@@ -54,8 +62,28 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
 
   const target = nextStage(currentStage);
   const pending = transitions?.find((t) => t.status === 'PENDING') ?? null;
+  // Advanced by Setjeka, with the client's sign-off still to come.
+  const unsigned = transitions?.find((t) => t.status === 'ADVANCED_BY_SETJEKA' && !t.decidedAt) ?? null;
   const history = transitions?.filter((t) => t.status !== 'PENDING') ?? [];
+  const toSign = pending ?? unsigned;
   const due = dueLabel(pending?.responseDueAt);
+
+  async function advanceWithoutClient() {
+    if (!pending) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await authedFetch(`/projects/${projectId}/stage-transitions/${pending.id}/advance`, { method: 'PATCH', body: { reason: reason.trim() } });
+      setAdvancing(false);
+      setReason('');
+      load();
+      onStageChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'The project could not be advanced.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function requestAdvance() {
     if (!target) return;
@@ -91,6 +119,22 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
         )}
       </div>
 
+      {unsigned && (
+        <div className="mb-3 rounded-md bg-sky-50 p-3 text-sm dark:bg-sky-950/40">
+          <p className="text-sky-800 dark:text-sky-300">
+            {unsigned.overriddenByName ?? 'Setjeka'} advanced to <span className="font-medium">{projectStageInfo(unsigned.toStage).label}</span> without the client&apos;s sign-off
+            {unsigned.overriddenAt ? ` on ${new Date(unsigned.overriddenAt).toLocaleDateString()}` : ''}. The client&apos;s sign-off is still requested.
+          </p>
+          {unsigned.overrideReason && <p className="mt-1 text-xs text-sky-700 dark:text-sky-400">Reason: {unsigned.overrideReason}</p>}
+          {!setjeka && (
+            <button type="button" onClick={() => setDeciding(true)} className="mt-2 flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800">
+              <Stamp size={13} />
+              Review and sign
+            </button>
+          )}
+        </div>
+      )}
+
       {pending ? (
         <div className="rounded-md bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
           <p className="text-amber-800 dark:text-amber-300">
@@ -98,17 +142,49 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
           </p>
           {pending.requestComment && <p className="mt-1 text-amber-700 dark:text-amber-400">{pending.requestComment}</p>}
           {due && <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${dueTone(due)}`}>{due.text}</span>}
-          {pending.requestedBy.id !== user?.id && (
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => setDeciding(true)}
-                className="flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-              >
-                <Stamp size={13} />
-                Decide and sign
-              </button>
+          {setjeka ? (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-amber-700 dark:text-amber-400">Waiting for the client&apos;s sign-off. They have been notified in the platform and by email.</p>
+              {advancing ? (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-white p-2 dark:border-amber-900 dark:bg-slate-900">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
+                    Why move on without the client&apos;s sign-off? <span className="text-red-600">(required)</span>
+                    <textarea
+                      className="mt-1 min-h-16 w-full rounded-md border border-slate-300 bg-white p-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="e.g. The client is travelling until the 20th and the works can't wait"
+                    />
+                  </label>
+                  <p className="text-xs text-slate-500">The project moves to {projectStageInfo(pending.toStage).label} now. The reason is kept on the record, and the client is still asked to sign.</p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={advanceWithoutClient} disabled={saving || reason.trim().length < 5} className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50">
+                      {saving ? 'Advancing…' : `Advance to ${projectStageInfo(pending.toStage).label}`}
+                    </button>
+                    <button type="button" onClick={() => setAdvancing(false)} className="rounded-md px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setAdvancing(true)} className="rounded-md border border-amber-400 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-950">
+                  Advance without the client&apos;s sign-off…
+                </button>
+              )}
             </div>
+          ) : (
+            pending.requestedBy.id !== user?.id && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeciding(true)}
+                  className="flex items-center gap-1 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+                >
+                  <Stamp size={13} />
+                  Review and sign
+                </button>
+              </div>
+            )
           )}
         </div>
       ) : target ? (
@@ -140,12 +216,28 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
                   <span className="font-medium text-slate-700 dark:text-slate-200">
                     {projectStageInfo(t.fromStage).label} → {projectStageInfo(t.toStage).label}
                   </span>{' '}
-                  <span className={t.status === 'APPROVED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                    {t.decisionOutcome ? OUTCOME_LABEL[t.decisionOutcome] : t.status === 'APPROVED' ? 'Approved' : 'Rejected'}
+                  {t.status === 'ADVANCED_BY_SETJEKA' && <span className="mr-1 text-sky-700 dark:text-sky-400">Advanced by {t.overriddenByName ?? 'Setjeka'} ·</span>}
+                  <span
+                    className={
+                      (t.decisionOutcome ? t.decisionOutcome.startsWith('APPROVED') : t.status === 'APPROVED')
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : t.status === 'ADVANCED_BY_SETJEKA' && !t.decisionOutcome
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-red-600 dark:text-red-400'
+                    }
+                  >
+                    {t.decisionOutcome
+                      ? `${t.status === 'ADVANCED_BY_SETJEKA' ? 'Client: ' : ''}${OUTCOME_LABEL[t.decisionOutcome]}`
+                      : t.status === 'APPROVED'
+                        ? 'Approved'
+                        : t.status === 'ADVANCED_BY_SETJEKA'
+                          ? "client's sign-off outstanding"
+                          : 'Rejected'}
                   </span>
                   <span className="ml-2 text-slate-400">
                     by {t.decidedBy?.fullName ?? '—'} · {t.decidedAt ? new Date(t.decidedAt).toLocaleString() : ''}
                   </span>
+                  {t.overrideReason && <p className="mt-0.5 text-slate-500 dark:text-slate-400">Reason for advancing: {t.overrideReason}</p>}
                   {t.decisionComment && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t.decisionComment}</p>}
                   <div className="mt-1">
                     <SignedCopies projectId={projectId} subjectId={t.id} compact />
@@ -157,15 +249,15 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
         </div>
       )}
 
-      {deciding && pending && (
+      {deciding && toSign && (
         <DecisionDialog
           projectId={projectId}
-          title={`${projectStageInfo(pending.fromStage).label} to ${projectStageInfo(pending.toStage).label}`}
-          context="Stage gate"
-          dueAt={pending.responseDueAt}
-          endpoint={`/projects/${projectId}/stage-transitions/${pending.id}/decide`}
+          title={`${projectStageInfo(toSign.fromStage).label} to ${projectStageInfo(toSign.toStage).label}`}
+          context="Stage gate sign-off"
+          dueAt={toSign.responseDueAt}
+          endpoint={`/projects/${projectId}/stage-transitions/${toSign.id}/decide`}
           method="PATCH"
-          subjectId={pending.id}
+          subjectId={toSign.id}
           onClose={() => setDeciding(false)}
           onDecided={() => {
             load();

@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 
 // Setjeka green, and red for rejections.
@@ -17,7 +18,11 @@ export interface SignOffDetails {
   comment?: string;
   signerName: string;
   signerRole?: string;
+  /** The name the signer typed when signing. */
+  signedName?: string;
   signedAt: Date;
+  /** The public page that confirms this sign-off; encoded in the QR code. */
+  verifyUrl?: string;
   methodLabel: string;
   signature?: Uint8Array;
   recordId: string;
@@ -86,7 +91,7 @@ async function addCertificatePage(doc: PDFDocument, d: SignOffDetails) {
 
   page.drawRectangle({ x: 0, y: height - 90, width, height: 90, color: GREEN });
   page.drawText('SETJEKA GROUP', { x: left, y: height - 45, size: 18, font: bold, color: rgb(1, 1, 1) });
-  page.drawText('Sign-off certificate', { x: left, y: height - 68, size: 12, font: regular, color: rgb(0.86, 0.93, 0.89) });
+  page.drawText(d.kind === 'Certificate of completion' ? d.kind : 'Sign-off certificate', { x: left, y: height - 68, size: 12, font: regular, color: rgb(0.86, 0.93, 0.89) });
 
   let y = height - 130;
   page.drawText(safe(bold, d.projectName), { x: left, y, size: 11, font: bold, color: MUTED });
@@ -120,6 +125,7 @@ async function addCertificatePage(doc: PDFDocument, d: SignOffDetails) {
   page.drawText('Signed by', { x: left, y, size: 9.5, font: regular, color: MUTED });
   page.drawText(safe(bold, d.signerName + (d.signerRole ? `, ${d.signerRole}` : '')), { x: left + 150, y, size: 11, font: bold, color: INK });
   y -= 18;
+  if (d.signedName) row('Name entered', d.signedName);
   row('Date and time', when(d.signedAt));
   row('Signed by way of', d.methodLabel);
 
@@ -131,10 +137,27 @@ async function addCertificatePage(doc: PDFDocument, d: SignOffDetails) {
     y -= size.height + 30;
   }
 
+  // The QR code: scanning it opens the platform's record of this sign-off,
+  // so anyone holding the paper can check it is genuine and when it was agreed.
+  if (d.verifyUrl) {
+    const png = await QRCode.toBuffer(d.verifyUrl, { type: 'png', margin: 1, width: 240, errorCorrectionLevel: 'M' });
+    const qr = await doc.embedPng(new Uint8Array(png));
+    const size = 92;
+    const qx = right - size;
+    const qy = 160;
+    page.drawImage(qr, { x: qx, y: qy, width: size, height: size });
+    const caption = ['Scan to verify this sign-off', `Agreed ${d.signedAt.toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'long', year: 'numeric' })}`];
+    caption.forEach((c, i) => {
+      const w = regular.widthOfTextAtSize(c, 7.5);
+      page.drawText(c, { x: qx + size - w, y: qy - 10 - i * 10, size: 7.5, font: regular, color: MUTED });
+    });
+  }
+
   const foot = [
     `Record ${d.recordId}${d.ipAddress ? ` · from ${d.ipAddress}` : ''}`,
     'This electronic signature was applied in the Setjeka platform by the signer named above, after signing in to their own account.',
     'The platform keeps a fingerprint (SHA-256) of this file against the record, so any later change to it can be detected.',
+    ...(d.verifyUrl ? [`Check it at ${d.verifyUrl}`] : []),
   ];
   let fy = 70;
   for (const line of foot.reverse()) {

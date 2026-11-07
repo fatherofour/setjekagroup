@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditLogService } from '../audit-log/audit-log.service.js';
+import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { rulesFor } from '../common/countries.js';
 import type { CreateProjectDto } from './dto/create-project.dto.js';
@@ -16,7 +18,10 @@ import type { UpdateProjectDto } from './dto/update-project.dto.js';
  * ~20 call sites for a purely cosmetic gain. */
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditLogService,
+  ) {}
 
   async findAllForOwner(callerId: string) {
     const caller = await this.prisma.user.findUnique({ where: { id: callerId } });
@@ -94,9 +99,26 @@ export class ProjectsService {
     });
   }
 
-  async update(id: string, ownerId: string, dto: UpdateProjectDto) {
-    await this.findOneForOwner(id, ownerId);
-    return this.prisma.project.update({
+  /** Setjeka's own staff (internal accounts and administrators). */
+  async isSetjeka(userId: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+    return u?.role === 'ADMIN' || u?.accountType === 'INTERNAL';
+  }
+
+  /** Critique C-01: a project's details (name, status, currency, country,
+   * contract form, client...) are Setjeka's to change. Consultants,
+   * contractors and the client can view them, not edit them (the permission
+   * matrix: outside parties "View, comment" on project structure). Every
+   * change is written to the audit log. Completing or abandoning a project
+   * goes through close-out, not here. */
+  async update(id: string, userId: string, dto: UpdateProjectDto) {
+    const before = await this.findOneForOwner(id, userId);
+    if (!(await this.isSetjeka(userId))) throw new ForbiddenException("Only Setjeka can change a project's details");
+    if (before.closureType) throw new BadRequestException(`This project was ${before.closureType === 'COMPLETED' ? 'completed' : 'abandoned'}; its details can no longer be changed`);
+    if (dto.status === 'COMPLETED' || dto.status === 'ARCHIVED') {
+      throw new BadRequestException('Complete or abandon a project from its Close-out panel, so the client signs the certificate of completion or the reason is recorded');
+    }
+    const after = await this.prisma.project.update({
       where: { id },
       data: {
         name: dto.name,
@@ -119,5 +141,15 @@ export class ProjectsService {
         longitude: dto.longitude,
       },
     });
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    for (const key of Object.keys(dto) as (keyof typeof after)[]) {
+      const from = before[key] instanceof Date ? (before[key] as Date).toISOString() : before[key];
+      const to = after[key] instanceof Date ? (after[key] as Date).toISOString() : after[key];
+      if (JSON.stringify(from) !== JSON.stringify(to)) changes[key] = { from: from ?? null, to: to ?? null };
+    }
+    if (Object.keys(changes).length) {
+      await this.audit.log({ userId, action: 'EDIT', module: 'PROJECT_STRUCTURE', entityType: 'PROJECT', entityId: id, projectId: id, metadata: changes as Prisma.InputJsonValue });
+    }
+    return after;
   }
 }

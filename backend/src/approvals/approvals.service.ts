@@ -3,10 +3,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { PermissionsService } from '../permissions/permissions.service.js';
 import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
 import { isExecutive } from '../auth/executive.js';
+import { STAGE_LABEL } from '../reports/report-data.js';
 import type { PermissionModule } from '../generated/prisma/enums.js';
 
 export interface ApprovalItem {
-  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
+  kind: 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'PROJECT_COMPLETION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
   id: string;
   title: string;
   context: string;
@@ -46,8 +47,10 @@ export class ApprovalsService {
         where: { status: 'SUBMITTED', ...scope },
         include: { project: { select: { id: true, name: true, projectCode: true } }, submittedBy: { select: { fullName: true } } },
       }),
+      // Waiting on the client: pending, or advanced by Setjeka without
+      // their sign-off yet (7 Nov 2026).
       this.prisma.stageTransition.findMany({
-        where: { status: 'PENDING', ...scope },
+        where: { OR: [{ status: 'PENDING' }, { status: 'ADVANCED_BY_SETJEKA', decidedAt: null }], ...scope },
         include: { project: { select: { id: true, name: true, projectCode: true } }, requestedBy: { select: { fullName: true } } },
       }),
     ]);
@@ -77,11 +80,12 @@ export class ApprovalsService {
       });
     }
     for (const t of transitions) {
-      if (t.requestedById === userId || !(await can(t.projectId, 'STAGE_GATE'))) continue;
+      // The client signs stage moves; Setjeka requests or advances them.
+      if (internal || t.requestedById === userId || !(await can(t.projectId, 'STAGE_GATE'))) continue;
       items.push({
         kind: 'STAGE_TRANSITION',
         id: t.id,
-        title: `Advance from ${t.fromStage} to ${t.toStage}`,
+        title: `${t.status === 'ADVANCED_BY_SETJEKA' ? 'Sign off the move' : 'Advance'} from ${STAGE_LABEL[t.fromStage]} to ${STAGE_LABEL[t.toStage]}`,
         context: projectLabel(t.project),
         href: `/projects/${t.projectId}?tab=overview`,
         requestedBy: t.requestedBy.fullName,
@@ -127,6 +131,24 @@ export class ApprovalsService {
           requestedAt: v.certifiedAt,
           dueAt: v.responseDueAt,
           projectId: v.projectId,
+        });
+      }
+      // The certificate of completion (7 Nov 2026).
+      const completions = await this.prisma.projectCompletion.findMany({
+        where: { status: 'PENDING', project: { members: { some: { userId, role: 'CLIENT' } } } },
+        include: { project: { select: { id: true, name: true, projectCode: true } } },
+      });
+      for (const c of completions) {
+        items.push({
+          kind: 'PROJECT_COMPLETION',
+          id: c.id,
+          title: `Certificate of completion (works completed ${c.completionDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })})`,
+          context: projectLabel(c.project),
+          href: `/projects/${c.projectId}?tab=overview`,
+          requestedBy: c.issuedByName,
+          requestedAt: c.createdAt,
+          dueAt: c.responseDueAt,
+          projectId: c.projectId,
         });
       }
       // Drawings and documents sent for the client's approval and signature.

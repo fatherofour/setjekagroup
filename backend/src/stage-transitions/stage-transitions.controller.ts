@@ -3,7 +3,7 @@ import type { Request } from 'express';
 import { requestMeta } from '../signoff/signoff.controller.js';
 import { StageTransitionsService } from './stage-transitions.service.js';
 import { RequestTransitionDto } from './dto/request-transition.dto.js';
-import { DecideTransitionDto } from './dto/decide-transition.dto.js';
+import { AdvanceTransitionDto, DecideTransitionDto } from './dto/decide-transition.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
@@ -37,5 +37,13 @@ export class StageTransitionsController {
     @Req() req: Request,
   ) {
     return this.stageTransitionsService.decide(projectId, user.sub, id, dto, requestMeta(req));
+  }
+
+  /** Setjeka advances without waiting for the client's sign-off, giving a
+   * reason; the client is still asked to sign. */
+  @Patch(':id/advance')
+  @RequirePermission('STAGE_GATE', 'CREATE')
+  advance(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: AdvanceTransitionDto, @CurrentUser() user: JwtPayload) {
+    return this.stageTransitionsService.advance(projectId, user.sub, id, dto.reason);
   }
 }

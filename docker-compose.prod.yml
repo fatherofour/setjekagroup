@@ -40,6 +40,13 @@ services:
       # The model and drawing converter, for take-offs in Estimates.
       CONVERTER_URL: http://converter:8100
       CONVERTER_INTERNAL_TOKEN: ${CONVERTER_INTERNAL_TOKEN:?Set CONVERTER_INTERNAL_TOKEN}
+      # Email for the client's sign-offs (any SMTP server). Left unset, emails
+      # are written to the backend log instead and the in-app alerts still go.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Setjeka Group <no-reply@setjekagroup.co.za>}
     # Uploaded files live on named volumes so a rebuild or redeploy never
     # loses them.
     volumes:

@@ -8,6 +8,8 @@ import { ProjectsService } from '../projects/projects.service.js';
 import type { ApprovalOutcome, ApprovalSubject, SignatureMethod } from '../generated/prisma/enums.js';
 import { OUTCOME_LABEL, isApproval, type SignatureInputDto } from './dto/decision.dto.js';
 import { certificate, stampedCopy, type SignOffDetails } from './pdf.js';
+import { MailService } from '../mail/mail.service.js';
+import { uploadRootDir } from '../project-documents/upload.util.js';
 
 const MAX_SIGNATURE_BYTES = 1024 * 1024;
 const PNG_PREFIX = 'data:image/png;base64,';
@@ -39,6 +41,10 @@ export interface SignParams {
   outcome: ApprovalOutcome;
   comment?: string;
   signature?: SignatureInputDto;
+  /** The name the signer typed as they signed. */
+  signedName?: string;
+  /** Outside signers (the client) must type their name (7 Nov 2026). */
+  requireName?: boolean;
   signerId: string;
   meta: RequestMeta;
   facts: [string, string][];
@@ -72,6 +78,7 @@ export class SignoffService {
     private readonly prisma: PrismaService,
     private readonly projects: ProjectsService,
   ) {}
+
 
   // ---- Saved signatures ----------------------------------------------------
 
@@ -135,6 +142,8 @@ export class SignoffService {
       this.prisma.projectMember.findFirst({ where: { projectId: p.projectId, userId: p.signerId }, select: { role: true } }),
       this.prisma.project.findUniqueOrThrow({ where: { id: p.projectId }, select: { name: true, projectCode: true, contractForm: true } }),
     ]);
+    const signedName = p.signedName?.trim() || undefined;
+    if (p.requireName && signer.accountType === 'EXTERNAL' && !signedName) throw new BadRequestException('Type your full name to sign');
     const sig = await this.signatureFor(p.signerId, p.signature);
     const id = randomUUID();
     const signedAt = new Date();
@@ -149,7 +158,9 @@ export class SignoffService {
       comment: p.comment,
       signerName: signer.fullName,
       signerRole,
+      signedName,
       signedAt,
+      verifyUrl: MailService.appUrl(`/verify/${id}`),
       methodLabel: METHOD_LABEL[sig.method],
       signature: sig.bytes ? new Uint8Array(sig.bytes) : undefined,
       recordId: id,
@@ -177,6 +188,7 @@ export class SignoffService {
         signerId: p.signerId,
         signerName: signer.fullName,
         signerRole,
+        signedName,
         signedAt,
         ipAddress: p.meta.ip?.slice(0, 64),
         userAgent: p.meta.userAgent?.slice(0, 300),
@@ -184,6 +196,72 @@ export class SignoffService {
         signedSha256: createHash('sha256').update(pdf).digest('hex'),
       },
     });
+  }
+
+  /** Files a signed copy in the project's documents, under the given
+   * folder path (created as needed), visible to the client, so signed
+   * certificates sit with the rest of the project's documents. */
+  async fileInDocuments(recordId: string, folderPath: string[], name: string) {
+    const r = await this.prisma.approvalRecord.findUniqueOrThrow({ where: { id: recordId } });
+    if (!r.signedFilename) return null;
+    let parentId: string | null = null;
+    for (const [i, folderName] of folderPath.entries()) {
+      const existing: { id: string } | null = await this.prisma.documentFolder.findFirst({ where: { projectId: r.projectId, parentId, name: folderName }, select: { id: true } });
+      parentId = (existing ?? (await this.prisma.documentFolder.create({ data: { projectId: r.projectId, parentId, name: folderName, sortOrder: i === 0 ? 900 : 0 }, select: { id: true } }))).id;
+    }
+    const storedFilename = `${randomUUID()}.pdf`;
+    const source = join(signoffRootDir('signed'), r.signedFilename);
+    if (!existsSync(source)) return null;
+    copyFileSync(source, join(uploadRootDir(), storedFilename));
+    const size = readFileSync(source).length;
+    return this.prisma.projectDocument.create({
+      data: {
+        projectId: r.projectId,
+        folderId: parentId,
+        name,
+        description: `Signed by ${r.signerName} on ${r.signedAt.toLocaleDateString('en-ZA', { timeZone: 'Africa/Johannesburg' })}. Sign-off record ${r.id}.`,
+        documentType: 'Certificate',
+        clientVisible: true,
+        createdById: r.signerId,
+        revisions: {
+          create: {
+            revisionNumber: '1',
+            storedFilename,
+            originalFilename: `${name.replace(/[^\w\- ().]+/g, '').slice(0, 80) || 'signed'}.pdf`,
+            mimeType: 'application/pdf',
+            fileSize: size,
+            uploadedById: r.signerId,
+            reviewStatus: isApproval(r.outcome) ? 'APPROVED' : 'REJECTED',
+            reviewedById: r.signerId,
+            reviewedAt: r.signedAt,
+          },
+        },
+      },
+    });
+  }
+
+  /** What the QR code on a signed document opens: enough to confirm the
+   * sign-off is genuine (who, what, when, and the file's fingerprint),
+   * without signing in. The record id is a random UUID printed only on the
+   * document itself. */
+  async verify(id: string) {
+    const r = /^[0-9a-f-]{36}$/i.test(id)
+      ? await this.prisma.approvalRecord.findUnique({ where: { id }, include: { project: { select: { name: true, projectCode: true } } } })
+      : null;
+    if (!r) throw new NotFoundException('No sign-off with this reference');
+    return {
+      id: r.id,
+      title: r.title,
+      project: r.project.projectCode ? `${r.project.name} (${r.project.projectCode})` : r.project.name,
+      outcome: r.outcome,
+      outcomeLabel: OUTCOME_LABEL[r.outcome],
+      signerName: r.signerName,
+      signerRole: r.signerRole,
+      signedName: r.signedName,
+      method: METHOD_LABEL[r.method],
+      signedAt: r.signedAt,
+      sha256: r.signedSha256,
+    };
   }
 
   // ---- Reading back --------------------------------------------------------

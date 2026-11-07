@@ -1081,6 +1081,29 @@ that step gets skipped.
   citations only on SA projects). Not yet: public holidays, PDF dates still
   SA time, number formatting en-ZA. Plant hire is a fixed fee (no hours).
 
+- **Client sign-off and close-out (7 Nov 2026, critique C-01/C-02):**
+  - Only Setjeka (internal accounts, admins) edits a project's details;
+    each change goes to the audit log with before/after values. Status
+    COMPLETED/ARCHIVED can't be set by edit; close-out does it.
+  - Stage moves: Setjeka requests, **the client signs** (typed name plus
+    signature, four outcomes); the client's approval moves the stage.
+    Setjeka can't approve its own request. The user wanted flexibility
+    because clients are slow to sign, so Setjeka can **advance without
+    the client** with a required reason (status ADVANCED_BY_SETJEKA); the
+    client is still asked, and their later signature completes the record.
+  - The client is told in-app (a floating reminder on sign-in, from
+    `/approvals`) and by email (`MailService`, any SMTP server through
+    SMTP_* env; unset means emails go to the log).
+  - Every signed PDF carries a QR code to the public `/verify/:id` page
+    (signer, typed name, date, SHA-256); signed stage-gate and completion
+    certificates are filed in Documents > Sign-offs and certificates.
+  - Close-out: at Stage 6 Setjeka sends the certificate of completion;
+    the client signs; Setjeka marks the project completed (a reason if the
+    client hasn't signed). Abandoning needs a reason and archives the
+    project (status ARCHIVED, closureType ABANDONED), documents kept.
+  - SharePoint is not connected: "their folders on SharePoint" means the
+    in-app document folders until Microsoft 365 credentials are provided.
+
 ## Local dev environment
 
 - **After a reboot, start the database by hand on port 5434:**

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { NotificationType, CommentEntityType } from '../generated/prisma/enums.js';
 import type { Notification } from '../generated/prisma/client.js';
 import { recordLink } from './links.js';
+import { MailService } from '../mail/mail.service.js';
 import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
 import { ALERT_CATEGORIES, UNMUTABLE, categoryOf, typesIn, type AlertCategory } from './categories.js';
 
@@ -21,7 +22,42 @@ export interface NotificationFilter {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
+
+  /** The project's client contacts with a platform login: who a sign-off
+   * goes to. */
+  clientsOf(projectId: string) {
+    return this.prisma.projectMember
+      .findMany({ where: { projectId, role: 'CLIENT', userId: { not: null } }, select: { user: { select: { id: true, email: true, fullName: true } } } })
+      .then((rows) => rows.flatMap((r) => (r.user ? [r.user] : [])));
+  }
+
+  /** Setjeka's people on the project (the PM and DM), and Setjeka's
+   * administrators: who hears about a client's decision. */
+  async setjekaTeamOf(projectId: string) {
+    const rows = await this.prisma.projectMember.findMany({
+      where: { projectId, userId: { not: null }, user: { OR: [{ accountType: 'INTERNAL' }, { role: 'ADMIN' }] } },
+      select: { user: { select: { id: true, email: true, fullName: true } } },
+    });
+    return [...new Map(rows.flatMap((r) => (r.user ? [[r.user.id, r.user] as const] : []))).values()];
+  }
+
+  /** An in-app alert and the same message by email, for what must reach
+   * someone even when they aren't signed in: the client's sign-offs. The
+   * in-app alert is not mutable (APPROVALS); the email always goes. */
+  async notifyByEmailToo(
+    people: { id: string; email: string; fullName: string }[],
+    alert: Omit<Parameters<NotificationsService['notify']>[0], 'userId'>,
+    email: { subject: string; paragraphs: string[]; action: { label: string; path: string } },
+  ) {
+    for (const person of people) {
+      await this.notify({ ...alert, userId: person.id });
+      await this.mail.send({ to: person.email, subject: email.subject, paragraphs: [`Dear ${person.fullName},`, ...email.paragraphs], action: email.action });
+    }
+  }
 
   /** Creates a notification for a user — a no-op if `userId` is null (e.g. an
    * assignee that's an external contact with no linked platform account), or

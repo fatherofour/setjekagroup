@@ -45,6 +45,9 @@ export function DecisionDialog({
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
   const [comment, setComment] = useState('');
   const [signature, setSignature] = useState<SignatureInput | null>(null);
+  // The signer types their name as they sign (7 Nov 2026); it is printed on
+  // the signed document beside the signature.
+  const [signedName, setSignedName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<ApprovalRecord | null>(null);
@@ -57,7 +60,7 @@ export function DecisionDialog({
 
   const needsComment = outcome?.endsWith('WITH_COMMENTS') ?? false;
   const approving = outcome ? OUTCOMES.find((o) => o.value === outcome)!.approve : false;
-  const ready = Boolean(outcome) && (!needsComment || comment.trim().length > 0) && Boolean(signature);
+  const ready = Boolean(outcome) && (!needsComment || comment.trim().length > 0) && Boolean(signature) && signedName.trim().length >= 2;
   const due = dueLabel(dueAt);
 
   async function submit() {
@@ -65,7 +68,7 @@ export function DecisionDialog({
     setBusy(true);
     setError(null);
     try {
-      await authedFetch(endpoint, { method, body: { ...extraBody, outcome, comment: comment.trim() || undefined, signature } });
+      await authedFetch(endpoint, { method, body: { ...extraBody, outcome, comment: comment.trim() || undefined, signature, signedName: signedName.trim() } });
       const records = await authedFetch<ApprovalRecord[]>(`/projects/${projectId}/approval-records?subjectId=${subjectId}`).catch(() => [] as ApprovalRecord[]);
       setRecord(records[0] ?? null);
       onDecided();
@@ -149,10 +152,23 @@ export function DecisionDialog({
                 />
               </label>
 
-              <SignaturePad onChange={setSignature} />
+              <label className="block text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Your full name <span className="text-red-600">(required)</span>
+                </span>
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-2 text-base sm:h-9 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  value={signedName}
+                  onChange={(e) => setSignedName(e.target.value)}
+                  placeholder={user?.fullName ?? 'Type your name'}
+                  autoComplete="name"
+                />
+              </label>
+
+              <SignaturePad onChange={setSignature} name={signedName} />
 
               <p className="text-xs text-slate-500">
-                By confirming, {user?.fullName ?? 'you'} electronically sign this decision. Your name, the date and time are recorded, and your signature is added to the document.
+                By confirming, {user?.fullName ?? 'you'} electronically sign this decision. The name you type, your signature, the date and time are added to the document, with a QR code anyone can scan to confirm it.
               </p>
               {error && (
                 <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">

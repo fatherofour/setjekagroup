@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { cardClass } from '@/lib/stage0';
 import { dueLabel, dueTone } from '@/lib/signoff';
 
-type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
+type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'PROJECT_COMPLETION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
 
 interface ApprovalItem {
   kind: Kind;
@@ -25,6 +25,7 @@ interface ApprovalItem {
 const KIND_LABEL: Record<Kind, string> = {
   STAGE_DELIVERABLE: 'Stage 1 document',
   STAGE_TRANSITION: 'Stage gate',
+  PROJECT_COMPLETION: 'Certificate of completion',
   INVESTMENT_DECISION: 'Investment decision',
   STAGE0_PAYMENT: 'Stage 0 payment',
   VARIATION: 'Variation',
@@ -36,6 +37,7 @@ const KIND_LABEL: Record<Kind, string> = {
 const KIND_TONE: Record<Kind, string> = {
   STAGE_DELIVERABLE: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
   STAGE_TRANSITION: 'bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
+  PROJECT_COMPLETION: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
   INVESTMENT_DECISION: 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
   STAGE0_PAYMENT: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   VARIATION: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',

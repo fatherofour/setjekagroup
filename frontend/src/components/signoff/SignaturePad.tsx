@@ -80,12 +80,15 @@ async function fromUpload(file: File): Promise<string | null> {
  * style, upload an image of their signature, reuse the one they saved, or
  * (as an option) approve by acceptance alone. Reports a SignatureInput, or
  * null while nothing usable has been given. */
-export function SignaturePad({ onChange, allowAcceptOnly = true }: { onChange: (s: SignatureInput | null) => void; allowAcceptOnly?: boolean }) {
+/** `name`: when the dialog already asks for the signer's name, the typed
+ * signature uses it rather than asking again. */
+export function SignaturePad({ onChange, allowAcceptOnly = true, name }: { onChange: (s: SignatureInput | null) => void; allowAcceptOnly?: boolean; name?: string }) {
   const { authedFetch, accessToken, user } = useAuth();
   const [saved, setSaved] = useState<{ method: SignatureMethod } | null>(null);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('DRAWN');
-  const [typed, setTyped] = useState(user?.fullName ?? '');
+  const [ownTyped, setTyped] = useState(user?.fullName ?? '');
+  const typed = name ?? ownTyped;
   const [uploaded, setUploaded] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [hasInk, setHasInk] = useState(false);
@@ -248,14 +251,18 @@ export function SignaturePad({ onChange, allowAcceptOnly = true }: { onChange: (
 
       {mode === 'TYPED' && (
         <div className="space-y-2">
-          <label className="block text-xs text-slate-600 dark:text-slate-400">
-            Your full name
-            <input
-              className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-            />
-          </label>
+          {name === undefined ? (
+            <label className="block text-xs text-slate-600 dark:text-slate-400">
+              Your full name
+              <input
+                className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+              />
+            </label>
+          ) : (
+            <p className="text-xs text-slate-500">Your name, as typed above, in handwriting.</p>
+          )}
           <canvas ref={typedCanvas} width={W} height={H} aria-label="Your typed signature" className="h-28 w-full rounded-lg border border-slate-200 bg-white dark:border-slate-700" />
         </div>
       )}

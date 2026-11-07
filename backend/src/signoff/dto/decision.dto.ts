@@ -20,6 +20,8 @@ export class DecisionDto {
   @IsOptional() @IsBoolean() approve?: boolean;
   @IsOptional() @IsString() @MaxLength(4000) comment?: string;
   @IsOptional() @ValidateNested() @Type(() => SignatureInputDto) signature?: SignatureInputDto;
+  /** The signer's name, typed as they sign; printed on the signed document. */
+  @IsOptional() @IsString() @MaxLength(120) signedName?: string;
 }
 
 /** Sending something to the client: an optional note, and when they're

@@ -61,10 +61,11 @@ export class ClientProjectsService {
       const [docs, vos, gates, programme] = await Promise.all([
         this.prisma.stageDeliverable.count({ where: { projectId: p.id, status: 'SUBMITTED' } }),
         this.prisma.variation.count({ where: { projectId: p.id, status: 'SUBMITTED' } }),
-        this.prisma.stageTransition.count({ where: { projectId: p.id, status: 'PENDING' } }),
+        this.prisma.stageTransition.count({ where: { projectId: p.id, OR: [{ status: 'PENDING' }, { status: 'ADVANCED_BY_SETJEKA', decidedAt: null }] } }),
         this.programme(p.id),
       ]);
-      out.push({ ...p, waitingForYou: docs + vos + gates, programmePercent: programme?.percent ?? null, completion: p.endDate ?? programme?.finish ?? null });
+      const completions = await this.prisma.projectCompletion.count({ where: { projectId: p.id, status: 'PENDING' } });
+      out.push({ ...p, waitingForYou: docs + vos + gates + completions, programmePercent: programme?.percent ?? null, completion: p.endDate ?? programme?.finish ?? null });
     }
     return out;
   }
@@ -73,7 +74,7 @@ export class ClientProjectsService {
     await this.clientMember(userId, projectId);
     const project = await this.prisma.project.findUniqueOrThrow({
       where: { id: projectId },
-      select: { id: true, name: true, projectCode: true, description: true, stage: true, status: true, location: true, latitude: true, longitude: true, startDate: true, endDate: true, value: true, currency: true },
+      select: { id: true, name: true, projectCode: true, description: true, stage: true, status: true, location: true, latitude: true, longitude: true, startDate: true, endDate: true, value: true, currency: true, closureType: true, closureReason: true, closedAt: true },
     });
 
     const [transitions, deliverables, variations, milestones, documents, meetings, team, appointments, notes, programme] = await Promise.all([
@@ -160,7 +161,9 @@ export class ClientProjectsService {
         : null;
 
     const title = (key: string) => INCEPTION_DELIVERABLES.find((d) => d.key === key)?.title ?? key;
-    const pendingGate = transitions.find((t) => t.status === 'PENDING') ?? null;
+    // Pending, or advanced by Setjeka with the client's sign-off still asked for.
+    const pendingGate = transitions.find((t) => t.status === 'PENDING' || (t.status === 'ADVANCED_BY_SETJEKA' && !t.decidedAt)) ?? null;
+    const pendingCompletion = await this.prisma.projectCompletion.findFirst({ where: { projectId, status: 'PENDING' } });
 
     // The client's recorded decisions: who decided, what, when.
     const decisions = [
@@ -215,7 +218,21 @@ export class ClientProjectsService {
             certifiedAt: v.certifiedAt,
             dueAt: v.responseDueAt,
           })),
-        stageGate: pendingGate ? { id: pendingGate.id, fromStage: pendingGate.fromStage, toStage: pendingGate.toStage, comment: pendingGate.requestComment, requestedBy: pendingGate.requestedBy.fullName, requestedAt: pendingGate.createdAt, dueAt: pendingGate.responseDueAt } : null,
+        stageGate: pendingGate
+          ? {
+              id: pendingGate.id,
+              fromStage: pendingGate.fromStage,
+              toStage: pendingGate.toStage,
+              comment: pendingGate.requestComment,
+              requestedBy: pendingGate.requestedBy.fullName,
+              requestedAt: pendingGate.createdAt,
+              dueAt: pendingGate.responseDueAt,
+              advancedBySetjeka: pendingGate.status === 'ADVANCED_BY_SETJEKA' ? { by: pendingGate.overriddenByName, at: pendingGate.overriddenAt, reason: pendingGate.overrideReason } : null,
+            }
+          : null,
+        completion: pendingCompletion
+          ? { id: pendingCompletion.id, completionDate: pendingCompletion.completionDate, message: pendingCompletion.message, issuedBy: pendingCompletion.issuedByName, issuedAt: pendingCompletion.createdAt, dueAt: pendingCompletion.responseDueAt }
+          : null,
         drawings: docApprovals
           .filter((r) => r.status === 'PENDING')
           .map((r) => ({
@@ -233,7 +250,7 @@ export class ClientProjectsService {
             dueAt: r.responseDueAt,
           })),
       },
-      stageHistory: transitions.filter((t) => t.status === 'APPROVED').map((t) => ({ toStage: t.toStage, decidedAt: t.decidedAt })),
+      stageHistory: transitions.filter((t) => t.status === 'APPROVED' || t.status === 'ADVANCED_BY_SETJEKA').map((t) => ({ toStage: t.toStage, decidedAt: t.decidedAt })),
       decisions,
       documents: documents.map(({ revisions, ...d }) => ({ ...d, current: revisions[0] ?? null })),
       meetings,

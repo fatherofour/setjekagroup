@@ -109,3 +109,14 @@ export class DocumentApprovalsController {
     return this.approvals.decide(projectId, user.sub, id, dto, requestMeta(req));
   }
 }
+
+/** The public check behind the QR code on every signed document. */
+@Controller('verify')
+export class VerifySignoffController {
+  constructor(private readonly signoff: SignoffService) {}
+
+  @Get(':id')
+  verify(@Param('id') id: string) {
+    return this.signoff.verify(id);
+  }
+}

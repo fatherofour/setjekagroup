@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { PermissionModule, PermissionAction } from '../generated/prisma/enums.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 export interface AuditLogFilter {
   userId?: string;
@@ -24,6 +25,8 @@ export class AuditLogService {
     entityType?: string;
     entityId?: string | null;
     projectId?: string | null;
+    /** What changed, e.g. { field: { from, to } }. */
+    metadata?: Prisma.InputJsonValue;
   }) {
     return this.prisma.auditLogEntry.create({ data: entry });
   }

@@ -17,7 +17,7 @@ import { InstructionsPanel } from '@/components/design/InstructionsPanel';
 import { dueLabel, dueTone, openSignedCopy } from '@/lib/signoff';
 
 interface PortalProject {
-  project: { id: string; name: string; projectCode: string | null; description: string | null; stage: string; location: string | null; startDate: string | null; endDate: string | null; currency: string };
+  project: { id: string; name: string; projectCode: string | null; description: string | null; stage: string; location: string | null; startDate: string | null; endDate: string | null; currency: string; closureType?: 'COMPLETED' | 'ABANDONED' | null; closureReason?: string | null; closedAt?: string | null };
   programme: {
     percent: number;
     start: string;
@@ -44,7 +44,17 @@ interface PortalProject {
   approvals: {
     documents: { id: string; key: string; title: string; version: number; submittedAt: string | null; submittedBy: string | null; note: string | null; dueAt: string | null }[];
     variations: { id: string; number: string; title: string; description: string | null; reason: string; value: number; timeImpactDays: number | null; raisedBy: string; submittedAt: string | null; dueAt: string | null }[];
-    stageGate: { id: string; fromStage: string; toStage: string; comment: string | null; requestedBy: string; requestedAt: string; dueAt: string | null } | null;
+    stageGate: {
+      id: string;
+      fromStage: string;
+      toStage: string;
+      comment: string | null;
+      requestedBy: string;
+      requestedAt: string;
+      dueAt: string | null;
+      advancedBySetjeka?: { by: string | null; at: string | null; reason: string | null } | null;
+    } | null;
+    completion?: { id: string; completionDate: string; message: string | null; issuedBy: string; issuedAt: string; dueAt: string | null } | null;
     certificates?: {
       id: string;
       certificateNumber: string | null;
@@ -195,7 +205,7 @@ export default function ClientProjectPage() {
   const { project, programme, commercial, approvals } = data;
   const stageIdx = PROJECT_STAGES.findIndex((s) => s.value === project.stage);
   const certificates = approvals.certificates ?? [];
-  const waiting = approvals.documents.length + approvals.variations.length + approvals.drawings.length + certificates.length + (approvals.stageGate ? 1 : 0);
+  const waiting = approvals.documents.length + approvals.variations.length + approvals.drawings.length + certificates.length + (approvals.stageGate ? 1 : 0) + (approvals.completion ? 1 : 0);
   const completion = project.endDate ?? programme?.finish ?? null;
   const upcomingMeetings = data.meetings.filter((m) => m.status === 'SCHEDULED');
   const pastMeetings = data.meetings.filter((m) => m.minutesIssuedAt);
@@ -226,6 +236,13 @@ export default function ClientProjectPage() {
         <p className="mt-2 text-sm">
           Stage {stageIdx} · <strong>{stageLabel(project.stage)}</strong>
         </p>
+        {project.closureType && (
+          <p className="mt-2 rounded-md bg-white/15 px-3 py-1.5 text-sm">
+            {project.closureType === 'COMPLETED' ? 'This project is completed.' : 'This project was abandoned and is archived.'}
+            {project.closedAt && ` Closed ${new Date(project.closedAt).toLocaleDateString()}.`}
+            {project.closureType === 'ABANDONED' && project.closureReason && ` Reason: ${project.closureReason}`}
+          </p>
+        )}
       </header>
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
@@ -265,9 +282,33 @@ export default function ClientProjectPage() {
           </h2>
           <p className="mt-1 text-xs text-slate-500">Only you can approve these. Setjeka cannot decide on your behalf.</p>
           <ul className="mt-3 space-y-3">
+            {approvals.completion && (
+              <Decision
+                label="Certificate of completion"
+                dueAt={approvals.completion.dueAt}
+                onDecide={() =>
+                  setDeciding({
+                    title: 'Certificate of completion',
+                    context: `Works completed ${new Date(approvals.completion!.completionDate).toLocaleDateString()}`,
+                    endpoint: `/projects/${id}/closeout/completion-certificate/${approvals.completion!.id}/decide`,
+                    method: 'POST',
+                    subjectId: approvals.completion!.id,
+                    dueAt: approvals.completion!.dueAt,
+                  })
+                }
+              >
+                <p>
+                  Setjeka certifies that the works were completed on <strong>{new Date(approvals.completion.completionDate).toLocaleDateString()}</strong>. By approving, you accept the project as complete.
+                </p>
+                <p className="text-xs text-slate-500">
+                  Sent by {approvals.completion.issuedBy}
+                  {approvals.completion.message && ` — ${approvals.completion.message}`}
+                </p>
+              </Decision>
+            )}
             {approvals.stageGate && (
               <Decision
-                label="Move to the next stage"
+                label={approvals.stageGate.advancedBySetjeka ? 'Sign off the move to the next stage' : 'Move to the next stage'}
                 dueAt={approvals.stageGate.dueAt}
                 onDecide={() =>
                   setDeciding({
@@ -287,6 +328,11 @@ export default function ClientProjectPage() {
                   Requested by {approvals.stageGate.requestedBy}
                   {approvals.stageGate.comment && ` — ${approvals.stageGate.comment}`}
                 </p>
+                {approvals.stageGate.advancedBySetjeka && (
+                  <p className="text-xs text-sky-700 dark:text-sky-400">
+                    Setjeka has already moved the project on{approvals.stageGate.advancedBySetjeka.reason ? `: ${approvals.stageGate.advancedBySetjeka.reason}` : ''}. Your sign-off is still needed for the record.
+                  </p>
+                )}
               </Decision>
             )}
             {certificates.map((v) => (

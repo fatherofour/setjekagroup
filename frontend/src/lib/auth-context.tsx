@@ -103,6 +103,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearStorage('local');
     clearStorage('session');
+    // The sign-off reminder shows again at the next sign-in.
+    try {
+      sessionStorage.removeItem('setjeka.signoffReminder.dismissed');
+    } catch {
+      /* storage blocked */
+    }
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);

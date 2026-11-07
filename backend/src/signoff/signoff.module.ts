@@ -3,11 +3,11 @@ import { ProjectsModule } from '../projects/projects.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { SignoffService } from './signoff.service.js';
 import { DocumentApprovalsService } from './document-approvals.service.js';
-import { ApprovalRecordsController, DocumentApprovalsController, MySignatureController } from './signoff.controller.js';
+import { ApprovalRecordsController, DocumentApprovalsController, MySignatureController, VerifySignoffController } from './signoff.controller.js';
 
 @Module({
   imports: [ProjectsModule, NotificationsModule],
-  controllers: [MySignatureController, ApprovalRecordsController, DocumentApprovalsController],
+  controllers: [MySignatureController, ApprovalRecordsController, DocumentApprovalsController, VerifySignoffController],
   providers: [SignoffService, DocumentApprovalsService],
   exports: [SignoffService],
 })

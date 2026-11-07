@@ -23,6 +23,7 @@ import {
 } from '@/lib/projectMeta';
 import { ProjectNodeTree } from '@/components/project/ProjectNodeTree';
 import { StageGatePanel } from '@/components/project/StageGatePanel';
+import { CloseoutPanel } from '@/components/project/CloseoutPanel';
 import { ProjectMembersPanel } from '@/components/project/ProjectMembersPanel';
 import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
 import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
@@ -181,6 +182,9 @@ interface Project {
   endDate: string | null;
   latitude: number | null;
   longitude: number | null;
+  closureType: 'COMPLETED' | 'ABANDONED' | null;
+  closureReason: string | null;
+  closedAt: string | null;
 }
 
 const inputClass =
@@ -295,6 +299,9 @@ export default function ProjectDetailPage() {
   if (!project) return <p className="text-sm text-slate-400">Loading…</p>;
 
   const stage = projectStageInfo(project.stage);
+  // Critique C-01: only Setjeka edits a project's details, and not once the
+  // project has been completed or abandoned.
+  const canEditDetails = (user?.accountType === 'INTERNAL' || user?.role === 'ADMIN') && !project.closureType;
 
   return (
     <div className="space-y-6">
@@ -326,13 +333,15 @@ export default function ProjectDetailPage() {
                 <GanttChart size={14} />
                 Schedule
               </Link>
-              <button
-                onClick={startEdit}
-                className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <Pencil size={14} />
-                Edit details
-              </button>
+              {canEditDetails && (
+                <button
+                  onClick={startEdit}
+                  className="flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Pencil size={14} />
+                  Edit details
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -341,6 +350,14 @@ export default function ProjectDetailPage() {
       {error && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {error}
+        </p>
+      )}
+
+      {project.closureType && (
+        <p className={`rounded-md px-3 py-2 text-sm ${project.closureType === 'COMPLETED' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
+          {project.closureType === 'COMPLETED' ? 'This project is completed.' : 'This project was abandoned and is archived.'}
+          {project.closedAt && ` Closed ${new Date(project.closedAt).toLocaleDateString()}.`}
+          {project.closureType === 'ABANDONED' && project.closureReason && ` Reason: ${project.closureReason}`}
         </p>
       )}
 
@@ -527,7 +544,8 @@ export default function ProjectDetailPage() {
       </div>
       )}
 
-      {tab === 'overview' && <StageGatePanel currentStage={project.stage} projectId={project.id} onStageChanged={loadProject} />}
+      {tab === 'overview' && !project.closureType && <StageGatePanel currentStage={project.stage} projectId={project.id} onStageChanged={loadProject} />}
+      {tab === 'overview' && <CloseoutPanel projectId={project.id} isClient={isClient} onChanged={loadProject} />}
       {tab === 'overview' && <ProjectOverviewDashboard projectId={project.id} />}
       {tab === 'overview' && <SiteWeatherHistory projectId={project.id} />}
       {tab === 'inception' && (

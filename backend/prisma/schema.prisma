@@ -78,6 +78,40 @@ enum PermissionAction {
   COMMENT
 }
 
+enum ProjectClosure {
+  COMPLETED
+  ABANDONED
+}
+
+enum ProjectCompletionStatus {
+  PENDING
+  SIGNED
+  REJECTED
+  WITHDRAWN
+}
+
+// The certificate of completion Setjeka sends the client to sign when the
+// works are done (7 Nov 2026). The signed copy is filed in the project's
+// documents; Setjeka then marks the project completed.
+model ProjectCompletion {
+  id              String                  @id @default(uuid())
+  projectId       String
+  project         Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status          ProjectCompletionStatus @default(PENDING)
+  completionDate  DateTime
+  message         String?
+  responseDueAt   DateTime?
+  issuedById      String
+  issuedByName    String
+  decisionOutcome ApprovalOutcome?
+  decisionComment String?
+  decidedById     String?
+  decidedAt       DateTime?
+  createdAt       DateTime                @default(now())
+
+  @@index([projectId])
+}
+
 enum ProjectStatus {
   PLANNING
   ACTIVE
@@ -679,6 +713,13 @@ model Project {
   endDate                  DateTime?
   latitude                 Float?
   longitude                Float?
+  // How the project ended (7 Nov 2026): completed after the client signed
+  // the certificate of completion, or abandoned with a reason and archived.
+  closureType              ProjectClosure?
+  closureReason            String?
+  closedAt                 DateTime?
+  closedByName             String?
+  completions              ProjectCompletion[]
   ownerId                  String
   owner                    User                             @relation(fields: [ownerId], references: [id])
   nodes                    ProjectNode[]
@@ -1180,6 +1221,10 @@ enum NotificationType {
   SUBMITTAL_STATUS_CHANGED
   STAGE_TRANSITION_REQUESTED
   STAGE_TRANSITION_DECIDED
+  STAGE_ADVANCED_BY_SETJEKA
+  COMPLETION_CERTIFICATE_ISSUED
+  COMPLETION_CERTIFICATE_DECIDED
+  PROJECT_CLOSED
   DELIVERABLE_SUBMITTED
   DELIVERABLE_DECIDED
   MEETING_SCHEDULED
@@ -1688,6 +1733,10 @@ enum StageTransitionStatus {
   PENDING
   APPROVED
   REJECTED
+  // Setjeka moved the project on without waiting for the client (the
+  // user's decision, 7 Nov 2026: a client can be slow to sign). The
+  // client's sign-off is still asked for, and recorded when it comes.
+  ADVANCED_BY_SETJEKA
 }
 
 // A stage-gate sign-off: a request to move a project from its current
@@ -1716,6 +1765,11 @@ model StageTransition {
   // asked to respond by.
   decisionOutcome ApprovalOutcome?
   responseDueAt   DateTime?
+  // When Setjeka advanced without the client's sign-off: who, why, when.
+  overriddenById   String?
+  overriddenByName String?
+  overrideReason   String?
+  overriddenAt     DateTime?
   createdAt       DateTime              @default(now())
 
   @@index([projectId])
@@ -3402,6 +3456,8 @@ enum ApprovalSubject {
   REGISTER_ENTRY
   // The client's approval of a payment certificate (2026-10-28).
   PAYMENT_CERTIFICATE
+  // The client's sign-off of the certificate of completion (7 Nov 2026).
+  PROJECT_COMPLETION
 }
 
 enum DocumentApprovalStatus {
@@ -3430,6 +3486,8 @@ model ApprovalRecord {
   signer            User            @relation(fields: [signerId], references: [id])
   signerName        String
   signerRole        String?
+  // The name the signer typed when signing, as it appears on the document.
+  signedName        String?
   signedAt          DateTime        @default(now())
   ipAddress         String?
   userAgent         String?
