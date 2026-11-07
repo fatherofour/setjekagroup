@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import Link from 'next/link';
-import { FolderKanban, GripVertical } from 'lucide-react';
+import { ArrowRightLeft, FolderKanban, GripVertical } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
-import { Select } from '@/components/ui/Select';
 import { OPPORTUNITY_STAGE_LABEL, formatMoney, type OpportunityStage, type Readiness } from '@/lib/stage0';
 
 export interface BoardOpportunity {
@@ -40,6 +39,60 @@ const ACCENT: Record<OpportunityStage, string> = {
   REJECTED: 'border-t-red-500',
 };
 
+/** Critique L-13: a compact "Move" button with a menu, the path for the
+ * keyboard, touch and screen readers, instead of a full-width select on
+ * every card. */
+function MoveMenu({ o, onMove }: { o: BoardOpportunity; onMove: (stage: OpportunityStage) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={`Move ${o.name}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Move to another stage"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+      >
+        <ArrowRightLeft size={14} />
+      </button>
+      {open && (
+        <div role="menu" aria-label={`Move ${o.name} to`} className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          <p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Move to</p>
+          {MOVABLE.filter((st) => st !== o.stage).map((st) => (
+            <button
+              key={st}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onMove(st);
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {OPPORTUNITY_STAGE_LABEL[st]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Totals per currency, e.g. "ZAR 62 000 000 · NGN 7 800 000 000". */
 function totals(rows: BoardOpportunity[]) {
   const by = new Map<string, number>();
@@ -48,8 +101,8 @@ function totals(rows: BoardOpportunity[]) {
 }
 
 /** Opportunities as a CRM board (2026-11-05): one column per stage, cards
- * dragged between the stages that are set by hand, or moved with the menu
- * on each card (keyboard and touch). Approved and Converted keep their own
+ * dragged between the stages that are set by hand, or moved with the
+ * "Move" menu on each card (keyboard and touch). Approved and Converted keep their own
  * routes: dropping a card there says how to get it there. */
 export function OpportunityBoard({ opportunities, onChanged }: { opportunities: BoardOpportunity[]; onChanged: (o: BoardOpportunity[]) => void }) {
   const { authedFetch } = useAuth();
@@ -141,6 +194,7 @@ export function OpportunityBoard({ opportunities, onChanged }: { opportunities: 
                         <Link href={`/opportunities/${o.id}`} className="min-w-0 flex-1 text-sm font-medium text-slate-800 hover:text-emerald-700 hover:underline dark:text-slate-100">
                           {o.name}
                         </Link>
+                        {o.stage !== 'CONVERTED' && <MoveMenu o={o} onMove={(st) => move(o, st)} />}
                       </div>
                       <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{[o.client?.name ?? 'No client yet', o.location].filter(Boolean).join(' · ')}</p>
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
@@ -164,13 +218,6 @@ export function OpportunityBoard({ opportunities, onChanged }: { opportunities: 
                               {pending && <span className="ml-1 font-medium text-amber-600">· decision pending</span>}
                             </p>
                           </div>
-                          <Select
-                            aria-label={`Move ${o.name}`}
-                            className="mt-2 h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-900"
-                            value=""
-                            onChange={(v) => v && move(o, v as OpportunityStage)}
-                            options={[{ value: '', label: 'Move to…' }, ...MOVABLE.filter((s) => s !== o.stage).map((s) => ({ value: s, label: OPPORTUNITY_STAGE_LABEL[s] }))]}
-                          />
                         </>
                       )}
                     </li>

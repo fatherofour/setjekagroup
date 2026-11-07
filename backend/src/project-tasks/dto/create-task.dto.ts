@@ -1,4 +1,4 @@
-import { IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { SchedulePriority, ProjectTaskStatus } from '../../generated/prisma/enums.js';
 
 export interface ChecklistItem {
@@ -9,6 +9,8 @@ export interface ChecklistItem {
 export class CreateTaskDto {
   @IsString()
   @MinLength(1)
+  // Critique L-10: a title is a line, not a page; detail goes in the description.
+  @MaxLength(200)
   title!: string;
 
   @IsOptional()

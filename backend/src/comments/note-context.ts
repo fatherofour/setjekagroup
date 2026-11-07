@@ -1,6 +1,7 @@
 import type { CommentEntityType } from '../generated/prisma/enums.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
 import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
+import { STAGE_LABEL } from '../reports/report-data.js';
 
 const TYPE_LABEL: Record<CommentEntityType, string> = {
   TASK: 'Task',
@@ -85,7 +86,7 @@ export async function describeRecords(prisma: PrismaService, refs: { entityType:
         put(type, (await prisma.stageDeliverable.findMany({ where, select: { id: true, key: true } })).map((r) => ({ id: r.id, label: INCEPTION_DELIVERABLES.find((d) => d.key === r.key)?.title ?? r.key })));
         break;
       case 'STAGE_TRANSITION':
-        put(type, (await prisma.stageTransition.findMany({ where, select: { id: true, toStage: true } })).map((r) => ({ id: r.id, label: `to ${r.toStage}` })));
+        put(type, (await prisma.stageTransition.findMany({ where, select: { id: true, toStage: true } })).map((r) => ({ id: r.id, label: `to ${STAGE_LABEL[r.toStage]}` })));
         break;
       case 'PROJECT':
         // General project notes: the project name is shown alongside already.

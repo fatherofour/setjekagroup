@@ -321,7 +321,8 @@ export default function ProjectDetailPage() {
               )}
             </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Stage {stage.number} · {stage.label} — {pmTitleForContractForm(project.contractForm)} leads this project
+              {/* Critique L-11: outside parties are told who runs the project, not the contract's title for the role. */}
+              Stage {stage.number} · {stage.label} — {isExternal ? 'managed by Setjeka Group' : `${pmTitleForContractForm(project.contractForm)} leads this project`}
             </p>
           </div>
           {!editing && (
@@ -362,6 +363,18 @@ export default function ProjectDetailPage() {
       )}
 
       <ScreenBar projectId={project.id} projectName={project.name} tab={tab} ctab={searchParams.get('ctab')} canOpen={canOpen} />
+
+      {/* Critique L-04: a screen this role can't open says so, rather than
+          showing an empty page under its heading. */}
+      {roleKnown && !canOpen(tab) && (
+        <div role="status" className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-200">This screen isn&apos;t available to your role on this project.</p>
+          <Link href={`/projects/${project.id}?tab=overview`} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+            <ArrowLeft size={14} />
+            Back to the project&apos;s overview
+          </Link>
+        </div>
+      )}
 
       {tab === 'overview' && (
       <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">

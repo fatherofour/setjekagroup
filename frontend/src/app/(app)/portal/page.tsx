@@ -55,9 +55,9 @@ export default function ClientPortalHome() {
         </Link>
       )}
 
-      {projects === null ? (
+      {projects === null && !error ? (
         <p className="text-sm text-slate-400">Loading…</p>
-      ) : projects.length === 0 ? (
+      ) : !projects ? null : projects.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900">
           <Building2 size={26} className="mx-auto mb-2 text-slate-300" />
           No projects yet. Developments move here once they reach Inception.

@@ -32,7 +32,13 @@ export default function RoughEstimatesPage() {
     authedFetch<RomTable>('/rom/rates').then(setTable).catch(() => setTable(null));
   }, [authedFetch, internal]);
 
-  if (!internal) return <p className="text-sm text-slate-500">Rough estimates are kept by Setjeka staff.</p>;
+  // Critique L-12: say what the outside party can use instead.
+  if (!internal)
+    return (
+      <p className="text-sm text-slate-500">
+        Rough estimates are early budget checks that Setjeka&apos;s own team prepares before a project has a bill of quantities. The QS works from the project&apos;s Commercial screen: cost plans, bills of quantities and valuations.
+      </p>
+    );
 
   async function setRate(id: string, v: string) {
     const ratePerM2 = Number(v);

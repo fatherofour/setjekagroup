@@ -1,6 +1,6 @@
 # To confirm and follow up with Setjeka
 
-What we need from Setjeka Group to finish, deploy and fine-tune the platform, as at 4 November 2026. Each item says what we built in the meantime, so nothing is waiting on an answer to keep working, but each answer may change how it behaves. Technical detail for every feature is in `document.md` (section numbers in brackets).
+What we need from Setjeka Group to finish, deploy and fine-tune the platform, as at 7 November 2026. Each item says what we built in the meantime, so nothing is waiting on an answer to keep working, but each answer may change how it behaves. Technical detail for every feature is in `document.md` (section numbers in brackets).
 
 Status key: **Decide** means only Setjeka can make the call. **Confirm** means we built a sensible default; please check it. **Provide** means we need information or access from them.
 
@@ -108,9 +108,9 @@ These are the usual periods, set as defaults. Each contract can carry its own ce
 | 3.3 | **Contract data for a live contract:** completion date, penalty per day, retention, defects period | Checking the completion, defects and penalty screens on real figures | Provide |
 | 3.4 | **Their own checklists:** inspection and test plans, hold and witness points, permit forms | Replacing our starting lists with Setjeka's | Provide |
 | 3.5 | **Production domain and DNS access** | The live site and its HTTPS certificate (the server is ready; a temporary sslip.io address works) | Provide |
-| 3.6 | **Email sending domain and DNS records** | Email notifications. In-app alerts work today; email is blocked on this | Provide |
+| 3.6 | **Email: an SMTP mailbox or sending service, and the sending domain's DNS records** | Built 7 Nov (§2.52, §5.4): the client is emailed when a stage move or the certificate of completion needs their signature, and the client and team when a project is completed or abandoned. **Until SMTP details are provided, these emails are only written to the server log.** In-app alerts and the floating sign-off reminder work today. Password reset and invitation links are also still only logged. | Provide |
 | 3.7 | ~~**Server access.**~~ **Deployed 4 Nov:** the VPS (`173.212.202.149`) now runs the current platform, with the assistant and three test projects. It looks like a Contabo server, usually in Germany. Real client data should go on a South African server (decision 1.2), so is this VPS for testing only? | | Confirm |
-| 3.8 | **Azure AD app details** (tenant, client ID and secret, SharePoint site and drive) | SharePoint sync for compliance documents, if still wanted | Provide |
+| 3.8 | **Azure AD app details** (tenant, client ID and secret, SharePoint site and drive) | SharePoint sync. **Not connected.** Completed projects' documents, including the signed stage-gate and completion certificates (filed under "Sign-offs and certificates"), are kept in the platform's own folders and are visible there. Copying them to Setjeka's SharePoint needs this. | Provide |
 
 ## 4. Still to build (agreed, in order)
 
@@ -130,6 +130,10 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 - **The live map uses the free OpenStreetMap tile server,** which isn't allowed for heavy production use. A paid or self-hosted tile source is needed before full roll-out.
 - **The model and drawing converter** (take-offs from Revit, IFC, DWG, DGN and PDF in Estimates) was missing from the server until 4 Nov; it is deployed now. It uses DataDrivenConstruction's free "Community" converters; **confirmed 4 Nov** that this tier covers Setjeka's use. The cost database has one region per country Setjeka works in: South Africa (rand) and Nigeria (naira).
 - **Programme import** reads Microsoft Project XML. **Primavera P6 import isn't built.**
+- **Setjeka can advance a stage without the client's signature (7 Nov).** It must give a reason; the client is still asked to sign, and the record shows both. Please confirm this flexibility is wanted for every stage.
+- **The certificate of completion is sent only at Stage 6 (Close-out).** Completing a project without the client's signature is possible with a recorded reason.
+- **An abandoned project is archived, not deleted:** its documents stay viewable, and it can't be edited. There is no "un-abandon" in the app.
+- **The QR check page is public.** Anyone with the signed document can open its record: the project name, who signed and when. It shows nothing else, and the reference can't be guessed.
 
 ## 6. Owed by us (the supplier)
 
@@ -139,3 +143,4 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 | 6.2 | The permission matrix (who can see and do what, by role) for Setjeka to review (item 8.5) | **Written 4 Nov:** `permission-matrix.md`, with six questions for Setjeka (section 4) |
 | 6.3 | Document numbering proposal (item 8.8) | Owed, ties to 1.4 |
 | 6.4 | Deploy the current platform to the live server | **Done 4 Nov** (`https://173.212.202.149`, self-signed certificate until a domain is set up, 3.5) |
+| 6.5 | Deploy the 7 Nov changes (client sign-off, close-out, critique fixes) to the live server | **Pushed to GitHub, not deployed yet:** waiting for the server password to be supplied again (it is never stored) |

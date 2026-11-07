@@ -42,6 +42,9 @@ const PRIORITY_BADGE: Record<Priority, string> = {
   CRITICAL: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
 };
 
+// Critique L-10: the server caps a title at this length.
+const TITLE_MAX = 200;
+
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
@@ -135,7 +138,7 @@ function TaskDetailPanel({
         {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
 
         <div className="space-y-3">
-          <input className={`${inputClass} h-9 w-full`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className={`${inputClass} h-9 w-full`} maxLength={TITLE_MAX} aria-label="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <textarea
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Description"
@@ -272,9 +275,21 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
             <li key={t.id}>
               <button onClick={() => setOpenTaskId(t.id)} className="flex w-full items-center gap-2 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40">
                 <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[t.status]}`} />
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">{t.title}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-slate-700 dark:text-slate-200">{t.title}</span>
+                  <span className="block truncate text-xs text-slate-400">
+                    {STATUS_LABEL[t.status]}
+                    {t.dueDate && (
+                      <span className={t.status !== 'DONE' && new Date(t.dueDate) < new Date() ? ' font-medium text-red-600' : ''}>
+                        {' · due '}
+                        {new Date(t.dueDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                      </span>
+                    )}
+                    {t.checklist?.length > 0 && ` · ${t.checklist.filter((c) => c.done).length}/${t.checklist.length} checked`}
+                  </span>
+                </span>
                 <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_BADGE[t.priority]}`}>{t.priority}</span>
-                <span className="shrink-0 text-xs text-slate-400">{memberLabel(t.assignedTo)}</span>
+                <span className="hidden shrink-0 text-xs text-slate-400 sm:inline">{memberLabel(t.assignedTo)}</span>
               </button>
             </li>
           ))}
@@ -282,7 +297,7 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New task title" className={`${inputClass} flex-1`} />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={TITLE_MAX} placeholder="New task title" aria-label="New task title" aria-describedby="task-title-hint" className={`${inputClass} flex-1`} />
         <Select
           value={assignedToId}
           onChange={setAssignedToId}
@@ -297,6 +312,9 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
           <Plus size={13} />
           Add
         </button>
+        <p id="task-title-hint" className="w-full text-xs text-slate-500">
+          {!title.trim() ? 'Type a title to add a task; set its due date and details once added.' : `${title.length}/${TITLE_MAX} characters`}
+        </p>
       </form>
 
       {openTask && (

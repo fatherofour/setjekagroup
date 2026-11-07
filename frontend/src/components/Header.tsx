@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { HelpCircle, Menu } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -65,9 +65,21 @@ function UserMenu() {
   );
 }
 
-export function Header({ onMenuClick }: { onMenuClick: () => void }) {
+/** The screen's name, as the menu calls it. Reads the URL's ?tab, so it
+ * sits in its own Suspense boundary. */
+function PageTitleText() {
   const pathname = usePathname();
-  const { label, icon: Icon } = getPageTitle(pathname);
+  const params = useSearchParams();
+  const { label, icon: Icon } = getPageTitle(pathname, params.get('tab'), params.get('ctab'));
+  return (
+    <>
+      <Icon size={18} className="hidden shrink-0 text-slate-400 dark:text-slate-500 lg:block" />
+      <h1 className="hidden truncate text-base font-semibold text-slate-900 lg:block dark:text-slate-100">{label}</h1>
+    </>
+  );
+}
+
+export function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
@@ -85,8 +97,9 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
         <ProjectSwitcher />
         <StageBadge />
         <ChevronRight size={14} className="hidden shrink-0 text-slate-300 lg:block dark:text-slate-600" />
-        <Icon size={18} className="hidden shrink-0 text-slate-400 dark:text-slate-500 lg:block" />
-        <h1 className="hidden truncate text-base font-semibold text-slate-900 lg:block dark:text-slate-100">{label}</h1>
+        <Suspense fallback={null}>
+          <PageTitleText />
+        </Suspense>
       </div>
 
       {/* center: functional project search (⌘K) */}

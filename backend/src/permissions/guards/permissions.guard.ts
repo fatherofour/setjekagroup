@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import { PermissionsService } from '../permissions.service.js';
 import { PERMISSION_KEY, type RequiredPermission } from '../decorators/require-permission.decorator.js';
 import type { JwtPayload } from '../../auth/jwt-payload.js';
+import { refusalMessage } from '../refusal.js';
 
 /** Enforces `@RequirePermission(module, action)` on a route. A route with
  * no such metadata is unaffected (this guard only adds a check on top of
@@ -36,7 +37,7 @@ export class PermissionsGuard implements CanActivate {
       recordId,
     );
     if (!allowed) {
-      throw new ForbiddenException(`You do not have ${required.action} permission on ${required.module}`);
+      throw new ForbiddenException(refusalMessage(required.module, required.action, request.path));
     }
     return true;
   }

@@ -3952,7 +3952,7 @@ The user asked for a Kanban-style lead board for the CRM. The Opportunities page
 **The board** (`components/opportunities/OpportunityBoard.tsx`)
 - **Columns:** one per stage, in pipeline order: Identified, Under evaluation, Approved, Converted to project, then On hold and Rejected. Each column shows its count and its total estimated value per currency.
 - **Cards** show the lead, its client and area, the estimated value, the owner, and its PROCSA Stage 0 progress (with "decision pending" while an investment decision is open). A converted card links to its project.
-- **Moving a lead:** drag the card, or use the **Move to** menu on it, which works from the keyboard and on a phone. The move is saved through the existing stage change, so the stage history is kept. If the server refuses, the card goes back and the reason is shown.
+- **Moving a lead:** drag the card, or use the **Move** button (a menu) on it, which works from the keyboard and on a phone. The move is saved through the existing stage change, so the stage history is kept. If the server refuses, the card goes back and the reason is shown.
 - **Approved and Converted keep their own routes.** A lead is approved by an Executive's investment decision, and becomes a project through "Move to Inception". Dropping a card on either column explains this, and the lead stays where it was. The same applies while an investment decision is pending.
 
 **Verified, browser, 9 of 9:**
@@ -3963,6 +3963,73 @@ The user asked for a Kanban-style lead board for the CRM. The Opportunities page
 - the Move to menu moves a lead;
 - the list still shows the leads, and the board is remembered after a reload;
 - on a phone, the board scrolls inside its box and the page doesn't scroll sideways.
+
+### 2.52 The client's sign-off, and how a project ends (2026-11-07)
+
+Fixes critique findings C-01 and C-02, and adds the close-out the user asked for.
+
+**Project details (C-01).**
+- Only Setjeka's own staff (internal accounts and administrators) can change a project's details through `PATCH /projects/:id`. Consultants, contractors and the client get 403, and the "Edit details" button is hidden from them.
+- Each change is written to the audit log with its before and after values (`AuditLogEntry.metadata`).
+- A project can't be set to Completed or Archived from the edit form; close-out does that. A closed project can't be edited.
+
+**Stage moves (C-02).**
+- Setjeka requests the move. **The client signs it off:** approved, approved with comments, rejected, or rejected with comments, with their typed name and signature. The client's approval moves the project on (`PATCH …/stage-transitions/:id/decide`).
+- Setjeka can't approve its own request: internal users get 403 on `decide`.
+- **Advancing without the client** (`PATCH …/stage-transitions/:id/advance`, Setjeka only): the user's decision, because a client can be slow to sign.
+  - A reason is required. The project moves on, and the transition is marked `ADVANCED_BY_SETJEKA` with who, when and why.
+  - The client is told and is still asked to sign. Their later signature completes the record and doesn't move the stage again.
+- Leaving Inception still needs every Stage 1 document approved before the move can be requested.
+
+**How the client is told.**
+- An in-app alert, which can't be muted.
+- A **floating reminder** at the bottom left when they sign in (`components/signoff/SignoffReminder.tsx`). It lists everything waiting on them (from `/approvals`) and comes back at each sign-in until nothing is waiting.
+- An **email** through `MailService` (`backend/src/mail/`). It sends through any SMTP server set by `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` and `MAIL_FROM`. **With no SMTP server set, each email is written to the backend log instead**, and nothing fails.
+
+**Signed documents.**
+- Every sign-off certificate now shows the name the signer typed, and a **QR code** that opens the public page `/verify/<record id>`.
+- That page needs no sign-in. It shows the document, the project, who signed and in what role, the typed name, how they signed, when (SAST) and the file's SHA-256 fingerprint. A made-up reference gets "No sign-off with this reference".
+- Signed stage-gate and completion certificates are filed automatically under **Documents › Sign-offs and certificates › Stage gates / Completion**. They are visible to the client.
+
+**Close-out** (`backend/src/closeout/`, `components/project/CloseoutPanel.tsx` on the Overview).
+- **Completed:**
+  - At Stage 6, Setjeka sends the client the **certificate of completion**, with the date the works were completed, an optional note and a respond-by date.
+  - The client signs it like any other decision, and the signed certificate is filed under Completion.
+  - Setjeka then **marks the project completed**. Completing without the client's signature is possible but needs a reason, which is recorded.
+- **Abandoned:**
+  - Setjeka gives the reason, which is required.
+  - The project is **archived** (status Archived, closure Abandoned), with all its documents kept and viewable. Open stage requests and certificates are withdrawn.
+- **Who is told:** the client and Setjeka's team, in-app and by email, for both outcomes.
+
+**Not connected: SharePoint.** "Stored in the correct folders on their SharePoint" is met inside the platform's own document folders. Copying the folders to Setjeka's SharePoint needs a Microsoft 365 app registration from Setjeka (`confirm-with-setjeka.md` 3.8).
+
+**Verified (7 Nov, local, with throwaway accounts):**
+- API journey, 39 of 39 (`e2e/signoff-closeout-journey.mjs`): who can edit; the client's sign-off and its name requirement; advancing with a reason; the QR check; filing; the certificate of completion; completing; abandoning.
+- Browser, 12 of 12 (`e2e/signoff-closeout-ui.mjs`).
+
+### 2.53 The critique's low findings, fixed (2026-11-07)
+
+| # | Finding | Fix |
+|---|---|---|
+| L-01 | Refusals read "You do not have VIEW permission on INSPECTIONS" | `permissions/refusal.ts` words them plainly and names the real screen: "Your role on this project can't change the programme." The HSE, NCR, test, diary and plant screens are named for themselves, not "inspections". |
+| L-02 | The top bar said "Setjeka ERP" or "Project" | `pageTitles.ts` names every page the way the menu does; project screens use their menu name (Summary, Documents, Schedule…). |
+| L-03 | Portal pages without access spun forever | The loader stops when access is refused, and the message stays. |
+| L-04 | Blank page for a screen the role can't open | "This screen isn't available to your role on this project", with a link back to the Overview. |
+| L-05 | Administration silently sent non-admins to the Dashboard | It now says "Administration is for administrators". |
+| L-06 | "Delete note" only appeared on hover | Always shown (faint), with a larger tap area. |
+| L-07 | The upload accepted any file and didn't say why Upload was greyed out | The picker offers only the allowed types, the name defaults to the file's name, and a line says what's missing and what's allowed (`lib/documentUpload.ts`). |
+| L-08 | The chat button covered content | Smaller on a phone, and see-through until hovered. It can still be dragged aside. |
+| L-09 | Documents showed only the name, revision and status | Each row also shows discipline, who uploaded it and when. There's a text filter, and sorting by date, name, uploader or discipline. |
+| L-10 | Tasks showed no status or due date; titles of any length were accepted | Rows show status, due date (red when overdue) and checklist progress. Titles are capped at 200 characters on the server and in the form, with a counter and a hint. |
+| L-11 | Raw stage codes in messages; the PM line on every project | Notifications, reminders, note labels and the client's decisions use stage names. Outside parties see "managed by Setjeka Group". |
+| L-12 | The rough-estimates wording contradicted access | Reworded: Setjeka's team keeps the table, and outside parties are pointed to the Commercial screen. |
+| L-13 | A full-width "Move to…" select on every Kanban card | A small Move button with a menu, which works from the keyboard and closes with Escape. |
+| L-14 | The stage-gate request form was shown to people who can't use it | Outside parties see "Next stage: … Setjeka requests the move…, and the client signs it off." |
+
+**Verified (7 Nov, local):**
+- Browser and API, 24 of 24 (`e2e/low-findings-ui.mjs`).
+- The opportunities board, 9 of 9. Its drag test now drops at the top of the column, which has grown long with test leads.
+- The sign-off journeys still pass.
 
 ## 3. Frontend (Next.js)
 
@@ -4159,6 +4226,16 @@ tier, distributed as signed `.deb` packages from
 No API key; no network call at conversion time (everything runs locally,
 offline, once the binaries are installed).
 
+### 5.4 Email (any SMTP server)
+
+**Used for:** the client's sign-offs (stage moves and the certificate of completion), and telling the client and team when a project is completed or abandoned. See §2.52.
+**Auth:** SMTP credentials in `SMTP_HOST`, `SMTP_PORT` (587 by default; 465 uses TLS), `SMTP_USER`, `SMTP_PASS`, and the sender in `MAIL_FROM`.
+**Status (7 Nov 2026): not configured.** Each email is written to the backend log instead, and the in-app alerts and floating reminder still work. Setjeka needs to provide a mailbox or sending service (Microsoft 365, or a service such as Resend or Postmark) and its sending domain's DNS records (`confirm-with-setjeka.md` 3.6). Password reset and invitation links are also still only logged.
+
+### 5.5 SharePoint (not connected)
+
+Not built yet. Documents, including the signed certificates, live in the platform's own folders. A sync needs an Azure AD app registration from Setjeka (`confirm-with-setjeka.md` 3.8).
+
 ---
 
 ## 6. Local dev quick reference
@@ -4171,6 +4248,11 @@ offline, once the binaries are installed).
 
 Postgres: native install, database `setjeka_erp`, role `setjeka_erp` /
 `setjeka_erp_dev`. Demo login stored at `~/.setjeka-erp/.demo_credentials.json`.
+
+**Testing as the sample people.**
+- Their password (`<first.last>@demo.setjeka.test`) is the live server's. **It does not work on a local database** (401, checked 7 Nov 2026).
+- For local tests, create throwaway accounts: `POST /users/invite`, or `POST /clients/:id/portal-users` for a portal client. Then set the password with `POST /auth/reset-password`, using the token in the returned link.
+- The 7 Nov test scripts work this way.
 
 ## 7. Production deployment
 

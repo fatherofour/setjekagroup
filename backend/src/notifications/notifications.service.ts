@@ -6,6 +6,7 @@ import { recordLink } from './links.js';
 import { MailService } from '../mail/mail.service.js';
 import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
 import { ALERT_CATEGORIES, UNMUTABLE, categoryOf, typesIn, type AlertCategory } from './categories.js';
+import { STAGE_LABEL } from '../reports/report-data.js';
 
 // App Review, 17 Oct 2026: alert three days ahead.
 const DUE_SOON_WINDOW_DAYS = 3;
@@ -252,7 +253,7 @@ export class NotificationsService {
     const yourDecision = (due: Date) => (due < now ? `was due ${shortDate(due)}` : `is due by ${shortDate(due)}`);
     for (const d of dels) push('APPROVAL_DUE', 'STAGE_DELIVERABLE', d.id, d.projectId, `Your decision on ${delTitle(d.key, d.version)} ${yourDecision(d.responseDueAt!)}`, d.responseDueAt!, `/projects/${d.projectId}?tab=inception`);
     for (const v of vars) push('APPROVAL_DUE', 'VARIATION', v.id, v.projectId, `Your decision on variation ${v.number} ${yourDecision(v.responseDueAt!)}`, v.responseDueAt!, `/projects/${v.projectId}?tab=commercial`);
-    for (const t of gates) push('APPROVAL_DUE', 'STAGE_TRANSITION', t.id, t.projectId, `Your decision on moving to ${t.toStage} ${yourDecision(t.responseDueAt!)}`, t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
+    for (const t of gates) push('APPROVAL_DUE', 'STAGE_TRANSITION', t.id, t.projectId, `Your decision on moving to ${STAGE_LABEL[t.toStage]} ${yourDecision(t.responseDueAt!)}`, t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
     for (const r of docs) push('APPROVAL_DUE', 'DOCUMENT_REVISION', r.revisionId, r.projectId, `Your approval of ${r.revision.document.name} (Rev ${r.revision.revisionNumber}) ${yourDecision(r.responseDueAt!)}`, r.responseDueAt!, `/projects/${r.projectId}?tab=documents`);
     for (const v of certs) push('APPROVAL_DUE', 'VALUATION', v.id, v.projectId, `Your approval of payment certificate ${v.certificateNumber} ${yourDecision(v.responseDueAt!)}`, v.responseDueAt!, `/projects/${v.projectId}?tab=commercial&ctab=contracts`);
     for (const v of toCertify) push('APPROVAL_DUE', 'VALUATION', v.id, v.projectId, `Valuation ${v.number} ${v.certifyDueAt! < now ? 'was' : 'is'} to be certified by ${shortDate(v.certifyDueAt!)}`, v.certifyDueAt!, `/projects/${v.projectId}?tab=commercial&ctab=contracts`);
@@ -263,7 +264,7 @@ export class NotificationsService {
     const late = (what: string, due: Date) => `The client hasn't responded to ${what} (due ${shortDate(due)})`;
     for (const d of myDels) push('APPROVAL_OVERDUE', 'STAGE_DELIVERABLE', d.id, d.projectId, late(delTitle(d.key, d.version), d.responseDueAt!), d.responseDueAt!, `/projects/${d.projectId}?tab=inception`);
     for (const v of myVars) push('APPROVAL_OVERDUE', 'VARIATION', v.id, v.projectId, late(`variation ${v.number}`, v.responseDueAt!), v.responseDueAt!, `/projects/${v.projectId}?tab=commercial`);
-    for (const t of myGates) push('APPROVAL_OVERDUE', 'STAGE_TRANSITION', t.id, t.projectId, late(`the move to ${t.toStage}`, t.responseDueAt!), t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
+    for (const t of myGates) push('APPROVAL_OVERDUE', 'STAGE_TRANSITION', t.id, t.projectId, late(`the move to ${STAGE_LABEL[t.toStage]}`, t.responseDueAt!), t.responseDueAt!, `/projects/${t.projectId}?tab=overview`);
     for (const r of myDocs) push('APPROVAL_OVERDUE', 'DOCUMENT_REVISION', r.revisionId, r.projectId, late(`${r.revision.document.name} (Rev ${r.revision.revisionNumber})`, r.responseDueAt!), r.responseDueAt!, `/projects/${r.projectId}?tab=documents`);
     return out;
   }

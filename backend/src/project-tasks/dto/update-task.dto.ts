@@ -1,4 +1,4 @@
-import { IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { SchedulePriority, ProjectTaskStatus } from '../../generated/prisma/enums.js';
 import type { ChecklistItem } from './create-task.dto.js';
 
@@ -6,6 +6,7 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   title?: string;
 
   @IsOptional()

@@ -161,7 +161,9 @@ export function ChatWidget() {
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           aria-label="Open AI chat (drag to move)"
-          className={`fixed z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform ${
+          // Critique L-08: smaller on a phone, and see-through at rest so a
+          // row behind it can still be read; it can also be dragged aside.
+          className={`fixed z-50 flex h-11 w-11 items-center justify-center rounded-full opacity-80 shadow-lg transition hover:opacity-100 focus-visible:opacity-100 sm:h-14 sm:w-14 ${
             isDragging ? 'scale-105 cursor-grabbing' : 'cursor-grab hover:scale-105'
           }`}
           style={{ backgroundColor: GREEN, right: position.right, bottom: position.bottom, touchAction: 'none' }}
@@ -170,7 +172,7 @@ export function ChatWidget() {
           <img
             src="/setjeka/icon-mark.png"
             alt=""
-            className="h-7 w-7"
+            className="h-6 w-6 sm:h-7 sm:w-7"
             style={{ filter: 'brightness(0) invert(1)' }}
             draggable={false}
           />

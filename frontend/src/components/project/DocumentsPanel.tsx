@@ -10,6 +10,7 @@ import { DocumentDetailPanel } from './DocumentDetailPanel';
 import { TagChip } from '@/components/files/Tags';
 import { DocumentSearch } from '@/components/files/DocumentSearch';
 import type { DocTag } from '@/lib/files';
+import { DOCUMENT_ACCEPT, DOCUMENT_ACCEPT_HINT as ACCEPT_HINT } from '@/lib/documentUpload';
 
 interface DocumentFolder {
   id: string;
@@ -39,6 +40,9 @@ export interface ProjectDocument {
   revisions: RevisionLite[];
   tags?: { tag: DocTag }[];
 }
+
+
+type SortKey = 'name' | 'date' | 'author' | 'discipline';
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -131,7 +135,14 @@ function AddDocumentForm({ projectId, folders, onAdded }: { projectId: string; f
       <div className="mt-2 flex items-center gap-2">
         <input
           type="file"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          accept={DOCUMENT_ACCEPT}
+          aria-describedby="doc-upload-hint"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setFile(f);
+            // The name defaults to the file's name, without its extension.
+            if (f && !name.trim()) setName(f.name.replace(/\.[^.]+$/, ''));
+          }}
           className="text-xs text-slate-600 dark:text-slate-300"
         />
         <button
@@ -145,6 +156,9 @@ function AddDocumentForm({ projectId, folders, onAdded }: { projectId: string; f
           Cancel
         </button>
       </div>
+      <p id="doc-upload-hint" className="mt-1.5 text-xs text-slate-500">
+        {!file ? 'Choose a file' : !name.trim() ? 'Give the document a name' : 'Ready to upload'} · {ACCEPT_HINT}
+      </p>
     </form>
   );
 }
@@ -156,6 +170,8 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('date');
   const searchParams = useSearchParams();
   const [openDocId, setOpenDocId] = useState<string | null>(searchParams.get('doc'));
   const [searching, setSearching] = useState(false);
@@ -178,10 +194,23 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
     for (const d of documents ?? []) for (const t of d.tags ?? []) m.set(t.tag.id, t.tag);
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [documents]);
-  const filtered = useMemo(
-    () => (documents ?? []).filter((d) => (!typeFilter || d.documentType === typeFilter) && (!tagFilter || d.tags?.some((t) => t.tag.id === tagFilter))),
-    [documents, typeFilter, tagFilter],
-  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const uploaded = (d: ProjectDocument) => currentRevision(d)?.uploadedAt ?? d.createdAt;
+    const rows = (documents ?? []).filter(
+      (d) =>
+        (!typeFilter || d.documentType === typeFilter) &&
+        (!tagFilter || d.tags?.some((t) => t.tag.id === tagFilter)) &&
+        (!q || [d.name, d.discipline, d.documentType, d.folder?.name, d.createdBy.fullName].some((v) => v?.toLowerCase().includes(q))),
+    );
+    const by: Record<SortKey, (a: ProjectDocument, b: ProjectDocument) => number> = {
+      name: (a, b) => a.name.localeCompare(b.name),
+      date: (a, b) => uploaded(b).localeCompare(uploaded(a)),
+      author: (a, b) => a.createdBy.fullName.localeCompare(b.createdBy.fullName),
+      discipline: (a, b) => (a.discipline ?? '~').localeCompare(b.discipline ?? '~'),
+    };
+    return [...rows].sort(by[sortKey]);
+  }, [documents, typeFilter, tagFilter, query, sortKey]);
 
   function exportCsv() {
     const csv = toCsv(filtered);
@@ -257,10 +286,31 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
         </div>
       )}
 
+      {documents && documents.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter by name, discipline, folder or author" aria-label="Filter documents" className={`${inputClass} min-w-0 flex-1`} />
+          <label className="flex items-center gap-1.5 text-xs text-slate-500">
+            Sort by
+            <Select
+              aria-label="Sort documents"
+              value={sortKey}
+              onChange={(v) => setSortKey(v as SortKey)}
+              className={inputClass}
+              options={[
+                { value: 'date', label: 'Newest first' },
+                { value: 'name', label: 'Name' },
+                { value: 'author', label: 'Uploaded by' },
+                { value: 'discipline', label: 'Discipline' },
+              ]}
+            />
+          </label>
+        </div>
+      )}
+
       {documents === null ? (
         <p className="text-sm text-slate-400">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="mb-3 text-sm text-slate-400 dark:text-slate-500">No documents yet.</p>
+        <p className="mb-3 text-sm text-slate-400 dark:text-slate-500">{documents.length === 0 ? 'No documents yet.' : 'No documents match.'}</p>
       ) : (
         <ul className="mb-4 divide-y divide-slate-100 dark:divide-slate-800">
           {filtered.map((d) => {
@@ -269,7 +319,12 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
               <li key={d.id}>
                 <button onClick={() => setOpenDocId(d.id)} className="flex w-full items-center gap-2 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/40">
                   <FileText size={14} className="shrink-0 text-slate-400" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">{d.name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-slate-700 dark:text-slate-200">{d.name}</span>
+                    <span className="block truncate text-xs text-slate-400">
+                      {[d.discipline, d.createdBy.fullName, new Date(rev?.uploadedAt ?? d.createdAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
                   {d.tags?.slice(0, 3).map((t) => (
                     <span key={t.tag.id} className="hidden shrink-0 sm:inline">
                       <TagChip tag={t.tag} />

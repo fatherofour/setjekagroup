@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CommercialService } from '../commercial/commercial.service.js';
 import { INCEPTION_DELIVERABLES } from '../inception/procsa.js';
 import { milestoneStatus } from '../opportunities/milestones.js';
+import { STAGE_LABEL } from '../reports/report-data.js';
 
 const PERSON = { select: { fullName: true } } as const;
 
@@ -178,7 +179,7 @@ export class ClientProjectsService {
         .map((v) => ({ kind: 'Payment certificate', title: `${v.certificateNumber} ${v.contract.contractor.name}`, outcome: outcomeOf(v.decisionOutcome, v.status === 'REJECTED' ? 'Rejected' : 'Approved'), by: v.decidedBy!.fullName, at: v.decidedAt!, comment: v.decisionComment, recordId: recordFor(v.id) })),
       ...transitions
         .filter((t) => t.decidedAt && t.decidedBy)
-        .map((t) => ({ kind: 'Stage gate', title: `${t.fromStage} → ${t.toStage}`, outcome: outcomeOf(t.decisionOutcome, t.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: t.decidedBy!.fullName, at: t.decidedAt!, comment: t.decisionComment, recordId: recordFor(t.id) })),
+        .map((t) => ({ kind: 'Stage gate', title: `${STAGE_LABEL[t.fromStage]} → ${STAGE_LABEL[t.toStage]}`, outcome: outcomeOf(t.decisionOutcome, t.status === 'APPROVED' ? 'Approved' : 'Rejected'), by: t.decidedBy!.fullName, at: t.decidedAt!, comment: t.decisionComment, recordId: recordFor(t.id) })),
       ...docApprovals
         .filter((r) => r.status === 'DECIDED' && r.decidedAt && r.decidedBy)
         .map((r) => ({ kind: 'Document', title: `${r.revision.document.name} (Rev ${r.revision.revisionNumber})`, outcome: outcomeOf(r.outcome, 'Decided'), by: r.decidedBy!.fullName, at: r.decidedAt!, comment: r.comment, recordId: recordFor(r.revisionId) })),

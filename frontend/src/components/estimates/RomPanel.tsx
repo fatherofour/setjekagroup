@@ -143,7 +143,7 @@ export function RomPanel({ projectId, opportunityId, scopePicker }: { projectId?
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
           <Calculator size={15} /> Rough cost estimate
         </h2>
-        <p className="mt-0.5 max-w-3xl text-xs text-slate-500">An order-of-magnitude figure for early decisions, before there is a bill of quantities. Excludes land, professional fees and finance. Rates are Setjeka&apos;s indicative table, which the QS keeps up to date.</p>
+        <p className="mt-0.5 max-w-3xl text-xs text-slate-500">An order-of-magnitude figure for early decisions, before there is a bill of quantities. Excludes land, professional fees and finance. Rates are Setjeka&apos;s indicative table per province, kept up to date by Setjeka&apos;s team.</p>
         {scopePicker}
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           <div className={`${labelCls} lg:col-span-2`}>

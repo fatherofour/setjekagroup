@@ -10,6 +10,7 @@ import { CommentThread } from './CommentThread';
 import { RevisionCompareModal } from './RevisionCompareModal';
 import { ClientApprovalBox } from '@/components/signoff/ClientApprovalBox';
 import type { ProjectDocument } from './DocumentsPanel';
+import { DOCUMENT_ACCEPT } from '@/lib/documentUpload';
 import { TagEditor } from '@/components/files/Tags';
 
 interface ShareableMember {
@@ -312,7 +313,7 @@ export function DocumentDetailPanel({
               placeholder="Revision # (optional)"
               className={`${inputClass} w-32`}
             />
-            <input type="file" onChange={(e) => setNewRevisionFile(e.target.files?.[0] ?? null)} className="text-xs text-slate-600 dark:text-slate-300" />
+            <input type="file" accept={DOCUMENT_ACCEPT} onChange={(e) => setNewRevisionFile(e.target.files?.[0] ?? null)} className="text-xs text-slate-600 dark:text-slate-300" />
             <button
               onClick={uploadRevision}
               disabled={saving || !newRevisionFile}

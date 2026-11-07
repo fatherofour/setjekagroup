@@ -198,8 +198,15 @@ export function CommentThread({
                   <span className="flex items-center gap-2 text-slate-400">
                     {formatWhen(c.createdAt)}
                     {c.authorId === user?.id && !opportunityId && (
-                      <button onClick={() => remove(c.id)} className="opacity-0 transition hover:text-red-600 focus:opacity-100 group-hover/comment:opacity-100" aria-label="Delete note">
-                        <Trash2 size={12} />
+                      // Critique L-06: always visible (faint), so it can be found on a touch screen.
+                      <button
+                        type="button"
+                        onClick={() => remove(c.id)}
+                        title="Delete note"
+                        className="-m-2 p-2 opacity-60 transition hover:text-red-600 hover:opacity-100 focus:opacity-100 group-hover/comment:opacity-100"
+                        aria-label="Delete note"
+                      >
+                        <Trash2 size={13} />
                       </button>
                     )}
                   </span>

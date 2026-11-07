@@ -187,6 +187,12 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
             )
           )}
         </div>
+      ) : target && !setjeka ? (
+        // Critique L-14: only Setjeka requests a stage move, so others see
+        // where the project goes next rather than a form they can't use.
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Next stage: <span className="font-medium text-slate-700 dark:text-slate-200">{projectStageInfo(target).label}</span>. Setjeka requests the move when the stage&apos;s work is done, and the client signs it off.
+        </p>
       ) : target ? (
         <div className="space-y-2">
           <input className={`${inputClass} w-full`} placeholder={`Why advance to ${projectStageInfo(target).label}? (optional)`} value={comment} onChange={(e) => setComment(e.target.value)} />
