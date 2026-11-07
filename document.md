@@ -4250,7 +4250,7 @@ Postgres: native install, database `setjeka_erp`, role `setjeka_erp` /
 `setjeka_erp_dev`. Demo login stored at `~/.setjeka-erp/.demo_credentials.json`.
 
 **Testing as the sample people.**
-- Their password (`<first.last>@demo.setjeka.test`) is the live server's. **It does not work on a local database** (401, checked 7 Nov 2026).
+- The password saved for them in the test kit **no longer works, locally or on the server** (401, checked 7 Nov 2026). The accounts exist and are active on both. Resetting it is Setjeka's call, because these are the logins they may be using to try the platform.
 - For local tests, create throwaway accounts: `POST /users/invite`, or `POST /clients/:id/portal-users` for a portal client. Then set the password with `POST /auth/reset-password`, using the token in the returned link.
 - The 7 Nov test scripts work this way.
 
