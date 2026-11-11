@@ -26,8 +26,8 @@ const ROLE_OPTIONS = [
 ];
 
 const ACCOUNT_TYPE_OPTIONS = [
-  { value: 'INTERNAL', label: 'Internal (Setjeka staff — sees every project)' },
-  { value: 'EXTERNAL', label: 'External (needs a per-project grant)' },
+  { value: 'INTERNAL', label: 'Internal (Setjeka staff: sees every project, creates projects)' },
+  { value: 'EXTERNAL', label: 'External (sees only the projects they are added to)' },
 ];
 
 export function UsersPanel() {

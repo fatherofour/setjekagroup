@@ -3,6 +3,7 @@ import { ProjectsService } from './projects.service.js';
 import { CreateProjectDto } from './dto/create-project.dto.js';
 import { UpdateProjectDto } from './dto/update-project.dto.js';
 import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
+import { InternalOnlyGuard } from '../auth/guards/internal-only.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { JwtPayload } from '../auth/jwt-payload.js';
 
@@ -19,6 +20,7 @@ export class ProjectsController {
   // Registered before ':id' so this static path isn't swallowed by the
   // dynamic route.
   @Get('next-code')
+  @UseGuards(InternalOnlyGuard)
   async previewNextCode(): Promise<{ projectCode: string }> {
     return { projectCode: await this.projectsService.previewNextProjectCode() };
   }
@@ -28,7 +30,10 @@ export class ProjectsController {
     return this.projectsService.findOneForOwner(id, user.sub);
   }
 
+  // Only Setjeka creates projects (critique H-04): directly, or from an
+  // opportunity at Move to Inception. Outside parties are invited onto them.
   @Post()
+  @UseGuards(InternalOnlyGuard)
   create(@Body() dto: CreateProjectDto, @CurrentUser() user: JwtPayload) {
     return this.projectsService.create(user.sub, dto);
   }

@@ -6,6 +6,7 @@ import { recordLink } from '../notifications/links.js';
 import type { ActionStatusDto, CreateCommentDto, CreateOpportunityNoteDto } from './dto/create-comment.dto.js';
 import type { CommentEntityType } from '../generated/prisma/enums.js';
 import { describeRecords } from './note-context.js';
+import { RecordAccessService } from './record-access.service.js';
 
 const PERSON = { select: { id: true, fullName: true } } as const;
 const NOTE_INCLUDE = { author: PERSON, recipient: PERSON, completedBy: PERSON } as const;
@@ -25,6 +26,7 @@ export class CommentsService {
     private readonly prisma: PrismaService,
     private readonly projectsService: ProjectsService,
     private readonly notifications: NotificationsService,
+    private readonly access: RecordAccessService,
   ) {}
 
   private async assertEntityInProject(entityType: CommentEntityType, entityId: string, projectId: string) {
@@ -131,28 +133,10 @@ export class CommentsService {
     });
   }
 
-  /** Threads on some records are private to the people party to them: an
-   * instruction or letter to its author and recipients (and Setjeka), an
-   * inspection to everyone but the client, and a photo to the client only
-   * once Setjeka has shared it. */
-  private async canSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
-    if (!['COMMUNICATION', 'INSPECTION', 'SITE_PHOTO', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'TIME_CLAIM', 'HANDOVER_ITEM', 'HSE_INCIDENT', 'WORK_PERMIT', 'SITE_DIARY', 'PLANT_ITEM'].includes(entityType)) return true;
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
-    if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
-    const client = Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
-    let visible = true;
-    if (entityType === 'COMMUNICATION') {
-      visible = Boolean(await this.prisma.projectCommunication.findFirst({ where: { id: entityId, projectId, OR: [{ authorId: userId }, { recipients: { some: { userId } } }] } }));
-    } else if (['INSPECTION', 'NCR', 'DAYWORK', 'TEST_RESULT', 'HOLD_POINT', 'INTERFACE', 'HIDDEN_WORK', 'HSE_INCIDENT', 'WORK_PERMIT', 'SITE_DIARY', 'PLANT_ITEM'].includes(entityType)) {
-      visible = !client;
-    } else if (entityType === 'HANDOVER_ITEM' && client) {
-      visible = Boolean(await this.prisma.handoverItem.findFirst({ where: { id: entityId, projectId, status: 'HANDED_OVER' } }));
-    } else if (entityType === 'TIME_CLAIM' && client) {
-      visible = Boolean(await this.prisma.timeClaim.findFirst({ where: { id: entityId, projectId, status: { in: ['GRANTED', 'PARTLY_GRANTED', 'REJECTED'] } } }));
-    } else if (entityType === 'SITE_PHOTO' && client) {
-      visible = Boolean(await this.prisma.sitePhoto.findFirst({ where: { id: entityId, projectId, clientVisible: true } }));
-    }
-    return visible;
+  /** A note thread is visible exactly when its record is (critique H-01,
+   * H-02): RecordAccessService asks the record's own screen and service. */
+  private canSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
+    return this.access.canSee(projectId, userId, entityType, entityId);
   }
 
   private async assertCanSee(projectId: string, userId: string, entityType: CommentEntityType, entityId: string) {
@@ -306,16 +290,24 @@ export class CommentsService {
         orderBy: [{ actionStatus: 'asc' }, { dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       }),
       this.prisma.comment.findMany({ where: { recipientId: userId, isAction: false, acknowledgedAt: null }, include: NOTE_INCLUDE, orderBy: { createdAt: 'desc' }, take: 50 }),
-      this.prisma.projectMember.findMany({ where: { userId }, select: { id: true } }),
+      this.prisma.projectMember.findMany({ where: { userId }, select: { id: true, projectId: true } }),
     ]);
+    // An outside party sees notes only from the projects they're on now, and
+    // only on records they can open (critique H-03): leaving a project, or
+    // losing sight of a record, takes its notes off their list.
+    const caller = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+    const internal = caller?.role === 'ADMIN' || caller?.accountType === 'INTERNAL';
+    const onProjects = new Set(memberships.map((m) => m.projectId));
+    const scope = async <T extends { projectId: string | null; entityType: CommentEntityType; entityId: string }>(rows: T[]) =>
+      internal ? rows : this.access.filter(userId, rows.filter((n) => n.projectId && onProjects.has(n.projectId)));
     const tasks = await this.prisma.projectTask.findMany({
       where: { assignedToId: { in: memberships.map((m) => m.id) }, status: { not: 'DONE' } },
       select: { id: true, title: true, status: true, priority: true, dueDate: true, projectId: true, project: { select: { name: true } }, meeting: { select: { id: true, title: true } } },
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }],
     });
     return {
-      actions: await this.decorate(actions),
-      notes: await this.decorate(notes),
+      actions: await this.decorate(await scope(actions)),
+      notes: await this.decorate(await scope(notes)),
       tasks: tasks.map((t) => ({ ...t, link: recordLink('TASK', t) })),
     };
   }
@@ -341,7 +333,8 @@ export class CommentsService {
         orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }],
       }),
     ]);
-    const notes = await this.decorate(noteActions);
+    // Only the actions on records this person can open (critique H-03).
+    const notes = await this.decorate(await this.access.filter(ownerId, noteActions));
     const rows = [
       ...notes.map((n) => ({
         kind: 'NOTE' as const,

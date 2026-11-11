@@ -29,7 +29,26 @@ interface CreatedProject {
   id: string;
 }
 
+/** Only Setjeka creates projects (critique H-04); outside parties are added
+ * to a project when their firm is appointed. */
 export default function NewProjectPage() {
+  const { user } = useAuth();
+  if (!user) return null;
+  if (user.accountType !== 'INTERNAL' && user.role !== 'ADMIN') {
+    return (
+      <div className="mx-auto max-w-lg rounded-xl border border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
+        <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">Projects are created by Setjeka</h1>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Setjeka adds you to a project when your firm is appointed to it.</p>
+        <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+          Back to your projects
+        </Link>
+      </div>
+    );
+  }
+  return <NewProjectForm />;
+}
+
+function NewProjectForm() {
   const router = useRouter();
   const { authedFetch } = useAuth();
 

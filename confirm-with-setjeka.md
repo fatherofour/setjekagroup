@@ -134,6 +134,9 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 - **The certificate of completion is sent only at Stage 6 (Close-out).** Completing a project without the client's signature is possible with a recorded reason.
 - **An abandoned project is archived, not deleted:** its documents stay viewable, and it can't be edited. There is no "un-abandon" in the app.
 - **The sample people's saved password no longer signs in** (on the server too, 7 Nov). Their accounts are active. Should we reset it, or has Setjeka changed it on purpose?
+- **Outside site and HSE managers don't see Commercial (11 Nov).** Only Setjeka's staff, the QS and the client see budgets, variations, invoices and valuations. An outside firm's site or HSE manager is refused, even though the matrix lists their role with the Setjeka team. Please confirm (`permission-matrix.md` question 1).
+- **Only Setjeka creates projects (11 Nov).** Outside parties are added to a project; they can't start one.
+- **Notes are as private as their record (11 Nov).** A contractor sees notes only on their own firm's site records; consultants see no notes on commercial records; outside parties see notes only from projects they're on.
 - **The QR check page is public.** Anyone with the signed document can open its record: the project name, who signed and when. It shows nothing else, and the reference can't be guessed.
 
 ## 6. Owed by us (the supplier)
@@ -144,4 +147,5 @@ These were built on the user's go-ahead; the scope is still to confirm (1.1).
 | 6.2 | The permission matrix (who can see and do what, by role) for Setjeka to review (item 8.5) | **Written 4 Nov:** `permission-matrix.md`, with six questions for Setjeka (section 4) |
 | 6.3 | Document numbering proposal (item 8.8) | Owed, ties to 1.4 |
 | 6.4 | Deploy the current platform to the live server | **Done 4 Nov** (`https://173.212.202.149`, self-signed certificate until a domain is set up, 3.5) |
+| 6.6 | Deploy the 11 Nov fixes (notes privacy, project creation, Commercial access, Portfolio currencies) to the live server | **Pushed to GitHub, not deployed yet:** waiting for the server password to be supplied again (it is never stored) |
 | 6.5 | Deploy the 7 Nov changes (client sign-off, close-out, critique fixes) to the live server | **Done 7 Nov:** database backed up first (`/root/backups/setjeka-erp-db-20261107-1402.sql.gz`), then deployed and checked live: outside parties can't edit a project, Setjeka can't approve its own stage request, advancing needs a reason, and refusals are in plain words |

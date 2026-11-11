@@ -4031,6 +4031,44 @@ Fixes critique findings C-01 and C-02, and adds the close-out the user asked for
 - The opportunities board, 9 of 9. Its drag test now drops at the top of the column, which has grown long with test leads.
 - The sign-off journeys still pass.
 
+### 2.54 Who sees notes, who creates projects, and the Portfolio's currencies (2026-11-11)
+
+Fixes critique findings H-01 to H-05 and M-01.
+
+**Notes follow their record (H-01, H-02).**
+- A note thread is visible exactly when its record is: `backend/src/comments/record-access.service.ts`. It checks two things:
+  - the VIEW right on the record's own screen (Commercial for variations, contracts, valuations, cost plans and dayworks; Inspections for the site registers; and so on);
+  - the record's own service wherever it has a finer rule. A contractor sees only their own firm's site records; the client sees only the photos Setjeka shared, and no site records.
+- Reading, posting and addressing a note all use this check. A note on a commercial record can't be addressed to the architect ("That person can't see this record").
+- Setjeka's own staff see every thread, as before.
+
+**Only your projects' notes (H-03).**
+- The Overview's recent activity shows only the notes the person may see.
+- So does the action register.
+- **My Day** shows an outside party only notes and actions from the projects they're on now, on records they can still open. Removing someone from a project takes its notes off their list.
+
+**Only Setjeka creates projects (H-04).**
+- `POST /projects` and `GET /projects/next-code` are refused to outside parties (403).
+- They no longer see "New Project", "Create your first project" or the Getting started card. `/projects/new` tells them "Projects are created by Setjeka".
+- **Internal or external was already chosen when a user is created** (Administration › Users, invite form). The labels now say what each means:
+  - Internal: Setjeka staff, sees every project and creates projects.
+  - External: sees only the projects they're added to.
+- What each role can do on a project is set in Administration › Permissions (the role matrix). Changing an existing user between internal and external is possible through the API (`PATCH /users/:id`) but not yet on screen.
+
+**Commercial (M-01).**
+- An outside party sees Commercial (budget, variations, invoices, the QS's contracts and valuations) only as the client or the QS on that project. This is enforced in `PermissionsService.can`.
+- An outside site or HSE manager, who holds a "Setjeka team" role on the matrix, is now refused by the API, as the menu already hid it from them.
+- Setjeka's own staff are unchanged. See `permission-matrix.md` question 1.
+
+**The Portfolio's currencies (H-05).**
+- Each project's cost line is shown in its own currency: Lekki reads "₦16.4bn of ₦16.4bn, contingency ₦0", not "R 16410.0m".
+- The headline totals stay converted to rand.
+
+**Verified (11 Nov, local, with throwaway accounts):**
+- API, 43 of 43 (`e2e/notes-access-journey.mjs`): firm A and firm B on one incident; the architect, the QS, the client and an outside site manager on a variation; recent activity, the action register and My Day; project creation by every outside role; Commercial by role.
+- Browser, 8 of 8 (`e2e/h04-h05-ui.mjs`).
+- The 7 Nov sign-off journey still passes, 39 of 39.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

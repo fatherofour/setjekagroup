@@ -28,6 +28,16 @@ export class PermissionsService {
     const member = await this.prisma.projectMember.findFirst({ where: { projectId, userId } });
     if (!member) return accountType === 'INTERNAL';
 
+    // Budgets, variations, valuations and fees: Setjeka's own staff, the QS
+    // and the client (critique M-01). An outside firm's site or HSE manager
+    // holds a "Setjeka team" role on the matrix, but isn't Setjeka, so the API
+    // refuses them exactly as the menu hides Commercial from them
+    // (frontend lib/project-access.ts, seesCommercial).
+    if (module === 'COMMERCIAL' && accountType !== 'INTERNAL') {
+      const roles = (await this.prisma.projectMember.findMany({ where: { projectId, userId }, select: { role: true } })).map((m) => m.role);
+      if (!roles.some((r) => r === 'CLIENT' || r === 'QUANTITY_SURVEYOR')) return false;
+    }
+
     const recordOr: Prisma.MemberPermissionOverrideWhereInput[] = [{ recordId: null }];
     if (recordId) recordOr.push({ recordId });
 

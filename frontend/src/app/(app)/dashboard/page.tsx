@@ -99,6 +99,7 @@ const COMING_SOON_WIDGETS = [
 
 export default function DashboardPage() {
   const { user, authedFetch } = useAuth();
+  const staff = user?.accountType === 'INTERNAL' || user?.role === 'ADMIN';
   const router = useRouter();
   // Clients work in their own portal (mobile first), not the staff dashboard.
   useEffect(() => {
@@ -149,13 +150,16 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold" style={{ fontFamily: "'Merriweather', serif", color: '#0E3D2C' }}>
           {greeting()}, {user?.fullName.split(' ')[0]}.
         </h1>
-        <Link
-          href="/projects"
-          className="flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-800"
-        >
-          <Plus size={15} />
-          New Project
-        </Link>
+        {/* Only Setjeka creates projects (critique H-04). */}
+        {staff && (
+          <Link
+            href="/projects/new"
+            className="flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-800"
+          >
+            <Plus size={15} />
+            New Project
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -164,7 +168,7 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {!loading && <GettingStarted hasProjects={(projects?.length ?? 0) > 0} hasSitedProjects={mappable.length > 0} />}
+      {!loading && staff && <GettingStarted hasProjects={(projects?.length ?? 0) > 0} hasSitedProjects={mappable.length > 0} />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiTile
@@ -232,9 +236,13 @@ export default function DashboardPage() {
         ) : recent.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-8 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">No projects yet.</p>
-            <Link href="/projects" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
-              Create your first project
-            </Link>
+            {staff ? (
+              <Link href="/projects/new" className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                Create your first project
+              </Link>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">Setjeka adds you to a project when your firm is appointed to it.</p>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">

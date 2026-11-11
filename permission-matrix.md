@@ -94,6 +94,7 @@ Someone holds a role per project, so the same person can be the architect on one
 ## 4. Please decide
 
 1. **Can a site manager or HSE manager be someone else's employee?** Today the site manager, QA/QC, HSE, planner and procurement roles are part of the Setjeka team, with full rights. If a contractor's site manager is invited in the site manager role, they would see and change everything. We suggest adding them as **Contractor** instead, or adding a separate contractor's site manager role.
+   - **Since 11 Nov:** outside parties never see Commercial unless they are the client or the QS on that project, whatever the matrix says (critique M-01). Their other rights still follow the matrix.
 2. **Tenders and quotes:** should the client see every tender, every contractor's quote and every purchase order? Today they can, from tender issue onwards. Alternatives: the client sees only the tender report, or sees quotes only after award.
 3. **The risk register:** should contractors and the client read all project risks? Today they can, though they can't change them. Risks often name a contractor's performance or the client's own decisions.
 4. **Removing commercial records:** the QS can remove commercial records, such as a draft bill or valuation. Should removal be Setjeka's only?

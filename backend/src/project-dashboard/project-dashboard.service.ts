@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
+import { RecordAccessService } from '../comments/record-access.service.js';
 import { computeComplianceStatus } from '../compliance-records/compliance-status.util.js';
 import { HIGH_SEVERITY_THRESHOLD } from '../project-risks/project-risks.service.js';
 
@@ -9,6 +10,7 @@ export class ProjectDashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectsService: ProjectsService,
+    private readonly access: RecordAccessService,
   ) {}
 
   async getDashboard(projectId: string, ownerId: string) {
@@ -34,7 +36,8 @@ export class ProjectDashboardService {
         where: { projectId },
         include: { author: { select: { id: true, fullName: true } } },
         orderBy: { createdAt: 'desc' },
-        take: 5,
+        // Enough to find five this person may see (filtered below).
+        take: 60,
       }),
     ]);
 
@@ -90,7 +93,8 @@ export class ProjectDashboardService {
       compliance: complianceCounts,
       contractorsCount: seenContractorIds.size,
       ratings: { average: averageRating, count: allRatings.length },
-      recentComments: comments,
+      // Only notes on records this person can open (critique H-03).
+      recentComments: (await this.access.filter(ownerId, comments)).slice(0, 5),
     };
   }
 }

@@ -53,8 +53,20 @@ const WORD: Record<Health, string> = { GREEN: 'On track', AMBER: 'Watch', RED: '
 const RANK: Record<Health, number> = { RED: 0, AMBER: 1, GREEN: 2, NONE: 3 };
 const card = 'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900';
 const money = (n: number, currency = 'ZAR') => new Intl.NumberFormat('en-ZA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
-// Two decimals under R 10m, so R 1.12m and R 1.05m don't both read R 1.1m.
-const short = (n: number) => (Math.abs(n) >= 1_000_000 ? `R ${(n / 1_000_000).toFixed(Math.abs(n) < 10_000_000 ? 2 : 1)}m` : Math.abs(n) >= 1000 ? `R ${Math.round(n / 1000)}k` : `R ${Math.round(n)}`);
+// Each project's amounts in its own currency (critique H-05: Lekki's naira
+// read as rand); the totals are converted to rand. Two decimals under 10m,
+// so R 1.12m and R 1.05m don't both read R 1.1m; billions as "bn".
+const SIGN: Record<string, string> = { ZAR: 'R ', NGN: '₦', USD: '$', GBP: '£', EUR: '€' };
+const short = (n: number, currency = 'ZAR') => {
+  const sign = SIGN[currency] ?? `${currency} `;
+  const a = Math.abs(n);
+  const body =
+    a >= 1_000_000_000 ? `${(n / 1_000_000_000).toFixed(a < 10_000_000_000 ? 2 : 1)}bn`
+    : a >= 1_000_000 ? `${(n / 1_000_000).toFixed(a < 10_000_000 ? 2 : 1)}m`
+    : a >= 1000 ? `${Math.round(n / 1000)}k`
+    : `${Math.round(n)}`;
+  return `${n < 0 ? '-' : ''}${sign}${body.replace(/^-/, '')}`;
+};
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
 function Dot({ h, label }: { h: Health; label: string }) {
@@ -81,7 +93,8 @@ function Stat({ label, value, note, tone }: { label: string; value: string; note
 function costLine(r: Row) {
   if (r.cost.revisedBudget <= 0) return 'No budget set';
   // Against what was set aside: the budget and its contingency.
-  return `${short(r.cost.projectedFinalCost)} of ${short(r.cost.budget + r.cost.contingency)}${r.cost.overBudget > 0 ? `, ${short(r.cost.overBudget)} over` : ''}`;
+  const c = r.currency;
+  return `${short(r.cost.projectedFinalCost, c)} of ${short(r.cost.budget + r.cost.contingency, c)}${r.cost.overBudget > 0 ? `, ${short(r.cost.overBudget, c)} over` : ''}`;
 }
 function timeLine(r: Row) {
   const p = r.programme;
@@ -259,7 +272,7 @@ export default function PortfolioPage() {
                       </span>
                       {r.cost.revisedBudget > 0 && (
                         <span className="block pl-4 text-slate-400">
-                          contingency {money(r.cost.contingencyRemaining, r.currency)}
+                          contingency {short(r.cost.contingencyRemaining, r.currency)}
                           {!r.cost.budgetLocked && ' · budget not locked'}
                         </span>
                       )}
