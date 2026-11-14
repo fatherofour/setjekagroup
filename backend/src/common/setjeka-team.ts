@@ -14,3 +14,13 @@ export async function onSetjekaTeam(prisma: PrismaService, projectId: string, us
   if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
   return Boolean(await prisma.projectMember.findFirst({ where: { projectId, userId, role: { in: SETJEKA_TEAM_ROLES } } }));
 }
+
+/** Whether the caller may see the project's own money: its value with the
+ * client and its contingency, and every firm's contract sum. Setjeka's staff,
+ * the client and the QS (critique M-01, the user's rule of 14 Nov 2026). A
+ * contractor or consultant sees only their own firm's deals (FirmDealsService). */
+export async function seesProjectMoney(prisma: PrismaService, projectId: string, userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+  if (user?.role === 'ADMIN' || user?.accountType === 'INTERNAL') return true;
+  return Boolean(await prisma.projectMember.findFirst({ where: { projectId, userId, role: { in: ['CLIENT', 'QUANTITY_SURVEYOR'] } } }));
+}

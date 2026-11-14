@@ -3,6 +3,7 @@ import { AuditLogService } from '../audit-log/audit-log.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { rulesFor } from '../common/countries.js';
+import { seesProjectMoney } from '../common/setjeka-team.js';
 import type { CreateProjectDto } from './dto/create-project.dto.js';
 import type { UpdateProjectDto } from './dto/update-project.dto.js';
 
@@ -44,6 +45,14 @@ export class ProjectsService {
     const membership = await this.prisma.projectMember.findFirst({ where: { projectId: id, userId: callerId } });
     if (!membership) throw new ForbiddenException('You do not have access to this project');
     return project;
+  }
+
+  /** A project as this person may see it: without its value and contingency
+   * unless they're Setjeka, the client or the QS. A contractor sees their own
+   * contract value instead (FirmDealsService). */
+  async forViewer<T extends { id: string; value: number | null; contingencyPct: number | null }>(project: T, userId: string): Promise<T> {
+    if (await seesProjectMoney(this.prisma, project.id, userId)) return project;
+    return { ...project, value: null, contingencyPct: null };
   }
 
   /** Next `PRJ-{year}-{seq}` code for the current calendar year, scanning

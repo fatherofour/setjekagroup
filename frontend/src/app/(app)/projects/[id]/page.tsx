@@ -538,11 +538,18 @@ export default function ProjectDetailPage() {
             <Field label="Location" value={project.location ?? ''} />
             <Field label="Country" value={COUNTRY_LABEL[project.country ?? 'ZA']} />
             <Field label="Currency" value={CURRENCY_LABEL[project.currency]} />
-            <Field
-              label="Project value"
-              value={project.value != null ? `${CURRENCY_LABEL[project.currency].split(' ')[0]} ${project.value.toLocaleString()}` : ''}
-            />
-            <Field label="Contingency" value={project.contingencyPct != null ? `${project.contingencyPct}%` : ''} />
+            {/* The project's value with the client: Setjeka, the client and the
+                QS only. A contractor sees their own contract value on the
+                Overview instead (14 Nov 2026). */}
+            {seesCommercial && (
+              <>
+                <Field
+                  label="Project value"
+                  value={project.value != null ? `${CURRENCY_LABEL[project.currency].split(' ')[0]} ${project.value.toLocaleString()}` : ''}
+                />
+                <Field label="Contingency" value={project.contingencyPct != null ? `${project.contingencyPct}%` : ''} />
+              </>
+            )}
             <Field label="Classification standard" value={CLASSIFICATION_STANDARD_LABEL[project.classificationStandard]} />
             <Field label="Project type" value={project.projectType ? PROJECT_TYPE_LABEL[project.projectType] : ''} />
             <Field label="Contract form" value={project.contractForm ? CONTRACT_FORM_LABEL[project.contractForm] : ''} />

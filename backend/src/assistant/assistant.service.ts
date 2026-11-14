@@ -1,7 +1,7 @@
 import { BadGatewayException, ForbiddenException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
-import { onSetjekaTeam } from '../common/setjeka-team.js';
+import { onSetjekaTeam, seesProjectMoney } from '../common/setjeka-team.js';
 import { rulesFor, siteToday } from '../common/countries.js';
 import { contractTerms } from '../common/contract-forms.js';
 import type { AskDto } from './dto/assistant.dto.js';
@@ -53,7 +53,7 @@ export class AssistantService {
     if (!c.baseUrl) throw new ServiceUnavailableException('The assistant is not connected to a model yet');
     if (dto.projectId) await this.projects.findOneForOwner(dto.projectId, userId);
     if (!(await this.isTeam(userId, dto.projectId))) throw new ForbiddenException('The assistant is for the Setjeka team for now');
-    const context = dto.projectId ? await this.projectContext(dto.projectId) : await this.portfolioContext();
+    const context = dto.projectId ? await this.projectContext(dto.projectId, await seesProjectMoney(this.prisma, dto.projectId, userId)) : await this.portfolioContext();
     const qwen3 = c.model.startsWith('qwen3');
     const messages = [
       { role: 'system', content: `${SYSTEM}\n\n${context}` },
@@ -97,7 +97,10 @@ export class AssistantService {
 
   /** A short summary of the project's records for the model: small enough
    * for a model on a CPU to read quickly. */
-  private async projectContext(projectId: string) {
+  /** `money`: the project's value and the contract sums, for Setjeka's staff
+   * and the QS only; an outside firm's site or HSE manager on the team gets
+   * the rest (critique M-01). */
+  private async projectContext(projectId: string, money: boolean) {
     const p = await this.prisma.project.findUniqueOrThrow({
       where: { id: projectId },
       select: { name: true, projectCode: true, stage: true, country: true, contractForm: true, currency: true, value: true, startDate: true, endDate: true, location: true, client: true },
@@ -132,7 +135,7 @@ export class AssistantService {
 
     return [
       `Project: ${p.name}${p.projectCode ? ` (${p.projectCode})` : ''}. Today on site is ${fmt(today)}.`,
-      `Stage ${p.stage}; ${rulesFor(p.country).name}${p.location ? `, ${p.location}` : ''}; client ${p.client ?? 'not recorded'}; ${p.currency}${p.value ? ` ${p.value.toLocaleString('en-ZA')}` : ''}; planned ${fmt(p.startDate)} to ${fmt(p.endDate)}.`,
+      `Stage ${p.stage}; ${rulesFor(p.country).name}${p.location ? `, ${p.location}` : ''}; client ${p.client ?? 'not recorded'}; ${p.currency}${money && p.value ? ` ${p.value.toLocaleString('en-ZA')}` : ''}; planned ${fmt(p.startDate)} to ${fmt(p.endDate)}.`,
       `Form of contract: ${p.contractForm ?? 'not set'}. Its usual periods (calendar days): delay notice within ${terms.noticeWithinDays} of the event, detailed claim within ${terms.claimWithinDays} of the notice, assessment within ${terms.assessWithinDays}; certify within ${terms.certifyWithinDays}, pay within ${terms.payWithinDays}; defects period ${terms.defectsPeriodDays}. The PM is titled ${terms.pmTitle}.`,
       acts.length
         ? `Programme: ${leaves.length} activities, ${work ? Math.round((done / work) * 100) : 0}% complete by duration, forecast finish ${fmt(finish)}.`
@@ -157,7 +160,7 @@ export class AssistantService {
         ),
       ),
       `Open defects: ${defects}. Handover documents: ${handover.length ? handover.map((h) => `${h._count} ${h.status.toLowerCase().replace('_', ' ')}`).join(', ') : 'none set up'}.`,
-      line('Contracts', contracts.map((k) => `${k.title} with ${k.contractor.name}, ${k.contractForm ?? p.contractForm ?? 'form not set'}, ${p.currency} ${k.contractSum.toLocaleString('en-ZA')}, completion ${fmt(k.completionDate)}`)),
+      line('Contracts', contracts.map((k) => `${k.title} with ${k.contractor.name}, ${k.contractForm ?? p.contractForm ?? 'form not set'}${money ? `, ${p.currency} ${k.contractSum.toLocaleString('en-ZA')}` : ''}, completion ${fmt(k.completionDate)}`)),
     ].join('\n');
   }
 }

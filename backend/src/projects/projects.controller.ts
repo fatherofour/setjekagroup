@@ -13,8 +13,9 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
-  findAll(@CurrentUser() user: JwtPayload) {
-    return this.projectsService.findAllForOwner(user.sub);
+  async findAll(@CurrentUser() user: JwtPayload) {
+    const rows = await this.projectsService.findAllForOwner(user.sub);
+    return Promise.all(rows.map((p) => this.projectsService.forViewer(p, user.sub)));
   }
 
   // Registered before ':id' so this static path isn't swallowed by the
@@ -26,8 +27,8 @@ export class ProjectsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.projectsService.findOneForOwner(id, user.sub);
+  async findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.projectsService.forViewer(await this.projectsService.findOneForOwner(id, user.sub), user.sub);
   }
 
   // Only Setjeka creates projects (critique H-04): directly, or from an

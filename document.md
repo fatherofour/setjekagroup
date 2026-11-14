@@ -4069,6 +4069,28 @@ Fixes critique findings H-01 to H-05 and M-01.
 - Browser, 8 of 8 (`e2e/h04-h05-ui.mjs`).
 - The 7 Nov sign-off journey still passes, 39 of 39.
 
+### 2.55 A firm sees its own contract value, not the project's (2026-11-14)
+
+The user's rule, refining M-01: a contractor or consultant sees the value of their own deal with Setjeka on each project, and their overall total across projects, but never the project's value with the client or another firm's contract. Example: Julius Berger, the civil contractor on Lekki, sees its civil contract on Lekki, not Lekki's value with the client.
+
+**What a firm sees** (`backend/src/firm-deals/`):
+- `GET /projects/:id/my-deals`: on that project, their firm's own contracts (`ProjectContract`: the contract sum plus approved variations, certified to date, paid), consultant appointments (`contractValue`, payments recorded) and purchase orders (value, paid invoices).
+- `GET /me/deals`: the same across every project, with a total per project and an overall total.
+- Shown as "Your work with Setjeka on this project" at the top of the project Overview, and "Your work with Setjeka" on the dashboard (no project chosen).
+- **Their firm:** the firm they were added to the project for (`ProjectMember.contractorId`), or their own firm for a portal account (`User.contractorId`). Setjeka's staff speak for no firm and see neither panel.
+- **What's counted:** let contracts; appointments that are appointed, active or completed; approved or issued orders. A proposed appointment or a draft order is listed as "not yet agreed" and kept out of the total. Terminated appointments and cancelled orders are left out. An order placed under an appointment counts as part of that appointment, not twice.
+- **Currencies:** rand and naira are totalled separately, never added together.
+
+**The project's own value is now hidden from outside firms:**
+- `GET /projects` and `GET /projects/:id` return `value` and `contingencyPct` as empty unless the person is Setjeka, the client or the QS on that project (`seesProjectMoney` in `common/setjeka-team.ts`). The project card and the details page show nothing in their place.
+- **The assistant:** an outside firm's site or HSE manager on the Setjeka team can use it, but it no longer gives them the project's value or other firms' contract sums.
+- Commercial itself is unchanged from 2.54: still Setjeka, the client and the QS only.
+
+**Verified (14 Nov, local, throwaway accounts):**
+- API, 22 of 22 (`e2e/firm-deals-journey.mjs`): two contractor firms and an architect firm on a naira project, one firm also on a rand project. Each sees only its own deals, the overall totals are per currency, and the project's value is hidden from the contractor, the architect and an outside site manager but shown to the client, the QS and Setjeka.
+- Browser, 8 of 8 (`e2e/firm-deals-ui.mjs`).
+- Still passing: 43 of 43 (`e2e/notes-access-journey.mjs`), 8 of 8 (`e2e/h04-h05-ui.mjs`) and the sign-off journey, 39 of 39.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

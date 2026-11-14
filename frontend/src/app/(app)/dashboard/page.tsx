@@ -33,6 +33,7 @@ import { SitesPanel } from '@/components/dashboard/SitesPanel';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AnalyticsSection } from '@/components/dashboard/AnalyticsSection';
 import { ComingSoonWidget } from '@/components/dashboard/ComingSoonWidget';
+import { OverallDealsCard } from '@/components/firm-deals/FirmDeals';
 
 interface Project {
   id: string;
@@ -167,6 +168,9 @@ export default function DashboardPage() {
           {error}
         </p>
       )}
+
+      {/* A contractor's or consultant's own total with Setjeka, across projects. */}
+      {!staff && <OverallDealsCard />}
 
       {!loading && staff && <GettingStarted hasProjects={(projects?.length ?? 0) > 0} hasSitedProjects={mappable.length > 0} />}
 

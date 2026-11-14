@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, MessageSquare, HelpCircle, FileCheck2, Handshake, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
+import { ProjectDealsPanel } from '@/components/firm-deals/FirmDeals';
 
 interface Dashboard {
   schedule: {
@@ -67,6 +68,7 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
+      <ProjectDealsPanel projectId={projectId} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         <Link href={`/projects/${projectId}/schedule`}>
           <StatCard

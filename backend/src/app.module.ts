@@ -49,6 +49,7 @@ import { TimeClaimsModule } from './time-claims/time-claims.module.js';
 import { DefectsModule } from './defects/defects.module.js';
 import { HandoverModule } from './handover/handover.module.js';
 import { PortfolioModule } from './portfolio/portfolio.module.js';
+import { FirmDealsModule } from './firm-deals/firm-deals.module.js';
 import { HseModule } from './hse/hse.module.js';
 import { PermitsModule } from './permits/permits.module.js';
 import { SiteDiaryModule } from './site-diary/site-diary.module.js';
@@ -126,6 +127,7 @@ import { CommercialModule } from './commercial/commercial.module.js';
     DefectsModule,
     HandoverModule,
     PortfolioModule,
+    FirmDealsModule,
     HseModule,
     PermitsModule,
     SiteDiaryModule,
