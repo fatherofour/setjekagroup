@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { describeWeather } from '@/components/dashboard/WeatherWidget';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface WeatherDay {
   id: string;
@@ -77,11 +78,11 @@ export function SiteWeatherHistory({ projectId }: { projectId: string }) {
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-xs text-slate-500">
             From
-            <input type="date" className={`${inputClass} mt-0.5 block`} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput className={`${inputClass} mt-0.5 block`} value={from} onChange={(e) => setFrom(e.target.value)} />
           </label>
           <label className="text-xs text-slate-500">
             To
-            <input type="date" className={`${inputClass} mt-0.5 block`} value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateInput className={`${inputClass} mt-0.5 block`} value={to} onChange={(e) => setTo(e.target.value)} />
           </label>
           {(from || to) && (
             <button

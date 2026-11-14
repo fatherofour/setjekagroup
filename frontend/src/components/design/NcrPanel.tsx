@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, inputCls, labelCls, memberName, primaryBtn, secondaryBtn, selectCls, textareaCls, type Member } from '@/lib/architect';
 import { formatDateTime } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'OPEN' | 'RESPONDED' | 'ACTION_AGREED' | 'READY_FOR_VERIFICATION' | 'CLOSED' | 'VOID';
 type Kind = 'MATERIAL' | 'WORKMANSHIP' | 'DESIGN' | 'DOCUMENTATION' | 'OTHER';
@@ -107,7 +108,7 @@ function NcrDetail({ projectId, n, onBack, onChanged }: { projectId: string; n: 
       <p className="mt-3 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200">{n.description}</p>
       {(n.costImpact != null || n.timeImpactDays != null) && (
         <p className="mt-2 text-xs text-slate-500">
-          {n.costImpact != null && `Cost impact ${n.costImpact.toLocaleString('en-ZA')}`}
+          {n.costImpact != null && `Cost impact ${n.costImpact.toLocaleString('en-GB')}`}
           {n.costImpact != null && n.timeImpactDays != null && ' · '}
           {n.timeImpactDays != null && `Time impact ${n.timeImpactDays} days`}
         </p>
@@ -369,7 +370,7 @@ export function NcrPanel({ projectId }: { projectId: string }) {
             </div>
             <label className={labelCls}>
               Answer by
-              <input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5 w-full`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
             </label>
             <div className="flex gap-2 sm:col-span-4">
               <button type="submit" disabled={!form.title.trim() || !form.description.trim() || !form.assigneeId} className={primaryBtn}>

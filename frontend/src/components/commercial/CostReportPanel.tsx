@@ -102,7 +102,30 @@ export function CostReportPanel({ projectId, version }: { projectId: string; ver
         </div>
       </div>
 
-      <div className={`${cardClass} overflow-x-auto p-0`}>
+      {/* On a phone, one card per cost code (critique V3-L-07): the wide
+          table showed almost nothing at 390 px. */}
+      <ul className="space-y-2 sm:hidden" aria-label="Cost report by cost code">
+        {report.lines.map((l) => (
+          <li key={l.costCodeId ?? l.name} className={`${cardClass} p-3`}>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+              {l.code && <span className="mr-1.5 text-xs text-slate-400">{l.code}</span>}
+              {l.name}
+            </p>
+            <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+              <dt className="text-slate-500">Revised budget</dt>
+              <dd className="text-right tabular-nums">{formatRate(l.revisedBudget)}</dd>
+              <dt className="text-slate-500">Committed</dt>
+              <dd className="text-right tabular-nums">{formatRate(l.committed)}</dd>
+              <dt className="text-slate-500">Paid</dt>
+              <dd className="text-right tabular-nums">{formatRate(l.paid)}</dd>
+              <dt className="text-slate-500">Forecast final</dt>
+              <dd className={`text-right tabular-nums ${l.variance < 0 ? 'text-red-600' : ''}`}>{formatRate(l.forecastFinal)}</dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
+
+      <div className={`${cardClass} hidden overflow-x-auto p-0 sm:block`}>
         <table className="w-full min-w-[960px] text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400 dark:border-slate-700">

@@ -11,6 +11,7 @@ import type { RequestTransitionDto } from './dto/request-transition.dto.js';
 import type { DecideTransitionDto } from './dto/decide-transition.dto.js';
 import { SignoffService, type RequestMeta } from '../signoff/signoff.service.js';
 import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue } from '../signoff/dto/decision.dto.js';
+import { formatDay } from '../common/dates.js';
 
 // Mirrors frontend/src/lib/projectStages.ts's PROJECT_STAGES order - the
 // fixed sequence a stage-gate request can only move one step forward
@@ -143,6 +144,10 @@ export class StageTransitionsService {
       throw new ForbiddenException(`The client signs off stage moves. To move on without waiting for the client, use "Advance without the client's sign-off" and give a reason.`);
     }
     if (transition.requestedById === decidedById) throw new ForbiddenException('You cannot approve your own request');
+    // Only the client signs a stage move off (critique V3-C-01): an outside
+    // site or HSE manager holds a "Setjeka team" role but isn't the client.
+    const isClient = await this.prisma.projectMember.findFirst({ where: { projectId, userId: decidedById, role: 'CLIENT' } });
+    if (!isClient) throw new ForbiddenException('The client signs off stage moves');
     const awaitingClient = transition.status === 'PENDING' || (transition.status === 'ADVANCED_BY_SETJEKA' && !transition.decidedAt);
     if (!awaitingClient) throw new BadRequestException('This transition has already been decided');
     const { outcome, comment } = resolveOutcome(dto);
@@ -157,9 +162,9 @@ export class StageTransitionsService {
     const facts: [string, string][] = [
       ['From stage', STAGE_LABEL[transition.fromStage]],
       ['To stage', STAGE_LABEL[transition.toStage]],
-      ['Requested', `${transition.createdAt.toLocaleDateString('en-ZA')}${transition.requestComment ? ` - ${transition.requestComment}` : ''}`],
+      ['Requested', `${formatDay(transition.createdAt)}${transition.requestComment ? ` - ${transition.requestComment}` : ''}`],
     ];
-    if (alreadyMoved) facts.push(['Advanced by Setjeka', `${transition.overriddenAt?.toLocaleDateString('en-ZA') ?? ''} by ${transition.overriddenByName ?? 'Setjeka'}: ${transition.overrideReason ?? ''}`]);
+    if (alreadyMoved) facts.push(['Advanced by Setjeka', `${formatDay(transition.overriddenAt) ?? ''} by ${transition.overriddenByName ?? 'Setjeka'}: ${transition.overrideReason ?? ''}`]);
     const record = await this.signoff.sign({
       projectId,
       subject: 'STAGE_TRANSITION',
@@ -201,6 +206,9 @@ export class StageTransitionsService {
       : approve
         ? `The project is now at ${STAGE_LABEL[transition.toStage]}.`
         : 'The project stays at its current stage.';
+    // The "please sign off" notices for this move are answered now
+    // (critique V3-L-10): clear them so nobody is asked again.
+    await this.prisma.notification.updateMany({ where: { entityType: 'STAGE_TRANSITION', entityId: id, type: { not: 'STAGE_TRANSITION_DECIDED' }, isRead: false }, data: { isRead: true } });
     await this.notifications.notifyByEmailToo(
       people,
       {

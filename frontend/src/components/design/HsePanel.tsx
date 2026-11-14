@@ -8,6 +8,7 @@ import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Kind = 'INJURY' | 'PROPERTY_DAMAGE' | 'ENVIRONMENTAL' | 'FIRE' | 'DANGEROUS_OCCURRENCE' | 'SECURITY' | 'OTHER';
 type Severity = 'NO_INJURY' | 'FIRST_AID' | 'MEDICAL_TREATMENT' | 'LOST_TIME' | 'FATALITY';
@@ -294,7 +295,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
             <>
               <label className={labelCls}>
                 Reported to {i.rules.short} on
-                <input type="date" className={`${inputCls} mt-0.5`} value={inv.reportedToDelAt} onChange={(e) => setInv({ ...inv, reportedToDelAt: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5`} value={inv.reportedToDelAt} onChange={(e) => setInv({ ...inv, reportedToDelAt: e.target.value })} />
               </label>
               <label className={`${labelCls} sm:col-span-2`}>
                 Reference
@@ -351,7 +352,7 @@ function Detail({ projectId, id, people, onBack, onChanged }: { projectId: strin
             </div>
             <label className={labelCls}>
               Due
-              <input type="date" className={`${inputCls} mt-0.5`} value={action.dueDate} onChange={(e) => setAction({ ...action, dueDate: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={action.dueDate} onChange={(e) => setAction({ ...action, dueDate: e.target.value })} />
             </label>
             <div className="sm:col-span-4">
               <button type="submit" disabled={busy || !action.description.trim()} className={secondaryBtn}>
@@ -544,7 +545,7 @@ export function HsePanel({ projectId }: { projectId: string }) {
             <p className={`mt-1 text-lg font-semibold ${stats.lostTimeInjuries ? 'text-red-700 dark:text-red-400' : 'text-slate-900 dark:text-slate-100'}`}>{stats.lostTimeInjuries}</p>
             <p className="text-xs text-slate-500">
               {stats.lostDays} days lost in all
-              {stats.ltifr != null && ` · LTIFR ${stats.ltifr} per 200 000 hours (${stats.manHours.toLocaleString('en-ZA')} hours from the site diary)`}
+              {stats.ltifr != null && ` · LTIFR ${stats.ltifr} per 200 000 hours (${stats.manHours.toLocaleString('en-GB')} hours from the site diary)`}
             </p>
           </div>
           <div className={`${cardCls} p-3`}>

@@ -18,6 +18,7 @@ import {
   type ScheduleActivityStatus,
   type DependencyType,
 } from './scheduleTypes';
+import { DateInput } from '@/components/ui/DateInput';
 
 export type ActivityPanelMode = { kind: 'edit'; activityId: string } | { kind: 'create'; parentId: string | null };
 
@@ -236,7 +237,7 @@ export function ActivityDetailPanel({
             </div>
             <div>
               <label htmlFor="activitydetailpanel-start-date" className={labelClass}>Start date</label>
-              <input id="activitydetailpanel-start-date" type="date" className={inputClass} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+              <DateInput id="activitydetailpanel-start-date" className={inputClass} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
             </div>
           </div>
           {form.activityType === 'TASK' && (

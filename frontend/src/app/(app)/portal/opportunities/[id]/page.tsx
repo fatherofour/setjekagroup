@@ -208,7 +208,7 @@ export default function ClientPortalOpportunityPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{s.name}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {[s.address, s.erfNumber && `Erf ${s.erfNumber}`, s.sizeSqm != null && `${s.sizeSqm.toLocaleString()} m²`, s.zoning].filter(Boolean).join(' · ')}
+                    {[s.address, s.erfNumber && `Erf ${s.erfNumber}`, s.sizeSqm != null && `${s.sizeSqm.toLocaleString('en-GB')} m²`, s.zoning].filter(Boolean).join(' · ')}
                   </p>
                   {s.status === 'SELECTED' && s.acquisitionStatus !== 'NOT_STARTED' && (
                     <p className="text-xs text-slate-500">Land: {acquisitionLabel(s.acquisitionStatus)}</p>

@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import type { IncidentActionDto, InvestigateIncidentDto, ReportIncidentDto } from './dto/hse.dto.js';
 import { diaryManHours } from '../site-diary/site-diary.service.js';
 import { rulesFor } from '../common/countries.js';
+import { formatDay } from '../common/dates.js';
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -222,7 +223,7 @@ export class HseService {
     if (dto.ownerId && (!owner || owner.role === 'CLIENT')) throw new BadRequestException('The owner is someone on the site team');
     await this.prisma.incidentAction.create({ data: { incidentId: id, description: dto.description.trim(), ownerId: dto.ownerId ?? null, dueDate: dto.dueDate ? new Date(dto.dueDate) : null } });
     await this.prisma.hseIncident.update({ where: { id }, data: { status: 'ACTIONS_OPEN', history: this.history(w, i, 'ACTIONS_OPEN', `Corrective action: ${dto.description.trim()}`) } });
-    await this.tell(projectId, [owner?.userId], userId, 'INCIDENT_ACTION_ASSIGNED', id, `${i.number} "${i.title}": a corrective action for you - ${dto.description.trim()}${dto.dueDate ? ` by ${new Date(dto.dueDate).toLocaleDateString('en-ZA')}` : ''}`);
+    await this.tell(projectId, [owner?.userId], userId, 'INCIDENT_ACTION_ASSIGNED', id, `${i.number} "${i.title}": a corrective action for you - ${dto.description.trim()}${dto.dueDate ? ` by ${formatDay(new Date(dto.dueDate))}` : ''}`);
     return this.findOne(projectId, userId, id);
   }
 

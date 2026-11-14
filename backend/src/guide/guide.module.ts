@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Injectable, Module, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Injectable, Module, Put, Query, UseGuards } from '@nestjs/common';
 import { IsArray, IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 import type { ProjectMemberRole } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -11,7 +11,7 @@ import type { JwtPayload } from '../auth/jwt-payload.js';
  * project role they hold; an outside party gets the guide for the role they
  * hold on their projects.
  */
-export type GuidePersona = 'setjeka' | 'architect' | 'engineer' | 'qs' | 'contractor' | 'client' | 'consultant' | 'vendor';
+export type GuidePersona = 'setjeka' | 'architect' | 'engineer' | 'qs' | 'contractor' | 'client' | 'consultant' | 'site' | 'vendor';
 
 const ENGINEERS: ProjectMemberRole[] = ['STRUCTURAL_ENGINEER', 'CIVIL_ENGINEER', 'ELECTRICAL_ENGINEER', 'MECHANICAL_ENGINEER'];
 
@@ -22,6 +22,9 @@ export function personaFor(user: { role: string; accountType: string; clientId: 
   if (roles.some((r) => ENGINEERS.includes(r))) return 'engineer';
   if (roles.includes('QUANTITY_SURVEYOR')) return 'qs';
   if (roles.includes('CONTRACTOR')) return 'contractor';
+  // An outside site or HSE manager: the site team, not "the consultant"
+  // (critique V3-L-02).
+  if (roles.some((r) => r === 'SITE_MANAGER' || r === 'HSE_MANAGER' || r === 'QA_QC_MANAGER')) return 'site';
   if (roles.length === 0 && user.contractorId) return 'vendor';
   return 'consultant';
 }
@@ -44,12 +47,16 @@ class GuideUpdateDto {
 export class GuideService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(userId: string) {
+  /** `projectId`: the project in front of them. Their role there decides
+   * the persona when they're on it, so the client on one project and a
+   * contractor on another gets the right guide on each (critique V3-L-02). */
+  async get(userId: string, projectId?: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { role: true, accountType: true, clientId: true, contractorId: true, guideState: true, projectMemberOf: { select: { role: true } } },
+      select: { role: true, accountType: true, clientId: true, contractorId: true, guideState: true, projectMemberOf: { select: { role: true, projectId: true } } },
     });
-    const roles = [...new Set(user.projectMemberOf.map((m) => m.role))];
+    const here = projectId ? user.projectMemberOf.filter((m) => m.projectId === projectId) : [];
+    const roles = [...new Set((here.length ? here : user.projectMemberOf).map((m) => m.role))];
     const state = (user.guideState ?? {}) as GuideState;
     return { persona: personaFor(user, roles), roles, seen: state.seen ?? [], off: state.off ?? false };
   }
@@ -70,8 +77,8 @@ export class GuideController {
   constructor(private readonly guide: GuideService) {}
 
   @Get()
-  get(@CurrentUser() user: JwtPayload) {
-    return this.guide.get(user.sub);
+  get(@CurrentUser() user: JwtPayload, @Query('projectId') projectId?: string) {
+    return this.guide.get(user.sub, projectId || undefined);
   }
 
   @Put()

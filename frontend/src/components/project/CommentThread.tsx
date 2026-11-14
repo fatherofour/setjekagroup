@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { formatDate, formatDateTime } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type CommentEntityType =
   | 'TASK'
@@ -259,7 +260,7 @@ export function CommentThread({
           )}
           {recipientId && isAction && (
             <>
-              <input aria-label="Due date" type="date" className={fieldClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <DateInput aria-label="Due date" className={fieldClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               <div className="w-28">
                 <Select
                   aria-label="Priority"

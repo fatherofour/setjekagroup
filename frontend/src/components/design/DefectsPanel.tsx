@@ -8,6 +8,7 @@ import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls, todayIso } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type List = 'PRACTICAL_COMPLETION' | 'DEFECTS_LIABILITY' | 'LATENT';
 type Status = 'REPORTED' | 'OPEN' | 'RECTIFIED' | 'VERIFIED' | 'DECLINED';
@@ -111,7 +112,7 @@ function CertifyButton({ label, onCertify }: { label: string; onCertify: (date: 
     >
       <label className={labelCls}>
         Date
-        <input type="date" aria-label={`${label}: date`} className={`${inputCls} mt-0.5 w-40`} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateInput aria-label={`${label}: date`} className={`${inputCls} mt-0.5 w-40`} value={date} onChange={(e) => setDate(e.target.value)} />
       </label>
       <button type="submit" disabled={busy || !date} className={primaryBtn}>
         Certify
@@ -476,7 +477,7 @@ export function DefectsPanel({ projectId }: { projectId: string }) {
             {canList && (
               <label className={labelCls}>
                 Put right by
-                <input type="date" className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
               </label>
             )}
             <div className="flex gap-2 sm:col-span-4">

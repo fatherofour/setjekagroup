@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { money } from '@/lib/qs';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls, todayIso } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'NOTIFIED' | 'SUBMITTED' | 'GRANTED' | 'PARTLY_GRANTED' | 'REJECTED' | 'WITHDRAWN';
 type Cause = 'VARIATION' | 'LATE_INFORMATION' | 'CLIENT_DELAY' | 'SITE_ACCESS' | 'WEATHER' | 'STATUTORY' | 'FORCE_MAJEURE' | 'OTHER';
@@ -237,7 +238,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
           </label>
           <label className={labelCls}>
             The delay ended on
-            <input type="date" className={`${inputCls} mt-0.5`} value={claim.eventEndedAt} onChange={(e) => setClaim({ ...claim, eventEndedAt: e.target.value })} />
+            <DateInput className={`${inputCls} mt-0.5`} value={claim.eventEndedAt} onChange={(e) => setClaim({ ...claim, eventEndedAt: e.target.value })} />
           </label>
           <label className={`${labelCls} sm:col-span-3`}>
             Particulars: what happened, its effect on the programme and how the days and costs are worked out
@@ -484,7 +485,7 @@ export function EotPanel({ projectId }: { projectId: string }) {
             </div>
             <label className={labelCls}>
               It began on
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.eventStartedAt} onChange={(e) => setForm({ ...form, eventStartedAt: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.eventStartedAt} onChange={(e) => setForm({ ...form, eventStartedAt: e.target.value })} />
             </label>
             <div className={`${labelCls} sm:col-span-2`}>
               Programme activity held up

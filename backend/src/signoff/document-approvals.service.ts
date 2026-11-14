@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { uploadRootDir } from '../project-documents/upload.util.js';
 import { SignoffService, type RequestMeta } from './signoff.service.js';
 import { OUTCOME_LABEL, isApproval, resolveOutcome, responseDue, type DecisionDto } from './dto/decision.dto.js';
+import { formatDay } from '../common/dates.js';
 
 const INCLUDE = {
   revision: {
@@ -119,7 +120,7 @@ export class DocumentApprovalsService {
         ['Document', doc.name],
         ['Revision', r.revision.revisionNumber],
         ['File', r.revision.originalFilename],
-        ['Sent for approval', `${r.createdAt.toLocaleDateString('en-ZA')}${r.message ? ` - ${r.message}` : ''}`],
+        ['Sent for approval', `${formatDay(r.createdAt)}${r.message ? ` - ${r.message}` : ''}`],
       ],
       source: { path: join(uploadRootDir(), r.revision.storedFilename), mimeType: r.revision.mimeType },
     });

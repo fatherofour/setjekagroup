@@ -4,7 +4,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { projectStageInfo, type ProjectStage } from '@/lib/projectStages';
-import { CURRENCY_SYMBOL, type Currency } from '@/lib/projectMeta';
+import { type Currency } from '@/lib/projectMeta';
+import { formatMoney } from '@/lib/money';
 
 const ProjectCardMapInner = dynamic(() => import('./ProjectCardMapInner').then((m) => m.ProjectCardMapInner), {
   ssr: false,
@@ -99,9 +100,8 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
           <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50">
             <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Total value</p>
             <p className="text-base font-bold tabular-nums text-slate-900 dark:text-slate-100">
-              {CURRENCY_SYMBOL[project.currency]}
-              {project.value.toLocaleString()}
-              <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">{project.currency}</span>
+              {formatMoney(project.value, project.currency)}
+              <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">{project.currency}</span>
             </p>
           </div>
         )}

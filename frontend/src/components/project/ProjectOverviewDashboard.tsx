@@ -20,11 +20,13 @@ interface Dashboard {
   risks: { byStatus: Record<string, number>; highSeverityCount: number };
   rfis: { byStatus: Record<string, number>; overdueCount: number };
   submittals: { byStatus: Record<string, number> };
-  rfqs: { byStatus: Record<string, number> };
-  purchaseOrders: { byStatus: Record<string, number> };
-  compliance: { VALID: number; EXPIRING_SOON: number; EXPIRED: number; PENDING_VERIFICATION: number };
-  contractorsCount: number;
-  ratings: { average: number | null; count: number };
+  // Setjeka's own figures (buying, firms' compliance, ratings): absent for
+  // outside parties (critique V3-L-09).
+  rfqs?: { byStatus: Record<string, number> };
+  purchaseOrders?: { byStatus: Record<string, number> };
+  compliance?: { VALID: number; EXPIRING_SOON: number; EXPIRED: number; PENDING_VERIFICATION: number };
+  contractorsCount?: number;
+  ratings?: { average: number | null; count: number };
   recentComments: { id: string; body: string; author: { fullName: string }; createdAt: string }[];
 }
 
@@ -60,12 +62,12 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
 
   const scheduleProgress = data.schedule.totalActivities > 0 ? Math.round((data.schedule.completedActivities / data.schedule.totalActivities) * 100) : null;
   const openIssuesCount = (data.issues.OPEN ?? 0) + (data.issues.IN_PROGRESS ?? 0) + (data.issues.ESCALATED ?? 0);
-  const complianceIssues = data.compliance.EXPIRED + data.compliance.EXPIRING_SOON + data.compliance.PENDING_VERIFICATION;
+  const complianceIssues = data.compliance ? data.compliance.EXPIRED + data.compliance.EXPIRING_SOON + data.compliance.PENDING_VERIFICATION : 0;
   const openRfisCount = (data.rfis.byStatus.OPEN ?? 0) + (data.rfis.byStatus.ANSWERED ?? 0);
   const pendingSubmittalsCount =
     (data.submittals.byStatus.SUBMITTED ?? 0) + (data.submittals.byStatus.UNDER_REVIEW ?? 0) + (data.submittals.byStatus.REVISE_AND_RESUBMIT ?? 0);
-  const openRfqsCount = (data.rfqs.byStatus.DRAFT ?? 0) + (data.rfqs.byStatus.ISSUED ?? 0);
-  const pendingPosCount = (data.purchaseOrders.byStatus.DRAFT ?? 0) + (data.purchaseOrders.byStatus.APPROVED ?? 0);
+  const openRfqsCount = (data.rfqs?.byStatus.DRAFT ?? 0) + (data.rfqs?.byStatus.ISSUED ?? 0);
+  const pendingPosCount = (data.purchaseOrders?.byStatus.DRAFT ?? 0) + (data.purchaseOrders?.byStatus.APPROVED ?? 0);
 
   return (
     <div className="space-y-4">
@@ -92,13 +94,15 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
           value={String(data.risks.highSeverityCount)}
           tone={data.risks.highSeverityCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
         />
-        <StatCard
-          icon={ShieldCheck}
-          label="Compliance flags"
-          value={String(complianceIssues)}
-          tone={complianceIssues > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
-        />
-        <StatCard icon={Star} label="Avg. rating" value={data.ratings.average != null ? data.ratings.average.toFixed(1) : '—'} />
+        {data.compliance && (
+          <StatCard
+            icon={ShieldCheck}
+            label="Compliance flags"
+            value={String(complianceIssues)}
+            tone={complianceIssues > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
+          />
+        )}
+        {data.ratings && <StatCard icon={Star} label="Avg. rating" value={data.ratings.average != null ? data.ratings.average.toFixed(1) : '—'} />}
         <StatCard
           icon={HelpCircle}
           label="Open RFIs"
@@ -106,8 +110,8 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
           tone={data.rfis.overdueCount > 0 ? 'text-red-600 dark:text-red-400' : undefined}
         />
         <StatCard icon={FileCheck2} label="Pending submittals" value={String(pendingSubmittalsCount)} />
-        <StatCard icon={Handshake} label="Open RFQs" value={String(openRfqsCount)} />
-        <StatCard icon={Truck} label="Pending POs" value={String(pendingPosCount)} />
+        {data.rfqs && <StatCard icon={Handshake} label="Open RFQs" value={String(openRfqsCount)} />}
+        {data.purchaseOrders && <StatCard icon={Truck} label="Pending POs" value={String(pendingPosCount)} />}
       </div>
 
       {data.schedule.criticalPathCount > 0 && (

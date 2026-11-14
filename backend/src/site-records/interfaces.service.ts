@@ -6,6 +6,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { historyEntry, siteParty, type SiteParty } from '../common/site-party.js';
 import type { InterfaceDto } from './dto/site-records.dto.js';
+import { formatDay } from '../common/dates.js';
 
 const MEMBER = { select: { id: true, role: true, userId: true, externalName: true, contractorId: true, user: { select: { fullName: true } } } } as const;
 const INCLUDE = {
@@ -124,7 +125,7 @@ export class InterfacesService {
       },
       include: INCLUDE,
     });
-    await this.tell(projectId, [r.owner], userId, 'INTERFACE_RAISED', r.id, `${r.number} "${r.title}": you provide this to ${name(r.accepter)}. Propose the agreed detail${r.needBy ? ` by ${r.needBy.toLocaleDateString('en-ZA')}` : ''}.`);
+    await this.tell(projectId, [r.owner], userId, 'INTERFACE_RAISED', r.id, `${r.number} "${r.title}": you provide this to ${name(r.accepter)}. Propose the agreed detail${r.needBy ? ` by ${formatDay(r.needBy)}` : ''}.`);
     await this.tell(projectId, [r.accepter], userId, 'INTERFACE_RAISED', r.id, `${r.number} "${r.title}": an interface you depend on, from ${name(r.owner)}`);
     return this.shape(w, r);
   }

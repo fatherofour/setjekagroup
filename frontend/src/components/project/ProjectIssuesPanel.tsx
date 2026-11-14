@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -8,6 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import Link from 'next/link';
 import { CommentThread } from './CommentThread';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'ESCALATED';
@@ -159,7 +161,7 @@ function IssueDetailPanel({
             onChange={(e) => setForm({ ...form, impact: e.target.value })}
           />
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+            <DateInput className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
             <Select
               className={inputClass}
               value={form.ownerId}
@@ -199,6 +201,9 @@ function IssueDetailPanel({
 }
 
 export function ProjectIssuesPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('ISSUES', 'CREATE');
   const { authedFetch } = useAuth();
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [members, setMembers] = useState<ProjectMemberLite[]>([]);
@@ -263,6 +268,7 @@ export function ProjectIssuesPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
+      {canAdd && (
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <input aria-label="New issue title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New issue title" className={`${inputClass} flex-1`} />
         <Select
@@ -280,6 +286,7 @@ export function ProjectIssuesPanel({ projectId }: { projectId: string }) {
           Add
         </button>
       </form>
+      )}
 
       {openIssue && (
         <IssueDetailPanel

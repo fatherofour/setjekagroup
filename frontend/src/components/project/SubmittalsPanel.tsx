@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -8,6 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from './CommentThread';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type SubmittalStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'APPROVED_WITH_COMMENTS' | 'REVISE_AND_RESUBMIT' | 'REJECTED';
 
@@ -172,7 +174,7 @@ function SubmittalDetailPanel({
               options={[{ value: '', label: '— Reviewer —' }, ...members.map((m) => ({ value: m.id, label: memberLabel(m) }))]}
             />
           </div>
-          <input type="date" className={`${inputClass} w-full`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+          <DateInput className={`${inputClass} w-full`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
           <button onClick={save} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -224,6 +226,9 @@ function SubmittalDetailPanel({
 }
 
 export function SubmittalsPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('SUBMITTALS', 'CREATE');
   const { authedFetch } = useAuth();
   const [submittals, setSubmittals] = useState<Submittal[] | null>(null);
   const [members, setMembers] = useState<MemberLite[]>([]);
@@ -289,6 +294,7 @@ export function SubmittalsPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
+      {canAdd && (
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <input aria-label="New submittal title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New submittal title" className={`${inputClass} flex-1`} />
         <Select
@@ -306,6 +312,7 @@ export function SubmittalsPanel({ projectId }: { projectId: string }) {
           Add
         </button>
       </form>
+      )}
 
       {openSubmittal && (
         <SubmittalDetailPanel projectId={projectId} submittal={openSubmittal} members={members} onClose={() => setOpenId(null)} onChanged={load} />

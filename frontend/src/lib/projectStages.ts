@@ -17,7 +17,7 @@ export const PROJECT_STAGES: { value: ProjectStage; number: number; label: strin
   { value: 'DESIGN', number: 3, label: 'Design' },
   { value: 'DOCUMENTATION_PROCUREMENT', number: 4, label: 'Documentation & Procurement' },
   { value: 'CONSTRUCTION', number: 5, label: 'Construction' },
-  { value: 'CLOSEOUT', number: 6, label: 'Closeout' },
+  { value: 'CLOSEOUT', number: 6, label: 'Close-out' },
 ];
 
 export function projectStageInfo(stage: ProjectStage) {

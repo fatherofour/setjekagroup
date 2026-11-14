@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { FileDown, ListPlus, Pencil, Plus, Send, Trash2, Users } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -126,6 +127,9 @@ function DistributionLists({ projectId, members, lists, onChanged }: { projectId
 }
 
 export function TransmittalsPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('TRANSMITTALS', 'CREATE');
   const { authedFetch, accessToken, user } = useAuth();
   const internal = user?.accountType === 'INTERNAL' || user?.role === 'ADMIN';
   const [transmittals, setTransmittals] = useState<Transmittal[] | null>(null);
@@ -244,7 +248,7 @@ export function TransmittalsPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
-      {!open ? (
+      {!canAdd ? null : !open ? (
         <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-800">
           <Plus size={14} />
           New transmittal

@@ -15,6 +15,8 @@ export class ProjectDashboardService {
 
   async getDashboard(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
+    const viewer = await this.prisma.user.findUnique({ where: { id: ownerId }, select: { role: true, accountType: true } });
+    const staff = viewer?.role === 'ADMIN' || viewer?.accountType === 'INTERNAL';
 
     const [activities, tasks, issues, risks, rfis, submittals, rfqs, purchaseOrders, appointments, comments] = await Promise.all([
       this.prisma.scheduleActivity.findMany({ where: { projectId } }),
@@ -88,11 +90,16 @@ export class ProjectDashboardService {
       risks: { byStatus: riskCountsByStatus, highSeverityCount: highSeverityRiskCount },
       rfis: { byStatus: Object.fromEntries(rfis.map((r) => [r.status, r._count])), overdueCount: overdueRfiCount },
       submittals: { byStatus: Object.fromEntries(submittals.map((s) => [s.status, s._count])) },
-      rfqs: { byStatus: Object.fromEntries(rfqs.map((r) => [r.status, r._count])) },
-      purchaseOrders: { byStatus: Object.fromEntries(purchaseOrders.map((p) => [p.status, p._count])) },
-      compliance: complianceCounts,
-      contractorsCount: seenContractorIds.size,
-      ratings: { average: averageRating, count: allRatings.length },
+      // Buying, firms' compliance and ratings are Setjeka's (critique V3-L-09).
+      ...(staff
+        ? {
+            rfqs: { byStatus: Object.fromEntries(rfqs.map((r) => [r.status, r._count])) },
+            purchaseOrders: { byStatus: Object.fromEntries(purchaseOrders.map((p) => [p.status, p._count])) },
+            compliance: complianceCounts,
+            contractorsCount: seenContractorIds.size,
+            ratings: { average: averageRating, count: allRatings.length },
+          }
+        : {}),
       // Only notes on records this person can open (critique H-03).
       recentComments: (await this.access.filter(ownerId, comments)).slice(0, 5),
     };

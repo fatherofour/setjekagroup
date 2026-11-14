@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertMayChange, editRights, ownRight, setKeys } from '../common/own-record.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -55,6 +56,9 @@ export class SubmittalsService {
 
   async create(projectId: string, ownerId: string, dto: CreateSubmittalDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
+    // An outside party submits as themselves (critique V3-H-01).
+    const rights = await editRights(this.prisma, projectId, ownerId);
+    if (!rights.internal) dto.submittedById = rights.selfMemberId ?? undefined;
     if (dto.submittedById) await this.assertMemberInProject(dto.submittedById, projectId);
     if (dto.reviewerId) await this.assertMemberInProject(dto.reviewerId, projectId);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
@@ -69,6 +73,7 @@ export class SubmittalsService {
         submittalType: dto.submittalType,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         submittedById: dto.submittedById,
+        createdByUserId: ownerId,
         reviewerId: dto.reviewerId,
         documentId: dto.documentId,
       },
@@ -84,7 +89,10 @@ export class SubmittalsService {
 
   async update(projectId: string, ownerId: string, id: string, dto: UpdateSubmittalDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    await this.getOne(projectId, id);
+    const existing = await this.getOne(projectId, id);
+    const rights = await editRights(this.prisma, projectId, ownerId);
+    if (!rights.internal) delete dto.submittedById;
+    assertMayChange(ownRight(rights, ownerId, { createdByUserId: existing.createdByUserId, raisedMemberId: existing.submittedById }), setKeys(dto), [], 'submittal');
     if (dto.submittedById) await this.assertMemberInProject(dto.submittedById, projectId);
     if (dto.reviewerId) await this.assertMemberInProject(dto.reviewerId, projectId);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
@@ -110,6 +118,8 @@ export class SubmittalsService {
   async changeStatus(projectId: string, ownerId: string, id: string, changedById: string, dto: ChangeSubmittalStatusDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const existing = await this.getOne(projectId, id);
+    // Its submitter moves it along; its reviewer decides it; or Setjeka.
+    assertMayChange(ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId, raisedMemberId: existing.submittedById, assigneeMemberIds: [existing.reviewerId] }), ['status'], ['status'], 'submittal');
     if (dto.status === existing.status) return existing;
 
     await this.prisma.$transaction([
@@ -151,7 +161,8 @@ export class SubmittalsService {
 
   async remove(projectId: string, ownerId: string, id: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    await this.getOne(projectId, id);
+    const existing = await this.getOne(projectId, id);
+    assertMayChange(ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId, raisedMemberId: existing.submittedById }), ['delete'], [], 'submittal');
     await this.prisma.submittal.delete({ where: { id } });
   }
 }

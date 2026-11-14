@@ -8,6 +8,7 @@ import type { ContractorDetail, PaymentRecord } from '@/lib/contractors';
 import { CURRENCY_LABEL, CURRENCY_SYMBOL, type Currency } from '@/lib/projectMeta';
 import { Select } from '@/components/ui/Select';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 const inputClass =
   'h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -126,7 +127,7 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Total:{' '}
             {Object.entries(totalsByCurrency)
-              .map(([cur, sum]) => `${CURRENCY_SYMBOL[cur as Currency]}${sum.toLocaleString()} ${cur}`)
+              .map(([cur, sum]) => `${CURRENCY_SYMBOL[cur as Currency]}${sum.toLocaleString('en-GB')} ${cur}`)
               .join(' + ')}
           </p>
         )}
@@ -150,7 +151,7 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                   {CURRENCY_SYMBOL[p.currency]}
-                  {p.amount.toLocaleString()} <span className="text-slate-400 dark:text-slate-500">{p.currency}</span>
+                  {p.amount.toLocaleString('en-GB')} <span className="text-slate-400 dark:text-slate-500">{p.currency}</span>
                 </p>
                 <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                   {[formatDate(p.paymentDate), p.method, p.reference, p.appointment?.project.name].filter(Boolean).join(' · ')}
@@ -183,7 +184,7 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
             options={Object.entries(CURRENCY_LABEL).map(([value, label]) => ({ value, label }))}
             className={compactInputClass}
           />
-          <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={compactInputClass} />
+          <DateInput value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className={compactInputClass} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Select

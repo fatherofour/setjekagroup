@@ -11,6 +11,7 @@ import { AuthedImage } from './AuthedImage';
 import { PhotoUploader } from './PhotoUploader';
 import { PhotoViewer } from './PhotoViewer';
 import { dayKey, dayLabel, type PhotoLinkOptions, type SitePhoto } from '@/lib/sitePhotos';
+import { DateInput } from '@/components/ui/DateInput';
 
 const input =
   'h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-base shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:h-9 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -251,11 +252,11 @@ export function SitePhotosPanel({ projectId, clientView = false }: { projectId: 
         <div className="grid grid-cols-2 gap-2 sm:col-span-1 lg:col-span-2">
           <label className="block">
             <span className="mb-0.5 block text-xs text-slate-500 lg:sr-only">From</span>
-            <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Taken from" title="Taken from" />
+            <DateInput className={input} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Taken from" title="Taken from" />
           </label>
           <label className="block">
             <span className="mb-0.5 block text-xs text-slate-500 lg:sr-only">To</span>
-            <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} aria-label="Taken up to" title="Taken up to" />
+            <DateInput className={input} value={to} onChange={(e) => setTo(e.target.value)} aria-label="Taken up to" title="Taken up to" />
           </label>
         </div>
         {!isClient && <Select className={input} aria-label="Linked to" value={linked} onChange={setLinked} options={linkFilterOptions} />}

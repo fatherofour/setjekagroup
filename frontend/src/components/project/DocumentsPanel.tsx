@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { Plus, Download, FileText, Folder as FolderIcon, FileSearch, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -165,6 +166,9 @@ function AddDocumentForm({ projectId, folders, onAdded }: { projectId: string; f
 }
 
 export function DocumentsPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('DOCUMENTS', 'CREATE');
   const { authedFetch } = useAuth();
   const [documents, setDocuments] = useState<ProjectDocument[] | null>(null);
   const [folders, setFolders] = useState<DocumentFolder[]>([]);
@@ -346,7 +350,7 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
-      <AddDocumentForm projectId={projectId} folders={folders} onAdded={load} />
+      {canAdd && <AddDocumentForm projectId={projectId} folders={folders} onAdded={load} />}
 
       {openDoc && (
         <DocumentDetailPanel

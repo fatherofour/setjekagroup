@@ -9,6 +9,7 @@ import { cardClass, inputClass, labelClass, primaryButton } from '@/lib/stage0';
 import { CURRENCY_OPTIONS, type Currency } from '@/lib/projectMeta';
 import { COST_CODE_CATEGORY_LABEL, type CostCode, type CostCodeCategory } from '@/lib/commercial';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 const CATEGORY_OPTIONS = (Object.keys(COST_CODE_CATEGORY_LABEL) as CostCodeCategory[]).map((c) => ({ value: c, label: COST_CODE_CATEGORY_LABEL[c] }));
 
@@ -170,7 +171,7 @@ export function FxRatesPanel() {
           <label className={labelClass} htmlFor="fx-date">
             Effective
           </label>
-          <input id="fx-date" type="date" className={inputClass} value={form.effectiveDate} onChange={(e) => setForm({ ...form, effectiveDate: e.target.value })} />
+          <DateInput id="fx-date" className={inputClass} value={form.effectiveDate} onChange={(e) => setForm({ ...form, effectiveDate: e.target.value })} />
         </div>
         <div className="min-w-[160px] flex-1">
           <label className={labelClass} htmlFor="fx-src">
@@ -191,7 +192,7 @@ export function FxRatesPanel() {
           {rates.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center gap-3 py-2">
               <span className="tabular-nums text-slate-800 dark:text-slate-100">
-                1 {r.fromCurrency} = {r.rate.toLocaleString(undefined, { maximumFractionDigits: 6 })} {r.toCurrency}
+                1 {r.fromCurrency} = {r.rate.toLocaleString('en-GB', { maximumFractionDigits: 6 })} {r.toCurrency}
               </span>
               <span className="flex-1 text-xs text-slate-400">
                 from {formatDate(r.effectiveDate)}

@@ -74,3 +74,30 @@ export function formatDateTime(d: DateInput, fallback = '—'): string {
   if (!x) return fallback;
   return `${formatDate(x)} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
 }
+
+/** Read a date typed in the person's format (or ISO) back to YYYY-MM-DD;
+ * null when it isn't a real date. */
+export function parseDate(text: string): string | null {
+  const t = text.trim();
+  if (!t) return null;
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  let y: number, m: number, d: number;
+  if (iso) [y, m, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+  else {
+    const named = /^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/.exec(t);
+    if (named) {
+      const mi = MONTHS.findIndex((x) => x.toLowerCase() === named[2].slice(0, 3).toLowerCase());
+      if (mi < 0) return null;
+      [y, m, d] = [Number(named[3]), mi + 1, Number(named[1])];
+    } else {
+      const parts = /^(\d{1,2})[/.\-\s](\d{1,2})[/.\-\s](\d{4})$/.exec(t);
+      if (!parts) return null;
+      const a = Number(parts[1]);
+      const b = Number(parts[2]);
+      [y, m, d] = current === 'MM/DD/YYYY' ? [Number(parts[3]), a, b] : [Number(parts[3]), b, a];
+    }
+  }
+  const x = new Date(Date.UTC(y, m - 1, d));
+  if (x.getUTCFullYear() !== y || x.getUTCMonth() !== m - 1 || x.getUTCDate() !== d) return null;
+  return `${y}-${pad(m)}-${pad(d)}`;
+}

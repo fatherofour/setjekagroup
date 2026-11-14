@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 type Category = 'ZONING' | 'ENVIRONMENTAL' | 'INFRASTRUCTURE' | 'LEGAL' | 'OTHER';
@@ -149,7 +150,7 @@ export function LandRightsPanel({ opportunityId, sites, readOnly, onChange }: { 
             <label className={labelClass} htmlFor="lr-due">
               Needed by
             </label>
-            <input id="lr-due" type="date" className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+            <DateInput id="lr-due" className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
           </div>
           <div className="flex items-end gap-2">
             <button type="submit" disabled={!form.approvalType.trim()} className={primaryButton}>

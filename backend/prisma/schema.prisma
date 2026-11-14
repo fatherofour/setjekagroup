@@ -1061,6 +1061,9 @@ model ProjectTask {
   id                 String            @id @default(uuid())
   sitePhotos         SitePhoto[]
   projectId          String
+  // Who added it (critique V3-H-01): an outside party changes only what
+  // they raised. Empty on records from before 15 Nov 2026.
+  createdByUserId    String?
   project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignedToId       String?
   assignedTo         ProjectMember?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
@@ -1104,6 +1107,9 @@ model ProjectIssue {
   id              String             @id @default(uuid())
   sitePhotos      SitePhoto[]
   projectId       String
+  // Who added it (critique V3-H-01): an outside party changes only what
+  // they raised. Empty on records from before 15 Nov 2026.
+  createdByUserId    String?
   project         Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   ownerId         String?
   owner           ProjectMember?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -1575,6 +1581,9 @@ enum RfiStatus {
 model Rfi {
   id                          String           @id @default(uuid())
   projectId                   String
+  // Who added it (critique V3-H-01): an outside party changes only what
+  // they raised. Empty on records from before 15 Nov 2026.
+  createdByUserId    String?
   project                     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   rfiNumber                   String
   title                       String
@@ -1631,6 +1640,9 @@ enum SubmittalStatus {
 model Submittal {
   id              String                   @id @default(uuid())
   projectId       String
+  // Who added it (critique V3-H-01): an outside party changes only what
+  // they raised. Empty on records from before 15 Nov 2026.
+  createdByUserId    String?
   project         Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   submittalNumber String
   title           String

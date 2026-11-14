@@ -13,6 +13,7 @@ import type { ProjectDocument } from './DocumentsPanel';
 import { DOCUMENT_ACCEPT } from '@/lib/documentUpload';
 import { TagEditor } from '@/components/files/Tags';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface ShareableMember {
   id: string;
@@ -363,8 +364,7 @@ export function DocumentDetailPanel({
                 })),
               ]}
             />
-            <input
-              type="date"
+            <DateInput
               value={shareExpiresAt}
               onChange={(e) => setShareExpiresAt(e.target.value)}
               title="Expires on (optional)"

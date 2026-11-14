@@ -15,6 +15,7 @@ import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATU
 import { contractTerms, type ContractForm } from '@/lib/projectMeta';
 import { PriceAdjustmentCard } from '@/components/qs/EscalationPanels';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Option = { value: string; label: string };
 
@@ -194,7 +195,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
                 <label className={labelClass} htmlFor="val-date">
                   Valuation date
                 </label>
-                <input id="val-date" type="date" className={inputClass} value={extra.valuationDate} onChange={(e) => setExtra({ ...extra, valuationDate: e.target.value })} />
+                <DateInput id="val-date" className={inputClass} value={extra.valuationDate} onChange={(e) => setExtra({ ...extra, valuationDate: e.target.value })} />
               </div>
               <div>
                 <label className={labelClass} htmlFor="val-mos">
@@ -304,7 +305,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
               <label className={labelClass} htmlFor="cert-due">
                 Client to respond by
               </label>
-              <input id="cert-due" type="date" min={todayInput()} className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
+              <DateInput id="cert-due" min={todayInput()} className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
             <button type="button" disabled={busy} onClick={() => setCertifying(true)} className={primaryButton}>
               <FileCheck2 size={14} />
@@ -479,7 +480,7 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
               <label className={labelClass} htmlFor={`nv-date-${contract.id}`}>
                 Valuation date
               </label>
-              <input id={`nv-date-${contract.id}`} type="date" className={inputClass} value={newVal.valuationDate} onChange={(e) => setNewVal({ ...newVal, valuationDate: e.target.value })} />
+              <DateInput id={`nv-date-${contract.id}`} className={inputClass} value={newVal.valuationDate} onChange={(e) => setNewVal({ ...newVal, valuationDate: e.target.value })} />
             </div>
             <label className="flex h-10 items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
               <input type="checkbox" checked={newVal.isFinal} onChange={(e) => setNewVal({ ...newVal, isFinal: e.target.checked })} />

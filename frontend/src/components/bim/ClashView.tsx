@@ -99,7 +99,7 @@ export function ClashView({ ctx }: { ctx: HubContext }) {
     setError(null);
     try {
       const r = await authedFetch<{ found: number; new: number; resolved: number; elementsA: number; elementsB: number; ms: number }>(`/projects/${projectId}/bim/clash-tests/${t.id}/run`, { method: 'POST' });
-      setRunMsg(`${r.found} clash${r.found === 1 ? '' : 'es'} found (${r.new} new, ${r.resolved} now resolved) between ${r.elementsA.toLocaleString('en-ZA')} and ${r.elementsB.toLocaleString('en-ZA')} elements in ${(r.ms / 1000).toFixed(1)} s.`);
+      setRunMsg(`${r.found} clash${r.found === 1 ? '' : 'es'} found (${r.new} new, ${r.resolved} now resolved) between ${r.elementsA.toLocaleString('en-GB')} and ${r.elementsB.toLocaleString('en-GB')} elements in ${(r.ms / 1000).toFixed(1)} s.`);
       setCurrent(t.id);
       loadTests();
       loadClashes();

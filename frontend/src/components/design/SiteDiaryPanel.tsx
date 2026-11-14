@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type PlantState = 'WORKING' | 'STANDING' | 'BROKEN_DOWN';
 interface Labour {
@@ -152,7 +153,7 @@ export function SiteDiaryPanel({ projectId }: { projectId: string }) {
             <button type="button" onClick={() => setDate(shift(date, -1))} className={secondaryBtn} aria-label="Previous day">
               <ChevronLeft size={16} />
             </button>
-            <input type="date" aria-label="Day" max={list.today} className={`${inputCls} w-40`} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+            <DateInput aria-label="Day" max={list.today} className={`${inputCls} w-40`} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
             <button type="button" disabled={date >= list.today} onClick={() => setDate(shift(date, 1))} className={secondaryBtn} aria-label="Next day">
               <ChevronRight size={16} />
             </button>

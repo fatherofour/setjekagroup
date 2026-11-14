@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { seesProjectMoney } from '../common/setjeka-team.js';
+import { assertMayChange, editRights, ownRight, setKeys } from '../common/own-record.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -51,11 +53,26 @@ export class RfisService {
 
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    return this.prisma.rfi.findMany({ where: { projectId }, include: RFI_INCLUDE, orderBy: { createdAt: 'desc' } });
+    return this.forViewer(projectId, ownerId, await this.prisma.rfi.findMany({ where: { projectId }, include: RFI_INCLUDE, orderBy: { createdAt: 'desc' } }));
+  }
+
+  /** An RFI's cost impact is money (critique V3-M-04): Setjeka, the client
+   * and the QS see it, and whoever raised the RFI sees their own figure. */
+  async forViewer<T extends { costImpactPotential: number | null; costImpactConfirmed: number | null; createdByUserId: string | null }>(projectId: string, userId: string, rows: T[]): Promise<T[]> {
+    if (await seesProjectMoney(this.prisma, projectId, userId)) return rows;
+    return rows.map((r) => (r.createdByUserId === userId ? r : { ...r, costImpactPotential: null, costImpactConfirmed: null }));
+  }
+
+  async forViewerOne<T extends { costImpactPotential: number | null; costImpactConfirmed: number | null; createdByUserId: string | null }>(projectId: string, userId: string, row: T): Promise<T> {
+    return (await this.forViewer(projectId, userId, [row]))[0];
   }
 
   async create(projectId: string, ownerId: string, dto: CreateRfiDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
+    // An outside party raises an RFI as themselves, never as someone else
+    // (critique V3-H-01).
+    const rights = await editRights(this.prisma, projectId, ownerId);
+    if (!rights.internal) dto.raisedById = rights.selfMemberId ?? undefined;
     if (dto.raisedById) await this.assertMemberInProject(dto.raisedById, projectId);
     if (dto.assignedToId) await this.assertMemberInProject(dto.assignedToId, projectId);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
@@ -70,6 +87,7 @@ export class RfisService {
         priority: dto.priority,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         raisedById: dto.raisedById,
+        createdByUserId: ownerId,
         assignedToId: dto.assignedToId,
         // Whoever's assigned starts with the ball in their court — it's
         // their turn to respond.
@@ -99,7 +117,7 @@ export class RfisService {
         type: 'RFI_COST_IMPACT',
         entityType: 'RFI',
         entityId: rfiId,
-        message: `${rfiNumber} "${title}" has a ${confirmed ? 'confirmed' : 'potential'} cost impact of ${amount.toLocaleString('en-ZA')}: please assess it`,
+        message: `${rfiNumber} "${title}" has a ${confirmed ? 'confirmed' : 'potential'} cost impact of ${(await this.prisma.project.findUnique({ where: { id: projectId }, select: { currency: true } }))?.currency ?? ''} ${amount.toLocaleString('en-GB')}: please assess it`,
       });
     }
   }
@@ -126,6 +144,10 @@ export class RfisService {
   async update(projectId: string, ownerId: string, id: string, dto: UpdateRfiDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const existing = await this.getOne(projectId, id);
+    const rights = await editRights(this.prisma, projectId, ownerId);
+    if (!rights.internal) delete dto.raisedById;
+    const right = ownRight(rights, ownerId, { createdByUserId: existing.createdByUserId, raisedMemberId: existing.raisedById, assigneeMemberIds: [existing.assignedToId, existing.ballInCourtId] });
+    assertMayChange(right, setKeys(dto), ['status'], 'RFI');
     if (dto.raisedById) await this.assertMemberInProject(dto.raisedById, projectId);
     if (dto.assignedToId) await this.assertMemberInProject(dto.assignedToId, projectId);
     if (dto.documentId) await this.assertDocumentInProject(dto.documentId, projectId);
@@ -165,6 +187,11 @@ export class RfisService {
   async respond(projectId: string, ownerId: string, id: string, dto: RespondRfiDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const existing = await this.getOne(projectId, id);
+    // The answer comes from whoever the RFI is with, or Setjeka.
+    const rights = await editRights(this.prisma, projectId, ownerId);
+    if (!rights.internal && ![existing.assignedToId, existing.ballInCourtId].some((m) => m && rights.memberIds.has(m))) {
+      throw new ForbiddenException('The person this RFI is assigned to, or Setjeka, answers it');
+    }
 
     await this.prisma.rfi.update({
       where: { id },

@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import type { Contractor } from '@/lib/contractors';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type PoStatus = 'DRAFT' | 'APPROVED' | 'ISSUED' | 'CANCELLED';
 type DeliveryStatus = 'PENDING' | 'PARTIAL' | 'DELIVERED' | 'DELAYED' | 'REJECTED';
@@ -145,7 +146,7 @@ function DeliveriesSection({ projectId, poId, isExternal }: { projectId: string;
         <form onSubmit={add} className="flex flex-wrap gap-2">
           <input aria-label="Item description" placeholder="Item description" className={`${inputClass} flex-1`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <input aria-label="Quantity" type="number" placeholder="Qty" className={`${inputClass} w-20`} value={form.quantityOrdered} onChange={(e) => setForm({ ...form, quantityOrdered: e.target.value })} />
-          <input type="date" className={inputClass} value={form.expectedDate} onChange={(e) => setForm({ ...form, expectedDate: e.target.value })} />
+          <DateInput className={inputClass} value={form.expectedDate} onChange={(e) => setForm({ ...form, expectedDate: e.target.value })} />
           <button type="submit" disabled={saving} className="flex h-8 items-center gap-1 rounded-md bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200">
             <Plus size={12} />
             Log delivery
@@ -210,7 +211,7 @@ function PoDetailPanel({
         <p className="text-sm text-slate-700 dark:text-slate-200">{po.contractor.name}</p>
         {po.scopeDescription && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{po.scopeDescription}</p>}
         <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {po.currency} {po.value.toLocaleString()}
+          {po.currency} {po.value.toLocaleString('en-GB')}
         </p>
         {(po.budgetCode || po.costCode) && (
           <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -340,7 +341,7 @@ export function PurchaseOrdersPanel({ projectId, isExternal, currency = 'ZAR' }:
                 <span className="shrink-0 text-xs text-slate-400">{p.poNumber}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">{p.contractor.name}</span>
                 <span className="shrink-0 text-xs text-slate-400">
-                  {p.currency} {p.value.toLocaleString()}
+                  {p.currency} {p.value.toLocaleString('en-GB')}
                 </span>
                 <span className="shrink-0 text-xs text-slate-400">{p.status}</span>
               </button>

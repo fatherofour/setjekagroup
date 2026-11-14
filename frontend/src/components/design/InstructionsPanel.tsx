@@ -7,6 +7,7 @@ import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { COMM_STATUS, KIND_HELP, KIND_LABEL, ROLE_LABEL, cardCls, fmtDay, fmtDayTime, inputCls, selectCls, labelCls, primaryBtn, secondaryBtn, textareaCls, type CommunicationKind, type CommunicationStatus } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Person {
   userId: string;
@@ -269,7 +270,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
             </label>
             <label className={labelCls}>
               Reply needed by
-              <input type="date" className={`${inputCls} mt-0.5`} value={draft.responseDueAt} onChange={(e) => setDraft({ ...draft, responseDueAt: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={draft.responseDueAt} onChange={(e) => setDraft({ ...draft, responseDueAt: e.target.value })} />
             </label>
             {draft.kind !== 'CORRESPONDENCE' && draft.kind !== 'CLIENT_REQUEST' && (
               <fieldset className="flex flex-wrap items-end gap-4 text-sm text-slate-700 dark:text-slate-200">

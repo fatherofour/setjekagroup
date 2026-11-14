@@ -31,10 +31,13 @@ export default function ClientPortalHome() {
     authedFetch<ClientProject[]>('/client-portal/projects')
       .then(setProjects)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your projects.'));
+    // Developments before a project are a client organisation's; a client on
+    // the project team has none (no call, no 403: critique V3-L-09).
+    if (!user?.clientId) return;
     authedFetch<unknown[]>('/client-portal/opportunities')
       .then((o) => setDevelopments(o.length))
       .catch(() => setDevelopments(0));
-  }, [authedFetch]);
+  }, [authedFetch, user?.clientId]);
 
   const waiting = projects?.reduce((s, p) => s + p.waitingForYou, 0) ?? 0;
 

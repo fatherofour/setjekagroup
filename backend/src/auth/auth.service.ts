@@ -13,7 +13,15 @@ export interface TokenPair {
 }
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-const LOCKED = 'This account is locked after 6 wrong passwords. Ask a Setjeka administrator to unlock it.';
+// One message for a wrong password, an unknown email and a locked account,
+// so the reply never confirms that an address has an account (critique
+// V3-H-03). It says what happens after six tries.
+const REFUSED = 'Invalid email or password. Six wrong tries lock an account until a Setjeka administrator unlocks it.';
+/** An administrator's own lock lifts by itself after this long, so the only
+ * administrator can't be shut out by someone guessing their address. */
+const ADMIN_LOCK_MS = 30 * 60 * 1000;
+const stillLocked = (u: { lockedAt: Date | null; role: string }) =>
+  Boolean(u.lockedAt) && !(u.role === 'ADMIN' && Date.now() - u.lockedAt!.getTime() > ADMIN_LOCK_MS);
 
 @Injectable()
 export class AuthService {
@@ -55,14 +63,13 @@ export class AuthService {
     // Six wrong passwords in a row lock the account until an administrator
     // unlocks it (critique M-03). Resetting the password doesn't unlock it.
     const found = await this.usersService.findByEmail(email);
-    if (found?.lockedAt) throw new UnauthorizedException(LOCKED);
+    if (found && stillLocked(found)) throw new UnauthorizedException(REFUSED);
+    // An administrator whose 30 minutes are up starts again from zero.
+    if (found?.lockedAt) await this.usersService.unlock(found.id);
     const user = await this.validateUser(email, password);
     if (!user) {
-      if (found) {
-        const after = await this.usersService.recordFailedLogin(found.id);
-        if (after.lockedAt) throw new UnauthorizedException(LOCKED);
-      }
-      throw new UnauthorizedException('Invalid email or password');
+      if (found) await this.usersService.recordFailedLogin(found.id);
+      throw new UnauthorizedException(REFUSED);
     }
     if (user.failedLogins) await this.usersService.clearFailedLogins(user.id);
 
@@ -99,7 +106,7 @@ export class AuthService {
 
     const user = await this.usersService.findById(payload.sub);
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User no longer exists');
-    if (user.lockedAt) throw new UnauthorizedException(LOCKED);
+    if (stillLocked(user)) throw new UnauthorizedException(REFUSED);
 
     return this.issueTokens(
       { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },

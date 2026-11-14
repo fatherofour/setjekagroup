@@ -6,6 +6,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { DESIGN_CONSULTANTS } from '../common/consultants.js';
 import type { CreateNcrDto, RespondNcrDto, UpdateNcrDto } from './dto/ncr.dto.js';
+import { formatDay } from '../common/dates.js';
 
 const MEMBER = { select: { id: true, role: true, userId: true, externalName: true, contractorId: true, user: { select: { fullName: true } } } } as const;
 const INCLUDE = {
@@ -137,7 +138,7 @@ export class NcrsService {
       },
       include: INCLUDE,
     });
-    await this.tell(projectId, [n.assignee?.userId], userId, 'NCR_ISSUED', n.id, `${n.number} "${n.title}" was issued to you: give the root cause and your corrective action${n.dueDate ? ` by ${n.dueDate.toLocaleDateString('en-ZA')}` : ''}`);
+    await this.tell(projectId, [n.assignee?.userId], userId, 'NCR_ISSUED', n.id, `${n.number} "${n.title}" was issued to you: give the root cause and your corrective action${n.dueDate ? ` by ${formatDay(n.dueDate)}` : ''}`);
     return this.shape(w, n);
   }
 

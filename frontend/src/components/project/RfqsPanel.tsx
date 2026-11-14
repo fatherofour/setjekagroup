@@ -134,7 +134,7 @@ function QuoteCard({
           {quote.status === 'WITHDRAWN' && <span className="text-xs font-normal text-slate-400">(withdrawn)</span>}
         </span>
         <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-          {quote.currency} {quote.price.toLocaleString()}
+          {quote.currency} {quote.price.toLocaleString('en-GB')}
         </span>
       </div>
       <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">
@@ -296,7 +296,7 @@ function RfqDetailPanel({
 
   async function award(q: Quote) {
     const note = rfq.costRegion && items.length ? ` Its item rates will update the ${rfq.costRegion.name} price sheet.` : '';
-    if (!confirm(`Award ${rfq.rfqNumber} to ${q.contractor.name} at ${q.currency} ${q.price.toLocaleString()}?${note}`)) return;
+    if (!confirm(`Award ${rfq.rfqNumber} to ${q.contractor.name} at ${q.currency} ${q.price.toLocaleString('en-GB')}?${note}`)) return;
     setSaving(true);
     setError(null);
     try {

@@ -122,7 +122,7 @@ export function SelectionEditor({ projectId, value, onChange, vocab, compact = f
         <ConditionsEditor value={value.conditions ?? []} onChange={(conditions) => onChange({ ...value, conditions })} fields={vocab.fields} />
       </div>
       <p className="text-xs font-medium text-slate-600 dark:text-slate-300" aria-live="polite">
-        {count === null ? 'Counting…' : `${count.toLocaleString('en-ZA')} element${count === 1 ? '' : 's'} picked`}
+        {count === null ? 'Counting…' : `${count.toLocaleString('en-GB')} element${count === 1 ? '' : 's'} picked`}
       </p>
     </div>
   );

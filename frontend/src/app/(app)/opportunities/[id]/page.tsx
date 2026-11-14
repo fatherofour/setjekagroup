@@ -554,7 +554,7 @@ export default function OpportunityDetailPage() {
                   (row.provider as { name: string } | null)?.name ?? row.providerName,
                   row.recommendedProduct,
                   row.achievableRentPerSqmMonth != null && `${currency} ${row.achievableRentPerSqmMonth}/m²/month`,
-                  row.achievableSalePricePerSqm != null && `${currency} ${Number(row.achievableSalePricePerSqm).toLocaleString()}/m²`,
+                  row.achievableSalePricePerSqm != null && `${currency} ${Number(row.achievableSalePricePerSqm).toLocaleString('en-GB')}/m²`,
                 ]
                   .filter(Boolean)
                   .join(' · ')}

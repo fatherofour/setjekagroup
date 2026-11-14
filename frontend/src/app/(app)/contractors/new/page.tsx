@@ -185,7 +185,7 @@ export default function NewContractorPage() {
             onChange={(v) => setClassifications(v as OrganisationClassification[])}
           />
           <p className={`${labelClass} mt-4`}>Disciplines / categories</p>
-          <TagInput values={disciplines} onChange={setDisciplines} suggestions={disciplineSuggestions} placeholder="e.g. Building, Civil Works" />
+          <TagInput values={disciplines} onChange={setDisciplines} suggestions={disciplineSuggestions} placeholder="e.g. Building, Civil Works" ariaLabel="Disciplines" />
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">

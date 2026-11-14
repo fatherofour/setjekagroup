@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { money } from '@/lib/qs';
 import { cardCls, fmtDay, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls, todayIso } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type MeasureStatus = 'RECORDED' | 'AGREED' | 'DISPUTED';
 type DayworkStatus = 'SUBMITTED' | 'SIGNED' | 'REJECTED';
@@ -87,7 +88,7 @@ const DAYWORK_STATUS: Record<DayworkStatus, { label: string; tone: string }> = {
   REJECTED: { label: 'Rejected', tone: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' },
 };
 const err = (e: unknown, f: string) => (e instanceof ApiError ? e.message : f);
-const qty = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString('en-ZA', { maximumFractionDigits: 3 }));
+const qty = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString('en-GB', { maximumFractionDigits: 3 }));
 
 function DayworkRow({ projectId, base, d, currency, canSign, onChanged }: { projectId: string; base: string; d: DayworkSheet; currency: string; canSign: boolean; onChanged: (x: Dayworks) => void }) {
   const { authedFetch } = useAuth();
@@ -270,7 +271,7 @@ export function MeasurePanel({ projectId }: { projectId: string }) {
                   </div>
                   <label className={labelCls}>
                     Measured on
-                    <input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                    <DateInput className={`${inputCls} mt-0.5 w-full`} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
                   </label>
                   <label className={labelCls}>
                     Quantity
@@ -411,7 +412,7 @@ export function MeasurePanel({ projectId }: { projectId: string }) {
               </label>
               <label className={labelCls}>
                 Date
-                <input type="date" className={`${inputCls} mt-0.5 w-full`} value={sheet.date} onChange={(e) => setSheet({ ...sheet, date: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5 w-full`} value={sheet.date} onChange={(e) => setSheet({ ...sheet, date: e.target.value })} />
               </label>
               {(['labour', 'plant', 'materials'] as const).map((k) => (
                 <label key={k} className={labelCls}>

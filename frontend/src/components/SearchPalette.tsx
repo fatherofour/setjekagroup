@@ -54,7 +54,10 @@ export function SearchPalette() {
       >
         <Search size={14} />
         <span className="flex-1 text-left">Search projects…</span>
-        <kbd className="rounded border border-slate-200 px-1 text-[10px] dark:border-slate-700">⌘K</kbd>
+        {/* The Mac sign on a Mac, Ctrl elsewhere (critique V3-L-04). */}
+        <kbd className="rounded border border-slate-200 px-1 text-[10px] dark:border-slate-700" suppressHydrationWarning>
+          {typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}
+        </kbd>
       </button>
       <button
         onClick={() => setOpen(true)}

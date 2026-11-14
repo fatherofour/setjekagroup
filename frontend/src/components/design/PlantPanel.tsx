@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, todayIso } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Category = 'EARTHMOVING' | 'LIFTING' | 'ACCESS' | 'CONCRETE' | 'COMPACTION' | 'TRANSPORT' | 'POWER' | 'SMALL_PLANT' | 'OTHER';
 type Status = 'WORKING' | 'STANDING' | 'BROKEN_DOWN' | 'OFF_SITE';
@@ -216,7 +217,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <label className={labelCls}>
               Inspected on
-              <input type="date" className={`${inputCls} mt-0.5`} value={insp.date} max={todayIso()} onChange={(e) => setInsp({ ...insp, date: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={insp.date} max={todayIso()} onChange={(e) => setInsp({ ...insp, date: e.target.value })} />
             </label>
             <div className={labelCls}>
               Result
@@ -228,11 +229,11 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
             </label>
             <label className={labelCls}>
               Next due {p.inspectionIntervalDays ? `(blank: in ${p.inspectionIntervalDays} days)` : ''}
-              <input type="date" className={`${inputCls} mt-0.5`} value={insp.nextDue} onChange={(e) => setInsp({ ...insp, nextDue: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={insp.nextDue} onChange={(e) => setInsp({ ...insp, nextDue: e.target.value })} />
             </label>
             <label className={labelCls}>
               New certificate expiry (if renewed)
-              <input type="date" className={`${inputCls} mt-0.5`} value={insp.certificateExpiry} onChange={(e) => setInsp({ ...insp, certificateExpiry: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={insp.certificateExpiry} onChange={(e) => setInsp({ ...insp, certificateExpiry: e.target.value })} />
             </label>
             <label className={labelCls}>
               {insp.passed ? 'Note (optional)' : 'What failed'}
@@ -271,12 +272,12 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
               </label>
               <label className={labelCls}>
                 Operator’s certificate to
-                <input type="date" className={`${inputCls} mt-0.5`} value={operator.operatorCertExpiry} onChange={(e) => setOperator({ ...operator, operatorCertExpiry: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5`} value={operator.operatorCertExpiry} onChange={(e) => setOperator({ ...operator, operatorCertExpiry: e.target.value })} />
               </label>
               {p.ownership === 'HIRED' && (
                 <label className={labelCls}>
                   Due off hire
-                  <input type="date" className={`${inputCls} mt-0.5`} value={operator.offHireDue} onChange={(e) => setOperator({ ...operator, offHireDue: e.target.value })} />
+                  <DateInput className={`${inputCls} mt-0.5`} value={operator.offHireDue} onChange={(e) => setOperator({ ...operator, offHireDue: e.target.value })} />
                 </label>
               )}
               <div className="flex items-end gap-2">
@@ -304,7 +305,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
         <section className="mt-3 flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-800/40" aria-label="Off site">
           <label className={labelCls}>
             Left site on
-            <input type="date" className={`${inputCls} mt-0.5`} value={leave} max={todayIso()} onChange={(e) => setLeave(e.target.value)} />
+            <DateInput className={`${inputCls} mt-0.5`} value={leave} max={todayIso()} onChange={(e) => setLeave(e.target.value)} />
           </label>
           <button type="button" disabled={busy || !leave} onClick={() => call('/off-site', { date: leave })} className={secondaryBtn}>
             {p.ownership === 'HIRED' ? 'Off hired: left site' : 'Left site'}
@@ -438,12 +439,12 @@ export function PlantPanel({ projectId }: { projectId: string }) {
             )}
             <label className={labelCls}>
               Arrived on
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.arrivedOn} max={todayIso()} onChange={(e) => setForm({ ...form, arrivedOn: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.arrivedOn} max={todayIso()} onChange={(e) => setForm({ ...form, arrivedOn: e.target.value })} />
             </label>
             {form.ownership === 'HIRED' && (
               <label className={labelCls}>
                 Due off hire
-                <input type="date" className={`${inputCls} mt-0.5`} value={form.offHireDue} onChange={(e) => setForm({ ...form, offHireDue: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5`} value={form.offHireDue} onChange={(e) => setForm({ ...form, offHireDue: e.target.value })} />
               </label>
             )}
             <label className={labelCls}>
@@ -452,7 +453,7 @@ export function PlantPanel({ projectId }: { projectId: string }) {
             </label>
             <label className={labelCls}>
               Operator’s certificate to
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.operatorCertExpiry} onChange={(e) => setForm({ ...form, operatorCertExpiry: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.operatorCertExpiry} onChange={(e) => setForm({ ...form, operatorCertExpiry: e.target.value })} />
             </label>
             <label className={labelCls}>
               Inspect every (days)
@@ -460,11 +461,11 @@ export function PlantPanel({ projectId }: { projectId: string }) {
             </label>
             <label className={labelCls}>
               Last inspected
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.lastInspectedOn} onChange={(e) => setForm({ ...form, lastInspectedOn: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.lastInspectedOn} onChange={(e) => setForm({ ...form, lastInspectedOn: e.target.value })} />
             </label>
             <label className={labelCls}>
               Certificate expiry {certified ? '(load test / fitness)' : '(if any)'}
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.certificateExpiry} onChange={(e) => setForm({ ...form, certificateExpiry: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.certificateExpiry} onChange={(e) => setForm({ ...form, certificateExpiry: e.target.value })} />
             </label>
             <div className="flex items-end gap-2 sm:col-span-4">
               <button type="submit" disabled={!form.description.trim() || !form.arrivedOn} className={primaryBtn}>

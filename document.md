@@ -4169,6 +4169,83 @@ Fixes critique findings M-02 to M-15, H-06 and H-07, the Gantt overlap the user 
 - Still passing: 43/43 notes access, 22/22 firm deals, 39/39 sign-off. The 8/8 Portfolio check was updated for the contingency now carried (Lekki ₦20.5bn including ₦4.10bn).
 - **Not tested locally:** the nginx rate limit (nginx runs only on the server).
 
+### 2.57 Critique v3: only the client signs, own records, register money, lockout and the guides (2026-11-15)
+
+A fresh critique (version 3, 14 Nov) found 28 problems after 2.54 to 2.56. All are fixed here, using the critique's recommended fixes and the user's decision that the programme is Setjeka's.
+
+**Only the client signs (V3-C-01).**
+- `decide()` on a stage move now requires the person to be the client on the project.
+- The permission engine allows APPROVE on Stage gate and on Stage 1 documents only to a client member, whatever the matrix says (`clientSigns` in `PermissionsService`). Approvals and my-permissions follow it.
+- **The gap this closed:** an outside site or HSE manager could sign off, or reject, the client's stage move, and a signed certificate was filed.
+
+**The programme is Setjeka's (V3-M-05, the user's decision).**
+- Outside accounts can't add, move, delete or re-baseline activities (`SETJEKA_ONLY.SCHEDULE`).
+- Outside site and HSE managers and contractors still record progress on the Look-ahead.
+
+**Own records only (V3-H-01).**
+- An outside party changes only the tasks, issues, RFIs and submittals they raised. On one assigned to them, they change only its status (and a task's checklist).
+- An RFI is answered by whoever it is assigned to, or Setjeka. A submittal's status is moved by its submitter or reviewer, or Setjeka.
+- An outsider can no longer set who raised an RFI or a submittal; it is always themselves.
+- Records now keep who added them (`createdByUserId`, migration `20261115090000_record_created_by`). Records from before 15 Nov have none, so only Setjeka or the assignee can change those.
+- `common/own-record.ts`.
+
+**Money in the registers (V3-H-02).**
+- Project finance, cash flow and sales & leasing are for Setjeka, the client and the QS only.
+- Payment certificates, claims and final accounts:
+  - a contractor sees only their own firm's rows;
+  - a consultant sees them only where they keep the register, or the payment certificates they are named to review.
+- Register counts follow the same rule.
+
+**Sign-in (V3-H-03).**
+- A wrong password, an unknown email and a locked account all get the same reply ("Invalid email or password. Six wrong tries lock an account until a Setjeka administrator unlocks it."), so the reply no longer confirms that an account exists.
+- An administrator's own lock lifts after 30 minutes, so the only administrator can't be shut out for good. Everyone else's waits for an administrator, as the user asked.
+
+**Smaller exposures.**
+- **An RFI's cost impact (V3-M-04):** shown only to Setjeka, the client, the QS and whoever raised the RFI. The QS's notification now names the currency.
+- **Contact details (V3-L-09):** an outside party gets the email and phone of Setjeka's staff, the client and their own firm, not of other firms' people.
+- **The project overview (V3-L-09):** it no longer gives outsiders buying, compliance and rating counts.
+- **Calls outsiders can't make (V3-L-09):** the Portfolio and portal pages no longer make them, so the console stays clear.
+
+**The client's portal (V3-H-04):** a client on the project team, with no client-organisation link (all the sample clients), can now open the client portal, where the client guide sends them.
+
+**Screens.**
+- **V3-M-01:** Add task, Add RFI, Add submittal, Add issue, Add risk, Add document and New transmittal show only to those `my-permissions` lets add.
+- **V3-M-02:** one forecast for every screen. The cost report's forecast final cost is used by the Overview, Commercial and the Portfolio; unspent contingency is shown beside it, not counted as cost. The Portfolio line reads "forecast X of Y budget + Z contingency".
+- **V3-M-03 (dates):**
+  - Server-written dates (notifications, signed records) read DD/MM/YYYY (`common/dates.ts`).
+  - Every date field is now `components/ui/DateInput.tsx`: it shows and accepts the person's own format, with a calendar button that opens the browser's picker. That replaced 76 native fields, which showed mm/dd/yyyy on US-set computers.
+- **V3-L-08 (numbers):** one way of writing numbers and money, with comma thousands (`lib/money.ts`). No more "R 30 000 000" beside "ZAR 75,000,000", or "0,00".
+- **V3-L-10:**
+  - The client's "please sign off" notice is cleared once the move is decided.
+  - "Closeout" now reads "Close-out".
+- **V3-L-11:** "Active projects" now reads "Open projects".
+- **V3-M-11:** the assistant's button sits under drawers and dialogs, so it no longer covers Post.
+- **V3-L-07:** on a phone, the cost report is one card per cost code.
+- **V3-L-12:** the disciplines field on a new firm is labelled.
+
+**The guides.**
+- **The tip card (V3-M-06):**
+  - On a phone it sits as a slim card under the header; on a computer, at the bottom left of the page, clear of the screen's buttons. It used to cover the main buttons, especially on a phone.
+  - Escape closes it (V3-L-12).
+- **Barred screens (V3-M-07):** no tip appears on a screen the role can't open.
+- **Per project (V3-L-02):** the persona follows the person's role on the project in front of them.
+  - A new **Site team** persona covers outside site, HSE and QA managers, who were called "the consultant". It has its own menu text, start screen (the Look-ahead) and journey.
+- **Corrected tips (V3-M-08, V3-M-10, V3-L-01, V3-L-03, V3-L-06):**
+  - **Programme and Look-ahead:** progress is recorded on the Look-ahead, and Setjeka keeps the programme and its baselines. The contractor's tips mention the "you're waiting on this" work.
+  - **Approvals:** soonest deadline first. Only the client's tip talks about deciding.
+  - **Tasks, Documents and transmittals, PROCSA, Inception, Procurement and Registers:** each now says what that role can actually do.
+  - **Setjeka's screens:** the cost database (add resources and regional prices); opportunities (Move to Inception); rough estimates (South African rates only); and a new Portfolio tip.
+  - **My settings:** its own tip, journey item and page title. The signature tip no longer shows on the date-format page.
+  - **The Overview tip:** explains its own tabs and the "Your work with Setjeka" panel.
+- **The contractor's journey (V3-M-09):** now lists the Look-ahead, health & safety, the site diary, plant, tests, hidden works, NCRs, Delays & EOT, site measurement, completion & defects and the handover pack.
+- **Let's start (V3-L-05):** with no project chosen, it opens the person's only project, or the project list.
+- **Search (V3-L-04):** shows "Ctrl K" on Windows and "⌘K" on a Mac. The tour says it works on a computer.
+
+**Verified (15 Nov, local, throwaway accounts):**
+- API, 36 of 36 (`e2e/critique-v3-journey.mjs`).
+- Browser, 9 of 9 (`e2e/critique-v3-ui.mjs`).
+- Still passing: 40/40 (14 Nov batch), 43/43 notes access, 22/22 firm deals, 39/39 sign-off, 16/16 and 8/8 browser checks. The Portfolio check was updated to the new "forecast … budget + … contingency" wording.
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

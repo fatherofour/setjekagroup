@@ -3,7 +3,7 @@
 // app for their role. Words here are what each person should DO on a screen,
 // not a description of the software.
 
-export type GuidePersona = 'setjeka' | 'architect' | 'engineer' | 'qs' | 'contractor' | 'client' | 'consultant' | 'vendor';
+export type GuidePersona = 'setjeka' | 'architect' | 'engineer' | 'qs' | 'contractor' | 'client' | 'consultant' | 'site' | 'vendor';
 
 export const PERSONA_LABEL: Record<GuidePersona, string> = {
   setjeka: 'Setjeka team',
@@ -13,6 +13,7 @@ export const PERSONA_LABEL: Record<GuidePersona, string> = {
   contractor: 'Contractor',
   client: 'Client',
   consultant: 'Consultant',
+  site: 'Site team',
   vendor: 'Supplier',
 };
 
@@ -36,6 +37,7 @@ export function screenKey(pathname: string, tab: string | null): string | null {
   if (parts[0] === 'projects' && parts[1] && parts[1] !== 'new') return parts[2] === 'schedule' ? 'project.schedule' : `project.${tab || 'overview'}`;
   if (parts[0] === 'portal') return parts[1] === 'projects' ? 'portal.project' : parts[1] ? `portal.${parts[1]}` : 'portal';
   if (parts[0] === 'administration') return `administration${tab ? `.${tab}` : ''}`;
+  if (parts[0] === 'account') return `account.${parts[1] ?? 'signature'}`;
   return parts[0] ?? null;
 }
 
@@ -54,6 +56,7 @@ const MENU: Record<GuidePersona, string> = {
   contractor: 'Open a project for your day to day: instructions under Coordination, RFIs and submittals under Design & documents, the look-ahead under Programme, plant and photos under Site, inspections and the punch list under Quality & safety.',
   client: 'Your projects, what is waiting for your approval, drawings, photos and your requests to Setjeka. Open a project to see its modules.',
   consultant: 'Everything for the projects you are on: open one to see its meetings, documents, drawings, inspections and registers, grouped by module.',
+  site: 'Open a project for the site: the look-ahead and programme under Programme, the site diary and plant under Site, health and safety, permits, inspections and NCRs under Quality & safety.',
   vendor: 'Requests for quotation sent to you, and the quotes you have sent back.',
 };
 
@@ -74,7 +77,7 @@ export function welcomeTour(persona: GuidePersona, firstName: string): GuideStep
             target: 'project',
           },
         ]),
-    { title: 'Search', body: 'Find a project, a record, or words inside drawings and documents, including scanned ones. Ctrl+K opens it from anywhere.', target: 'search' },
+    { title: 'Search', body: 'Find a project, a record, or words inside drawings and documents, including scanned ones. On a computer, Ctrl K opens it from anywhere.', target: 'search' },
     {
       title: 'Alerts',
       body:
@@ -100,8 +103,9 @@ export const START: Record<GuidePersona, { text: string; screen: string; tab?: s
   engineer: { text: 'Start with your PROCSA list on a project: it shows what is expected of you at each stage, and ticks itself as you work.', screen: 'project.procsa', tab: 'procsa' },
   qs: { text: 'Start with your PROCSA list on a project: what is expected of you at each stage. It ticks itself as your bills, valuations and final accounts go in.', screen: 'project.procsa', tab: 'procsa' },
   contractor: { text: 'Start with the instructions issued to you, then inspections and the punch list.', screen: 'project.instructions', tab: 'instructions' },
-  client: { text: 'Start with your project: anything waiting for your approval is at the top.', screen: 'portal', href: '/portal' },
+  client: { text: 'Start with your projects: anything waiting for your approval is at the top.', screen: 'portal', href: '/portal' },
   consultant: { text: 'Start with My Day, then open your project.', screen: 'my-day', href: '/my-day' },
+  site: { text: 'Start with the look-ahead on your project: the next weeks of work, and progress to record.', screen: 'project.lookahead', tab: 'lookahead' },
   vendor: { text: 'Start with your requests for quotation.', screen: 'portal.rfqs', href: '/portal/rfqs' },
 };
 
@@ -136,8 +140,12 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
   approvals: {
     all: {
       title: 'Approvals',
+      steps: [s('Waiting for you', 'Anything across your projects that needs your decision or signed review shows here, soonest deadline first. If the list is empty, nothing is waiting for you.')],
+    },
+    client: {
+      title: 'Approvals',
       steps: [
-        s('Waiting for you', 'Everything across your projects that needs your decision, oldest first.'),
+        s('Waiting for you', 'Everything across your projects that needs your decision, soonest deadline first: Stage 1 documents, variations, stage moves, payment and completion.'),
         s('Decide', 'Approve, approve with comments, reject, or reject with comments. You sign each decision, and it is stamped on the document.'),
       ],
     },
@@ -166,13 +174,20 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
     setjeka: {
       title: 'Rough estimates',
       steps: [
-        s('A first cost', 'Floor area x rate x provincial factor, plus escalation, contingency and VAT, split by element.'),
+        s('A first cost', 'Floor area x rate x provincial factor, plus escalation, contingency and VAT, split by element. The rates are South African; Nigerian projects need a QS estimate.'),
         s('Keep the rates current', 'The rate table below is a starting point. Have the QS check and update it before figures go to a client.'),
       ],
     },
   },
   'project.overview': {
-    all: { title: 'Project overview', steps: [s('The project', 'Its stage, key dates and people. The tabs across the top are each part of the project; the guide shows them in the order you will use them.')] },
+    all: {
+      title: 'Project overview',
+      steps: [
+        s('The project', 'Its stage, key figures and recent notes. The Overview has its own tabs (Summary, PROCSA, Team, Structure); the rest of the project is in the menu on the left, by module.'),
+        s('Your work with Setjeka', 'If your firm has a contract, appointment or order on this project, its value, what is certified and what is paid show at the top. You see your own firm\'s figures only.'),
+      ],
+    },
+    setjeka: { title: 'Project overview', steps: [s('The project', 'Its stage, key figures and recent notes. The Overview has its own tabs (Summary, PROCSA, Team, Structure); the rest of the project is in the menu on the left, by module.')] },
     client: { title: 'Your project', steps: [s('Where it is', 'The stage, the next milestones and what is waiting for you. Approvals come to you through Setjeka.')] },
   },
   'project.inception': {
@@ -183,7 +198,8 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
         s('Put each to the client', 'Send each document for the client to approve. The project can only move to Concept once all are approved.'),
       ],
     },
-    all: { title: 'Inception (Stage 1)', steps: [s('Your appointment', 'Confirm your scope of services and responsibilities here when Setjeka asks you to, and sign your appointment.')] },
+    all: { title: 'Inception (Stage 1)', steps: [s('The Stage 1 pack', 'The brief, site assessment, viability and the other Stage 1 documents Setjeka prepares. An appointed consultant confirms their scope of services here and signs their appointment when Setjeka asks.')] },
+    client: { title: 'Inception (Stage 1)', steps: [s('Approve each document', 'Setjeka sends you each Stage 1 document to approve. The project moves on to Concept once all of them are approved.')] },
   },
   'project.procsa': {
     architect: {
@@ -217,7 +233,7 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
         s('Sign off', 'Sign off any item with a note where the evidence lives outside the platform.'),
       ],
     },
-    all: { title: 'Your responsibilities', steps: [s('By stage', 'What is expected of you at each stage. Items tick themselves as your work goes onto the platform.')] },
+    all: { title: 'PROCSA', steps: [s('By stage', 'The responsibilities PROCSA gives each appointed consultant, stage by stage. If your role has some, they show here and tick themselves as your work goes onto the platform.')] },
   },
   'project.meetings': {
     setjeka: {
@@ -230,7 +246,11 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
     all: { title: 'Meetings', steps: [s('Your meetings', 'Agendas, minutes and the actions given to you. Being marked present counts towards your responsibilities.')] },
   },
   'project.actions': { all: { title: 'Actions', steps: [s('Every open action', 'Actions from notes and meetings on this project, with who has them and when they are due.')] } },
-  'project.tasks': { all: { title: 'Tasks', steps: [s('Work to do', 'Add tasks, give them to someone and track them to done.')] } },
+  'project.tasks': {
+    all: { title: 'Tasks', steps: [s('Work to do', 'Add tasks, give them to someone and track them to done. You can change the tasks you added; a task given to you, you move to done.')] },
+    setjeka: { title: 'Tasks', steps: [s('Work to do', 'Add tasks, give them to someone and track them to done.')] },
+    client: { title: 'Tasks', steps: [s('Work in hand', 'The tasks on your project and who has each one. Setjeka keeps them.')] },
+  },
   'project.issues': {
     all: {
       title: 'Issues',
@@ -248,6 +268,13 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
         s('Every file, every revision', 'Upload a new revision on top of the old one; the history stays. "Restore as current" brings an older revision back.'),
         s('Find things', 'Use tags and the filter, or Search inside to find words inside the files.'),
         s('Transmittals', 'Send documents to people or a distribution list. Each transmittal has a PDF slip.'),
+      ],
+    },
+    contractor: {
+      title: 'Documents',
+      steps: [
+        s('Every file, every revision', 'Documents shared on the project, each with its history. Upload your own documents here.'),
+        s('Transmittals', 'Documents issued to you arrive on a transmittal with a PDF slip. Setjeka and the consultants send them.'),
       ],
     },
     architect: {
@@ -378,14 +405,28 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
   'project.lookahead': {
     contractor: {
       title: 'Look-ahead',
-      steps: [s('Your progress', 'Your activities over the next weeks. Record how far each has got; it updates the programme. Activities held at a hold point wait for it to be released.')],
+      steps: [
+        s('Your progress', 'Your activities over the next weeks. Record how far each has got; it updates the programme. Activities held at a hold point wait for it to be released.'),
+        s('What you are waiting on', 'Other firms\' work linked to yours shows too, marked "you\'re waiting on this" (or "waiting on your work"), with its dates and progress.'),
+      ],
     },
-    all: {
+    setjeka: {
       title: 'Look-ahead',
       steps: [
         s('The next weeks', 'The programme from today, week by week, with anything already past its finish first. Each activity shows its progress against where the programme has it today.'),
         s('Record progress', 'Update % complete on site. Each update is kept with who made it and when, and shows on that day\'s site diary.'),
       ],
+    },
+    site: {
+      title: 'Look-ahead',
+      steps: [
+        s('The next weeks', 'The programme from today, week by week, with anything already past its finish first.'),
+        s('Record progress', 'Update % complete on site. Each update is kept with who made it and when, and shows on that day\'s site diary.'),
+      ],
+    },
+    all: {
+      title: 'Look-ahead',
+      steps: [s('The next weeks', 'The programme from today, week by week, with anything already past its finish first. Each activity shows its progress against where the programme has it today. The site team and the contractors record progress.')],
     },
   },
   'project.plant': {
@@ -581,7 +622,7 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
     contractor: {
       title: 'RFIs and submittals',
       steps: [
-        s('Ask a question', 'Raise an RFI to the architect or engineer, with the drawing it is about.'),
+        s('Ask a question', 'Raise an RFI to the architect or engineer, then open it to attach the drawing it is about.'),
         s('Submit for review', 'Send shop drawings, samples and data sheets as submittals, and see each review.'),
       ],
     },
@@ -599,7 +640,8 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       title: 'Procurement',
       steps: [s('RFQs to orders', 'Send requests for quotation, compare the quotes, award, and raise purchase orders. Keep at least the minimum number of quotes.')],
     },
-    all: { title: 'Procurement', steps: [s('Tenders and orders', 'Requests for quotation and orders on this project.')] },
+    contractor: { title: 'Procurement', steps: [s('Your orders', 'Orders Setjeka has placed with your firm on this project, and their deliveries.')] },
+    all: { title: 'Procurement', steps: [s('Tenders and orders', 'Requests for quotation and orders on this project. Setjeka runs the buying.')] },
   },
   'project.commercial': {
     setjeka: {
@@ -650,7 +692,8 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
         s('Kept for you', 'Payment certificates fill in as your valuations go through; you do not enter them here.'),
       ],
     },
-    all: { title: 'Registers', steps: [s('Project registers', 'Insurances, certificates, defects, handover documents and more. Each says who keeps it.')] },
+    contractor: { title: 'Registers', steps: [s('Shared with you', 'Defects, certificates, handover documents and finishes, and your own firm\'s payment certificates, claims and final accounts. Other firms\' figures are not shown.')] },
+    all: { title: 'Registers', steps: [s('Project registers', 'Certificates, defects, handover documents and more. Each says who keeps it. The money registers are for Setjeka, the client and the QS.')] },
   },
   'project.reports': {
     setjeka: { title: 'Reports', steps: [s('Report to the client', 'Produce the branded PowerPoint or PDF progress report, the Excel export and the close-out report.')] },
@@ -668,12 +711,26 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
   },
   'project.structure': { all: { title: 'Structure', steps: [s('How the project is broken down', 'Phases, blocks and work packages that records can be filed under.')] } },
   'project.schedule': {
+    setjeka: {
+      title: 'Programme',
+      steps: [
+        s('The programme', 'Activities, dates and links as a Gantt chart. Only Setjeka changes it.'),
+        s('Progress', 'Update percentage complete so the programme stays true; the site team and contractors record theirs on the Look-ahead.'),
+        s('Against the baseline', 'Save the agreed programme as a baseline. Baseline variance then shows the forecast finish against it, progress against plan, what is finishing late and where the critical path has moved.'),
+      ],
+    },
+    contractor: {
+      title: 'Programme',
+      steps: [
+        s('Your work', 'Your own activities, and other firms\' work linked to yours, marked "you\'re waiting on this". Double-click a bar for its details.'),
+        s('Your progress', 'Record how far your work has got on the Look-ahead; Setjeka keeps the programme.'),
+      ],
+    },
     all: {
       title: 'Programme',
       steps: [
-        s('The programme', 'Activities, dates and links as a Gantt chart.'),
-        s('Progress', 'Update percentage complete on your activities so the programme stays true.'),
-        s('Against the baseline', 'Save the agreed programme as a baseline. Baseline variance then shows the forecast finish against it, progress against plan, what is finishing late and where the critical path has moved.'),
+        s('The programme', 'Activities, dates and links as a Gantt chart. Setjeka keeps it and its baselines.'),
+        s('Progress', 'Progress is recorded on the Look-ahead by the site team and the contractors.'),
       ],
     },
   },
@@ -710,7 +767,7 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       title: 'Opportunities',
       steps: [
         s('Before there is a project', 'Each prospective development, its stage, authority approvals and business case.'),
-        s('Convert', 'Once approved, convert it into a project. The client and site carry across.'),
+        s('Move to Inception', 'Once Stage 0 is ready, Move to Inception creates the project. The client and site carry across.'),
       ],
     },
   },
@@ -718,7 +775,16 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
   contractors: {
     setjeka: { title: 'Contractors and consultants', steps: [s('The company directory', 'Every vendor and consultant, with compliance documents, appointments, ratings and scorecards.')] },
   },
-  'cost-database': { setjeka: { title: 'Cost database', steps: [s('Regional rates', 'Rates are updated from awarded RFQs, not typed in by hand.')] } },
+  'cost-database': { setjeka: { title: 'Cost database', steps: [s('Regional rates', 'Add the materials, labour and plant you price, then enter their prices for each region. Each price keeps its source and date.')] } },
+  portfolio: {
+    setjeka: {
+      title: 'Portfolio',
+      steps: [
+        s('Every project on one screen', 'Stage, cost against budget, the programme against its baseline, approvals waiting and risks, each with a red, amber or green call.'),
+        s('In rand', 'The totals are converted to rand; each project shows its own currency.'),
+      ],
+    },
+  },
   estimates: { setjeka: { title: 'Estimates', steps: [s('Estimates', 'Build an estimate from the cost database or from a model take-off, then finalise it.')] } },
   administration: {
     setjeka: {
@@ -729,7 +795,8 @@ export const SCREENS: Record<string, ByPersona<ScreenGuide>> = {
       ],
     },
   },
-  account: { all: { title: 'Your signature', steps: [s('Save it once', 'Draw, type or upload your signature. It is used whenever you approve or review.')] } },
+  'account.signature': { all: { title: 'Your signature', steps: [s('Save it once', 'Draw, type or upload your signature. It is used whenever you approve or review.')] } },
+  'account.settings': { all: { title: 'My settings', steps: [s('Dates your way', 'Choose how dates are written for you: DD/MM/YYYY unless you pick another. It follows you to every device.')] } },
 };
 
 export function screenGuide(key: string | null, persona: GuidePersona): ScreenGuide | null {
@@ -762,7 +829,12 @@ const page = (href: string, screen: string, label: string, what: string): Journe
 
 const GETTING_STARTED = (extra: JourneyItem[] = []): JourneySection => ({
   title: 'Getting started',
-  items: [page('/account/signature', 'account', 'Save your signature', 'Once, so every approval takes one click.'), page('/notifications', 'notifications', 'Choose your alerts', 'Mute what you do not need.'), ...extra],
+  items: [
+    page('/account/signature', 'account.signature', 'Save your signature', 'Once, so every approval takes one click.'),
+    page('/account/settings', 'account.settings', 'Your date format', 'DD/MM/YYYY unless you choose another.'),
+    page('/notifications', 'notifications', 'Choose your alerts', 'Mute what you do not need.'),
+    ...extra,
+  ],
 });
 
 export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
@@ -894,10 +966,26 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
         tab('inspections', 'Ask for inspections', 'Before you cover up work.'),
         tab('technical', 'RFIs and submittals', 'Ask questions; submit shop drawings.'),
         tab('photos', 'Site photos', 'Progress photos.'),
-        tab('schedule', 'Programme', 'Update your progress.'),
+        tab('lookahead', 'Look-ahead', 'Record your progress.'),
+        tab('schedule', 'Programme', 'Your work and what you are waiting on.'),
+        tab('hse', 'Health & safety', 'Report incidents; ask for permits to work.'),
+        tab('diary', 'Site diary', 'Who was on site, and delays.'),
+        tab('plant', 'Plant & equipment', 'Your plant and its inspections.'),
+        tab('tests', 'Tests & hold points', 'Tests on your work; wait for hold points.'),
+        tab('hidden', 'Hidden works', 'Record work before it is covered up.'),
+        tab('ncrs', 'Non-conformances', 'Answer NCRs issued to you.'),
+        tab('eot', 'Delays & EOT', 'Give notice of a delay; claim time.'),
+        tab('measure', 'Site measurement', 'Agree measurements; submit dayworks.'),
       ],
     },
-    { title: 'Handover', items: [tab('punch', 'Punch list', 'Fix and mark ready.'), tab('registers', 'Defects and handover documents', 'What is still owed.')] },
+    {
+      title: 'Handover',
+      items: [
+        tab('punch', 'Punch list', 'Fix and mark ready.'),
+        tab('defects', 'Completion & defects', 'Put defects right in the defects period.'),
+        tab('handover', 'Handover pack', 'The documents still owed.'),
+      ],
+    },
   ],
   client: [
     GETTING_STARTED(),
@@ -918,11 +1006,27 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
     {
       title: 'Your work',
       items: [
-        tab('procsa', 'Your responsibilities', 'What is expected of you.'),
+        tab('procsa', 'PROCSA', 'Responsibilities by stage, if your role has any.'),
         tab('meetings', 'Meetings', 'Attend and pick up actions.'),
         tab('documents', 'Documents', 'Files and transmittals.'),
         tab('inspections', 'Inspections', 'Quality and safety checks.'),
         tab('registers', 'Registers', 'The registers you keep.'),
+      ],
+    },
+  ],
+  site: [
+    GETTING_STARTED(),
+    {
+      title: 'On site',
+      items: [
+        tab('lookahead', 'Look-ahead', 'The next weeks; record progress.'),
+        tab('schedule', 'Programme', 'Setjeka keeps it; see the whole picture.'),
+        tab('diary', 'Site diary', 'One page a day, signed.'),
+        tab('hse', 'Health & safety', 'Incidents and permits to work.'),
+        tab('plant', 'Plant & equipment', 'Inspections and breakdowns.'),
+        tab('inspections', 'Inspections', 'Quality checks on site.'),
+        tab('ncrs', 'Non-conformances', 'Raise and close NCRs.'),
+        tab('meetings', 'Meetings', 'Site meetings and your actions.'),
       ],
     },
   ],
@@ -932,7 +1036,8 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
     {
       title: 'Before the project',
       items: [
-        page('/opportunities', 'opportunities', 'Opportunities', 'Prospective developments, then convert.'),
+        page('/opportunities', 'opportunities', 'Opportunities', 'Prospective developments, then Move to Inception.'),
+        page('/portfolio', 'portfolio', 'Portfolio', 'Every project on one screen.'),
         page('/clients', 'clients', 'Clients', 'Client organisations and portal logins.'),
         page('/rough-estimates', 'rough-estimates', 'Rough estimate', 'A first cost.'),
       ],
@@ -957,7 +1062,7 @@ export const JOURNEY: Record<GuidePersona, JourneySection[]> = {
       items: [
         tab('instructions', 'Issue instructions', 'Consultants draft, you issue.'),
         tab('inspections', 'Schedule inspections', 'Contractor requests.'),
-        tab('registers', 'Valuations and certificates', 'Add them for the architect’s review.'),
+        tab('commercial', 'Valuations and certificates', 'From the QS under Contracts & valuations; certify them.'),
         tab('schedule', 'Programme', 'Baseline and progress.'),
         tab('reports', 'Report to the client', 'PowerPoint, PDF and Excel.'),
       ],

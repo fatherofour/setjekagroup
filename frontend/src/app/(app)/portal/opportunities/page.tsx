@@ -18,15 +18,18 @@ interface PortalOpportunity {
 }
 
 export default function ClientPortalOpportunitiesPage() {
-  const { authedFetch } = useAuth();
-  const [items, setItems] = useState<PortalOpportunity[] | null>(null);
+  const { authedFetch, user } = useAuth();
+  const [loaded, setItems] = useState<PortalOpportunity[] | null>(null);
+  // A client on the project team has no developments before a project.
+  const items = user && !user.clientId ? [] : loaded;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (user && !user.clientId) return;
     authedFetch<PortalOpportunity[]>('/client-portal/opportunities')
       .then(setItems)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load your developments.'));
-  }, [authedFetch]);
+  }, [authedFetch, user]);
 
   return (
     <div>

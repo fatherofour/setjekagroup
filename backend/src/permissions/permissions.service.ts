@@ -5,8 +5,8 @@ import type { PermissionModule, PermissionAction, ProjectMemberRole } from '../g
 import type { Prisma } from '../generated/prisma/client.js';
 
 /** Work that is Setjeka's own (the user's rule, 14 Nov 2026): buying (RFQs,
- * quotes, orders), the project team, the project's structure and moving the
- * stage. An outside account (a consultant, a contractor, an outside site or
+ * quotes, orders), the project team, the project's structure, moving the
+ * stage and changing the programme. An outside account (a consultant, a contractor, an outside site or
  * HSE manager, the client) can't do these, whatever role it holds; they keep
  * VIEW and COMMENT, and the client still signs stage moves (APPROVE). */
 const SETJEKA_ONLY: Partial<Record<PermissionModule, PermissionAction[]>> = {
@@ -14,8 +14,18 @@ const SETJEKA_ONLY: Partial<Record<PermissionModule, PermissionAction[]>> = {
   TEAM: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
   PROJECT_STRUCTURE: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
   STAGE_GATE: ['CREATE', 'EDIT', 'DELETE'],
+  // The programme (the user's decision, 15 Nov 2026, critique V3-M-05):
+  // only Setjeka adds, moves or re-baselines activities. Outside site and
+  // HSE managers and contractors record progress on the Look-ahead.
+  SCHEDULE: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
 };
 export const setjekaOnly = (module: PermissionModule, action: PermissionAction) => Boolean(SETJEKA_ONLY[module]?.includes(action));
+
+/** Decisions only the client signs (critique V3-C-01): stage moves and the
+ * Stage 1 documents. The matrix gave APPROVE on these to the "Setjeka team"
+ * roles too, which an outside site or HSE manager holds. */
+const CLIENT_SIGNS: PermissionModule[] = ['STAGE_GATE', 'PROJECT_DEFINITION'];
+export const clientSigns = (module: PermissionModule, action: PermissionAction) => action === 'APPROVE' && CLIENT_SIGNS.includes(module);
 
 @Injectable()
 export class PermissionsService {
@@ -42,6 +52,9 @@ export class PermissionsService {
     const member = await this.prisma.projectMember.findFirst({ where: { projectId, userId } });
     if (!member) return accountType === 'INTERNAL';
     if (accountType !== 'INTERNAL' && setjekaOnly(module, action)) return false;
+    if (clientSigns(module, action)) {
+      return Boolean(await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } }));
+    }
 
     // Budgets, variations, valuations and fees: Setjeka's own staff, the QS
     // and the client (critique M-01). An outside firm's site or HSE manager
@@ -104,6 +117,7 @@ export class PermissionsService {
           actions.map((a) => {
             if (m === 'COMMERCIAL' && !commercialOk) return [a, false];
             if (user.accountType !== 'INTERNAL' && setjekaOnly(m, a)) return [a, false];
+            if (clientSigns(m, a)) return [a, members.some((x) => x.role === 'CLIENT')];
             const o = overrides.find((x) => x.module === m && x.action === a);
             if (o) return [a, o.allowed];
             return [a, roleRows.find((r) => r.module === m && r.action === a)?.allowed ?? false];

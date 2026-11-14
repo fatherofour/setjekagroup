@@ -58,7 +58,7 @@ export function PortfolioOverview({ activeCount }: Props) {
         )}
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <StatRow icon={Briefcase} label="Active projects" value={String(activeCount)} note={t ? `${t.health.RED} need attention` : undefined} />
+        <StatRow icon={Briefcase} label="Open projects" value={String(activeCount)} note={t ? `${t.health.RED} need attention` : undefined} />
         <StatRow icon={DollarSign} label="Total budget" value={t ? rand(t.revisedBudget) : '—'} note={t ? `forecast ${rand(t.projectedFinalCost)}` : internal ? 'Loading' : undefined} />
         <StatRow icon={PieChart} label="With budget set" value={t ? `${t.withBudget} of ${t.projects}` : '—'} />
       </div>

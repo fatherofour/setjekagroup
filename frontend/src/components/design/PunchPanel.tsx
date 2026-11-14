@@ -10,6 +10,7 @@ import { CommentThread } from '@/components/project/CommentThread';
 import { downloadFile } from '@/lib/files';
 import { cardCls, fmtDay, inputCls, labelCls, memberName, primaryBtn, secondaryBtn, selectCls, textareaCls, type Member } from '@/lib/architect';
 import { PlanView, type PlanPin } from './PlanView';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'OPEN' | 'READY_FOR_INSPECTION' | 'CLOSED';
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -283,7 +284,7 @@ export function PunchPanel({ projectId }: { projectId: string }) {
                   </div>
                   <label className={labelCls}>
                     Due
-                    <input type="date" className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+                    <DateInput className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
                   </label>
                 </div>
                 <div className={labelCls}>

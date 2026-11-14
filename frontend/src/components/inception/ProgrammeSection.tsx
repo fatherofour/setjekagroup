@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Activity {
   id: string;
@@ -76,7 +77,7 @@ export function ProgrammeSection({ projectId, onChange }: { projectId: string; o
             <label className={labelClass} htmlFor="prog-start">
               Programme starts
             </label>
-            <input id="prog-start" type="date" className={`${inputClass} w-44`} value={start} onChange={(e) => setStart(e.target.value)} />
+            <DateInput id="prog-start" className={`${inputClass} w-44`} value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <button type="button" disabled={busy} onClick={generate} className={primaryButton}>
             {busy ? 'Generating…' : 'Generate Stage 1 programme'}

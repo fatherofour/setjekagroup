@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Banknote } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { formatMoney } from '@/lib/money';
 
 /** A contractor's or consultant's own work with Setjeka (14 Nov 2026): their
  * own contracts, appointments and orders, never the project's value with the
@@ -42,8 +43,7 @@ interface OverallDeals {
   totals: Totals[];
 }
 
-const SIGN: Record<string, string> = { ZAR: 'R ', NGN: '₦', USD: '$', GBP: '£', EUR: '€' };
-export const money = (n: number, currency: string) => `${SIGN[currency] ?? `${currency} `}${Math.round(n).toLocaleString('en-ZA')}`;
+export const money = (n: number, currency: string) => formatMoney(n, currency);
 const KIND: Record<Deal['kind'], string> = { CONTRACT: 'Contract', APPOINTMENT: 'Appointment', ORDER: 'Order' };
 
 const card = 'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900';

@@ -235,7 +235,7 @@ export interface Valuation {
 }
 
 export const money = (n: number | null | undefined, currency?: string) =>
-  n == null ? '—' : `${currency ? `${currency} ` : ''}${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  n == null ? '—' : `${currency ? `${currency} ` : ''}${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Download a file behind auth (a bill as Excel, a valuation as PDF). */
 export async function download(path: string, accessToken: string | null, filename: string) {

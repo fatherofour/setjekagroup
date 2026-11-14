@@ -11,6 +11,7 @@ import type { CostCode } from '@/lib/commercial';
 import { CommentThread } from '@/components/project/CommentThread';
 import { ITEM_TYPE_LABEL, KIND_LABEL, KIND_STAGE, PLAN_STATUS, download, money, type CostPlan, type CostPlanKind, type CostPlanSummary, type ItemType, type PlanItem } from '@/lib/qs';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 const KIND_OPTIONS = (Object.keys(KIND_LABEL) as CostPlanKind[]).map((k) => ({ value: k, label: `${KIND_LABEL[k]} (${KIND_STAGE[k]})` }));
 const TYPE_OPTIONS = (Object.keys(ITEM_TYPE_LABEL) as ItemType[]).map((t) => ({ value: t, label: ITEM_TYPE_LABEL[t] }));
@@ -493,7 +494,7 @@ function BillEditor({ projectId, id, internal, onChanged, onClosed }: { projectI
               <label className={labelClass} htmlFor="tender-due">
                 Tenders close
               </label>
-              <input id="tender-due" type="date" className={inputClass} value={tenderForm.dueDate} onChange={(e) => setTenderForm({ ...tenderForm, dueDate: e.target.value })} />
+              <DateInput id="tender-due" className={inputClass} value={tenderForm.dueDate} onChange={(e) => setTenderForm({ ...tenderForm, dueDate: e.target.value })} />
             </div>
             <button type="submit" disabled={busy || !tenderForm.title.trim()} className={secondaryButton}>
               <FileSpreadsheet size={14} />

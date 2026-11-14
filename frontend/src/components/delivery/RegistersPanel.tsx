@@ -66,7 +66,7 @@ function display(f: Field, e: Entry): string {
     case 'money':
       return formatMoney(v as number, e.currency);
     case 'decimal':
-      return `${(v as number).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}${f.unit ? ` ${f.unit}` : ''}`;
+      return `${(v as number).toLocaleString('en-GB', { maximumFractionDigits: 2 })}${f.unit ? ` ${f.unit}` : ''}`;
     case 'date':
       return formatDate(v as string);
     case 'enum':

@@ -8,6 +8,7 @@ import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Kind = 'AS_BUILT' | 'O_AND_M_MANUAL' | 'WARRANTY' | 'GUARANTEE' | 'STATUTORY_CERTIFICATE' | 'COMMISSIONING' | 'HEALTH_AND_SAFETY_FILE' | 'OTHER';
 type Status = 'OUTSTANDING' | 'SUBMITTED' | 'RETURNED' | 'ACCEPTED' | 'HANDED_OVER';
@@ -215,7 +216,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
               </label>
               <label className={labelCls}>
                 Runs to
-                <input type="date" className={`${inputCls} mt-0.5`} value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
+                <DateInput className={`${inputCls} mt-0.5`} value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
               </label>
             </>
           )}
@@ -378,7 +379,7 @@ export function HandoverPanel({ projectId }: { projectId: string }) {
                   </label>
                   <label className={labelCls}>
                     Due
-                    <input type="date" className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+                    <DateInput className={`${inputCls} mt-0.5`} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
                   </label>
                   <div className="flex items-end gap-2 sm:col-span-3">
                     <button type="submit" disabled={!form.title.trim()} className={primaryBtn}>

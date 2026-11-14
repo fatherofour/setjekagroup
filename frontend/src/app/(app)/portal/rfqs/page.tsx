@@ -106,19 +106,19 @@ function QuoteForm({ rfq, onSaved }: { rfq: VendorRfq; onSaved: () => void }) {
                 <tr key={it.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="py-1.5 pr-2 text-slate-700 dark:text-slate-200">{it.description}</td>
                   <td className="py-1.5 pr-2 text-right tabular-nums text-slate-500">
-                    {it.quantity.toLocaleString()} {it.unit}
+                    {it.quantity.toLocaleString('en-GB')} {it.unit}
                   </td>
                   <td className="py-1.5 pr-2">
                     <input aria-label={`Unit rate for ${it.description}`} type="number" min={0} step="any" placeholder={`per ${it.unit}`} className={`${inputClass} text-right`} value={rates[it.id] ?? ''} onChange={(e) => setRates({ ...rates, [it.id]: e.target.value })} />
                   </td>
-                  <td className="py-1.5 text-right tabular-nums">{rates[it.id] ? (Number(rates[it.id]) * it.quantity).toLocaleString(undefined, { maximumFractionDigits: 2 }) : ''}</td>
+                  <td className="py-1.5 text-right tabular-nums">{rates[it.id] ? (Number(rates[it.id]) * it.quantity).toLocaleString('en-GB', { maximumFractionDigits: 2 }) : ''}</td>
                 </tr>
               ))}
               <tr className="border-t border-slate-200 font-semibold dark:border-slate-700">
                 <td colSpan={3} className="py-1.5 pr-2 text-right">
                   Total
                 </td>
-                <td className="py-1.5 text-right tabular-nums">{itemsTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                <td className="py-1.5 text-right tabular-nums">{itemsTotal.toLocaleString('en-GB', { maximumFractionDigits: 2 })}</td>
               </tr>
             </tbody>
           </table>

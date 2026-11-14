@@ -112,7 +112,7 @@ export function OrganisationAppointmentsTab({ contractorId, onChange }: { contra
                 </Link>
                 <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                   {APPOINTMENT_ROLE_LABEL[a.role]} · {APPOINTMENT_STATUS_LABEL[a.appointmentStatus]}
-                  {a.contractValue != null && a.currency ? ` · ${CURRENCY_SYMBOL[a.currency]}${a.contractValue.toLocaleString()}` : ''}
+                  {a.contractValue != null && a.currency ? ` · ${CURRENCY_SYMBOL[a.currency]}${a.contractValue.toLocaleString('en-GB')}` : ''}
                 </p>
               </div>
               <button

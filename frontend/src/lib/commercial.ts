@@ -98,13 +98,13 @@ export interface WorkItem {
 /** Quantities: up to 3 decimals, no trailing zeros. */
 export function formatQty(n: number | null | undefined) {
   if (n == null) return '—';
-  return n.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  return n.toLocaleString('en-GB', { maximumFractionDigits: 3 });
 }
 
 /** Money with cents, for rates. */
 export function formatRate(n: number | null | undefined, currency?: string | null) {
   if (n == null) return '—';
-  return `${currency ? `${currency} ` : ''}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${currency ? `${currency} ` : ''}${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function costCodeLabel(c: { code: string; name: string } | null | undefined) {

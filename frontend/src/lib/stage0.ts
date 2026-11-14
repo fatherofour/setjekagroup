@@ -105,7 +105,7 @@ export function isExecutive(user: { role: string; accountType: string } | null |
 
 export function formatMoney(value: number | null | undefined, currency: string | null | undefined) {
   if (value == null) return '—';
-  return `${currency ?? ''} ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`.trim();
+  return `${currency ?? ''} ${value.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`.trim();
 }
 
 export const inputClass =

@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { ratingText, type EligibleConsultant } from './consultantTypes';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Props {
   // Where RFQs are created: "/opportunities/<id>/rfqs" or "/projects/<id>/consultant-rfqs".
@@ -199,7 +200,7 @@ export function ConsultantRfqForm({ basePath, contextName, defaultPriceWeight = 
             <label className={labelClass} htmlFor="rfq-due">
               Quotes due by
             </label>
-            <input id="rfq-due" type="date" className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <DateInput id="rfq-due" className={inputClass} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
           <div>
             <label className={labelClass} htmlFor="rfq-weight">

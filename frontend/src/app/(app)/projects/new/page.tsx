@@ -20,6 +20,7 @@ import {
   type Currency,
   type ProjectType,
 } from '@/lib/projectMeta';
+import { DateInput } from '@/components/ui/DateInput';
 
 const inputClass =
   'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -90,7 +91,7 @@ function NewProjectForm() {
     const pct = Number.parseFloat(contingencyPct);
     if (!Number.isFinite(budget) || budget <= 0 || !Number.isFinite(pct) || pct < 0) return '';
     const amount = budget * (pct / 100);
-    return `${currency} ${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    return `${currency} ${amount.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
   })();
 
   async function handleSubmit(e: FormEvent) {
@@ -285,11 +286,11 @@ function NewProjectForm() {
             </div>
             <div>
               <label htmlFor="page-start-date" className={labelClass}>Start date</label>
-              <input id="page-start-date" className={inputClass} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DateInput id="page-start-date" className={inputClass} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
               <label htmlFor="page-end-date" className={labelClass}>End date</label>
-              <input id="page-end-date" className={inputClass} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <DateInput id="page-end-date" className={inputClass} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
         </div>

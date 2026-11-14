@@ -14,6 +14,7 @@ import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { formatDateTime } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 type Reason = 'CLIENT_INSTRUCTION' | 'DESIGN_CHANGE' | 'SITE_CONDITION' | 'RFI' | 'OMISSION' | 'OTHER';
@@ -277,7 +278,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged, inte
                             <label className={labelClass} htmlFor={`due-${v.id}`}>
                               Client to respond by
                             </label>
-                            <input id={`due-${v.id}`} type="date" min={todayInput()} className={inputClass} value={input(v.id, 'due') || defaultDueDate()} onChange={(e) => setInput(v.id, 'due', e.target.value)} />
+                            <DateInput id={`due-${v.id}`} min={todayInput()} className={inputClass} value={input(v.id, 'due') || defaultDueDate()} onChange={(e) => setInput(v.id, 'due', e.target.value)} />
                           </div>
                           <button
                             type="button"

@@ -5,6 +5,7 @@ import { Download, Eye, EyeOff, FileSpreadsheet, FileText, Loader2, Presentation
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Kind = 'PROGRESS_PPTX' | 'SUMMARY_PDF' | 'EXCEL_EXPORT' | 'CLOSEOUT_PDF';
 
@@ -107,8 +108,7 @@ export function ReportsPanel({ projectId, clientView = false }: { projectId: str
               <div className="mt-3 flex flex-1 flex-wrap items-end gap-2">
                 <label className="text-xs text-slate-500">
                   From
-                  <input
-                    type="date"
+                  <DateInput
                     className="mt-0.5 block h-9 rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     value={periods[k.kind].from}
                     placeholder={k.defaultDays === null ? 'Project start' : undefined}
@@ -117,8 +117,7 @@ export function ReportsPanel({ projectId, clientView = false }: { projectId: str
                 </label>
                 <label className="text-xs text-slate-500">
                   To
-                  <input
-                    type="date"
+                  <DateInput
                     className="mt-0.5 block h-9 rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     value={periods[k.kind].to}
                     onChange={(e) => setPeriods({ ...periods, [k.kind]: { ...periods[k.kind], to: e.target.value } })}

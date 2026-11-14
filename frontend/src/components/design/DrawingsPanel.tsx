@@ -23,6 +23,7 @@ import {
   type IssuePurpose,
   type Member,
 } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Revision {
   id: string;
@@ -680,7 +681,7 @@ function ProgrammePanel({ projectId }: { projectId: string }) {
           </div>
           <label className={labelCls}>
             Planned issue date
-            <input type="date" className={`${inputCls} mt-0.5`} value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} />
+            <DateInput className={`${inputCls} mt-0.5`} value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} />
           </label>
           <div className={labelCls}>
             Responsible

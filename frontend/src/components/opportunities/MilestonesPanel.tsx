@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, inputClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'COMPLETED' | 'COMPLETED_LATE' | 'OVERDUE' | 'SLIPPED' | 'ON_TRACK' | 'NOT_SCHEDULED';
 
@@ -136,14 +137,14 @@ export function MilestonesPanel({ basePath, readOnly = false }: { basePath: stri
                     {readOnly ? (
                       <span className="text-xs tabular-nums text-slate-600">{m.targetDate ? formatDate(m.targetDate) : '—'}</span>
                     ) : (
-                      <input key={`t-${m.id}-${m.targetDate}`} aria-label={`Target for ${m.name}`} type="date" className={`${inputClass} h-8 w-36 text-xs`} defaultValue={day(m.targetDate)} onBlur={(e) => e.target.value !== day(m.targetDate) && setDate(m, 'targetDate', e.target.value)} />
+                      <DateInput key={`t-${m.id}-${m.targetDate}`} aria-label={`Target for ${m.name}`} className={`${inputClass} h-8 w-36 text-xs`} value={day(m.targetDate)} onChange={(e) => setDate(m, 'targetDate', e.target.value)} />
                     )}
                   </td>
                   <td className="py-1.5 pr-2">
                     {readOnly ? (
                       <span className="text-xs tabular-nums text-slate-600">{m.actualDate ? formatDate(m.actualDate) : '—'}</span>
                     ) : (
-                      <input key={`a-${m.id}-${m.actualDate}`} aria-label={`Actual for ${m.name}`} type="date" className={`${inputClass} h-8 w-36 text-xs`} defaultValue={day(m.actualDate)} onBlur={(e) => e.target.value !== day(m.actualDate) && setDate(m, 'actualDate', e.target.value)} />
+                      <DateInput key={`a-${m.id}-${m.actualDate}`} aria-label={`Actual for ${m.name}`} className={`${inputClass} h-8 w-36 text-xs`} value={day(m.actualDate)} onChange={(e) => setDate(m, 'actualDate', e.target.value)} />
                     )}
                   </td>
                   <td className="py-1.5 pr-2">

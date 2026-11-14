@@ -9,12 +9,14 @@ interface TagInputProps {
   suggestions?: string[];
   placeholder?: string;
   className?: string;
+  /** The field's name for screen readers (critique V3-L-12). */
+  ariaLabel?: string;
 }
 
 // Free-text multi-value input (used for disciplines) with a datalist of
 // suggestions — not a closed dropdown, since the backend stores these as
 // free text rather than a fixed enum (see organisationMeta.ts).
-export function TagInput({ values, onChange, suggestions, placeholder, className }: TagInputProps) {
+export function TagInput({ values, onChange, suggestions, placeholder, className, ariaLabel }: TagInputProps) {
   const [draft, setDraft] = useState('');
   const listId = `tag-suggestions-${Math.random().toString(36).slice(2)}`;
 
@@ -50,6 +52,7 @@ export function TagInput({ values, onChange, suggestions, placeholder, className
         ))}
       </div>
       <input
+        aria-label={ariaLabel ?? placeholder}
         list={suggestions ? listId : undefined}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

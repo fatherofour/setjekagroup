@@ -32,7 +32,7 @@ interface Diff {
   unchanged: number;
 }
 const err = (e: unknown, f: string) => (e instanceof ApiError ? e.message : f);
-const num = (n: number) => n.toLocaleString('en-ZA', { maximumFractionDigits: 2 });
+const num = (n: number) => n.toLocaleString('en-GB', { maximumFractionDigits: 2 });
 
 /** Every element of a model with its properties and quantities, quantities
  * summed by class, and what changed between two revisions. */
@@ -145,7 +145,7 @@ export function ElementsView({ ctx }: { ctx: HubContext }) {
             </form>
             <Select className={`${selectCls} w-56`} value={type} onChange={(v) => (setType(v), setPage(0))} options={[{ value: '', label: 'Every class' }, ...(data?.facets.types ?? []).map((t) => ({ value: t.value, label: `${ifcLabel(t.value)} (${t.count})` }))]} aria-label="IFC class" />
             <Select className={`${selectCls} w-44`} value={storey} onChange={(v) => (setStorey(v), setPage(0))} options={[{ value: '', label: 'Every storey' }, ...(data?.facets.storeys ?? []).filter((s) => s.value).map((s) => ({ value: s.value!, label: `${s.value} (${s.count})` }))]} aria-label="Storey" />
-            <span className="ml-auto text-xs text-slate-500">{busy ? <Loader2 size={12} className="inline animate-spin" /> : data ? `${data.total.toLocaleString('en-ZA')} elements` : ''}</span>
+            <span className="ml-auto text-xs text-slate-500">{busy ? <Loader2 size={12} className="inline animate-spin" /> : data ? `${data.total.toLocaleString('en-GB')} elements` : ''}</span>
           </div>
           {data && data.revisionId === null ? (
             <p className="p-4 text-sm text-slate-500">This model has not been read yet.</p>

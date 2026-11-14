@@ -16,6 +16,7 @@ import {
 import { Select } from '@/components/ui/Select';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -280,8 +281,8 @@ export function OrganisationComplianceTab({
         </div>
         <div className="flex flex-wrap gap-2">
           <input aria-label="Issuing authority" value={issuingAuthority} onChange={(e) => setIssuingAuthority(e.target.value)} placeholder="Issuing authority" className={`${inputClass} flex-1`} />
-          <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputClass} />
-          <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className={inputClass} />
+          <DateInput value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputClass} />
+          <DateInput value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className={inputClass} />
           <Select value={verificationStatus} onChange={setVerificationStatus} options={VERIFICATION_STATUSES.map((s) => ({ value: s, label: VERIFICATION_STATUS_LABEL[s] }))} className={inputClass} />
         </div>
         <button

@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { SignedCopies } from './SignedCopies';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Request {
   id: string;
@@ -90,7 +91,7 @@ export function ClientApprovalBox({ projectId, documentId, revisionId, onChanged
             <input className={`${inputClass} min-w-[160px] flex-1`} placeholder="Message to the client (optional)" value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message to the client" />
             <label className="flex items-center gap-1 text-slate-500">
               Respond by
-              <input type="date" min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
+              <DateInput min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
             </label>
             <button
               type="button"

@@ -51,7 +51,7 @@ Back up the database first: `docker exec setjeka-erp-postgres-1 pg_dump -U setje
 
 ## Locked accounts
 
-Six wrong passwords in a row lock an account until an administrator unlocks it (Administration › Users › Unlock; document.md §2.56). Resetting the password doesn't unlock it. If the only administrator is locked out, unlock it on the server:
+Six wrong passwords in a row lock an account until an administrator unlocks it (Administration › Users › Unlock; document.md §2.56, §2.57). Resetting the password doesn't unlock it. An administrator's own lock lifts after 30 minutes. To unlock any account at once on the server:
 
 ```bash
 docker exec setjeka-erp-postgres-1 psql -U setjeka_erp setjeka_erp -c "UPDATE \"User\" SET \"lockedAt\" = NULL, \"failedLogins\" = 0 WHERE email = '<admin email>';"

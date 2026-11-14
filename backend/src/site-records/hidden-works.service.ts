@@ -6,6 +6,7 @@ import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { historyEntry, siteParty, type SiteParty } from '../common/site-party.js';
 import type { ApproveHiddenWorkDto, HiddenWorkDto, RerequestHiddenWorkDto } from './dto/site-records.dto.js';
+import { formatDay } from '../common/dates.js';
 
 const INCLUDE = {
   contractor: { select: { id: true, name: true } },
@@ -129,7 +130,7 @@ export class HiddenWorksService {
       },
       include: INCLUDE,
     });
-    await this.tell(projectId, await this.inspectorsFor(projectId, r), userId, 'HIDDEN_WORK_REQUESTED', r.id, `${r.number} "${r.title}" is ready to inspect before it is covered${r.readyAt ? ` (${r.readyAt.toLocaleDateString('en-ZA')})` : ''}`);
+    await this.tell(projectId, await this.inspectorsFor(projectId, r), userId, 'HIDDEN_WORK_REQUESTED', r.id, `${r.number} "${r.title}" is ready to inspect before it is covered${r.readyAt ? ` (${formatDay(r.readyAt)})` : ''}`);
     return this.shape(w, r);
   }
 

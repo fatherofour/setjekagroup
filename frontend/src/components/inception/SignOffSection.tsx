@@ -10,6 +10,7 @@ import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type Appr
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 export interface Deliverable {
   key: string;
@@ -193,8 +194,7 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
                         />
                         <label className="flex items-center gap-1.5 text-xs text-slate-500">
                           Respond by
-                          <input
-                            type="date"
+                          <DateInput
                             min={todayInput()}
                             aria-label={`Client to respond to ${d.title} by`}
                             className={`${inputClass} h-8 w-auto text-xs`}

@@ -1,3 +1,4 @@
+import { formatDay } from '../common/dates.js';
 const SKIP = /^(id|projectId|opportunityId|createdAt|updatedAt|createdById|updatedById|.*Id)$/;
 
 const human = (key: string) =>
@@ -9,8 +10,8 @@ const human = (key: string) =>
 
 function value(v: unknown): string | null {
   if (v === null || v === undefined || v === '') return null;
-  if (v instanceof Date) return v.toLocaleDateString('en-ZA');
-  if (typeof v === 'string') return /^\d{4}-\d{2}-\d{2}T/.test(v) ? new Date(v).toLocaleDateString('en-ZA') : v;
+  if (v instanceof Date) return formatDay(v);
+  if (typeof v === 'string') return /^\d{4}-\d{2}-\d{2}T/.test(v) ? formatDay(new Date(v)) : v;
   if (typeof v === 'number') return v.toLocaleString('en-ZA');
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
   if (Array.isArray(v)) {

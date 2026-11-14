@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { ROLE_LABEL, cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'OPEN' | 'PROPOSED' | 'AGREED' | 'CLOSED' | 'CANCELLED';
 type Kind = 'PHYSICAL' | 'FUNCTIONAL' | 'SPATIAL' | 'INFORMATION' | 'SCHEDULE' | 'CONTRACTUAL';
@@ -318,7 +319,7 @@ export function InterfacesPanel({ projectId }: { projectId: string }) {
             </label>
             <label className={labelCls}>
               Agree by
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.needBy} onChange={(e) => setForm({ ...form, needBy: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.needBy} onChange={(e) => setForm({ ...form, needBy: e.target.value })} />
             </label>
             <div className={labelCls}>
               Programme activity

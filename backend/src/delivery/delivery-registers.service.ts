@@ -17,6 +17,13 @@ const INCLUDE = {
   createdBy: { select: { fullName: true } },
 } as const;
 
+/** Project money (critique V3-H-02): the facility, cash flow and sales.
+ * Setjeka, the client and the QS only, as for Commercial. */
+const PROJECT_MONEY = ['finance', 'cash-flow', 'sales-leasing'];
+/** A firm's money: each contractor sees its own rows only; consultants
+ * see them only where they keep the register or review the entry. */
+const FIRM_MONEY = ['payment-certificates', 'final-accounts', 'claims'];
+
 const REVIEW_SELECT = { id: true, subjectId: true, outcome: true, comment: true, method: true, signerName: true, signerRole: true, signedAt: true } as const;
 
 /** The Stage 2 to 6 delivery registers (registers.ts). Setjeka staff keep
@@ -40,9 +47,39 @@ export class DeliveryRegistersService {
     await this.projects.findOneForOwner(projectId, userId);
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
     const internal = user?.role === 'ADMIN' || user?.accountType === 'INTERNAL';
-    const roles = (await this.prisma.projectMember.findMany({ where: { projectId, userId }, select: { role: true } })).map((m) => m.role);
+    const members = await this.prisma.projectMember.findMany({ where: { projectId, userId }, select: { role: true, contractorId: true } });
+    const roles = members.map((m) => m.role);
     const contractor = !internal && roles.includes('CONTRACTOR');
-    return { internal, contractor, roles };
+    // Sees the project's money: Setjeka, the client and the QS.
+    const money = internal || roles.includes('CLIENT') || roles.includes('QUANTITY_SURVEYOR');
+    const firms = new Set(members.flatMap((m) => (m.role === 'CONTRACTOR' && m.contractorId ? [m.contractorId] : [])));
+    return { internal, contractor, roles, money, firms };
+  }
+
+  /** Which of a register's rows this person may read: 'all', 'own firm',
+   * 'reviewing' (payment certificates they are named to review), or none. */
+  private scope(r: DeliveryRegister, a: Awaited<ReturnType<DeliveryRegistersService['access']>>): 'all' | 'firm' | 'reviewing' | null {
+    if (a.money) return 'all';
+    if (PROJECT_MONEY.includes(r.key)) return null;
+    if (FIRM_MONEY.includes(r.key)) {
+      if (this.canEdit(r, a)) return 'all';
+      if (a.contractor) return 'firm';
+      if (r.key === 'payment-certificates' && this.canReview(r, a)) return 'reviewing';
+      return null;
+    }
+    if (a.contractor && !r.contractorsSee) return null;
+    return 'all';
+  }
+
+  private async visibleRows<T extends { id: string; contractorId: string | null }>(r: DeliveryRegister, a: Awaited<ReturnType<DeliveryRegistersService['access']>>, rows: T[]) {
+    const sc = this.scope(r, a);
+    if (sc === 'all') return rows;
+    if (sc === 'firm') return rows.filter((x) => x.contractorId && a.firms.has(x.contractorId));
+    if (sc === 'reviewing') {
+      const who = await this.entryReviewers(r, rows.map((x) => x.id));
+      return rows.filter((x) => who.get(x.id)?.roles.some((role) => a.roles.includes(role)));
+    }
+    return [];
   }
 
   /** Setjeka keeps every register; an outside role keeps the ones it's
@@ -66,10 +103,18 @@ export class DeliveryRegistersService {
     const a = await this.access(projectId, userId);
     const counts = await this.prisma.projectRegisterEntry.groupBy({ by: ['register'], where: { projectId }, _count: { _all: true } });
     const byKey = new Map(counts.map((c) => [c.register, c._count._all]));
-    return DELIVERY_REGISTERS.filter((r) => !a.contractor || r.contractorsSee).map((r) => ({
+    const shown = DELIVERY_REGISTERS.filter((r) => this.scope(r, a) !== null);
+    // Counts follow what the person can read (critique V3-H-02).
+    const partial = new Map<string, number>();
+    for (const r of shown) {
+      if (this.scope(r, a) === 'all') continue;
+      const rows = await this.prisma.projectRegisterEntry.findMany({ where: { projectId, register: r.key }, select: { id: true, contractorId: true } });
+      partial.set(r.key, (await this.visibleRows(r, a, rows)).length);
+    }
+    return shown.map((r) => ({
       key: r.key,
       label: r.label,
-      count: byKey.get(r.key) ?? 0,
+      count: partial.get(r.key) ?? byKey.get(r.key) ?? 0,
       canEdit: this.canEdit(r, a),
       canDelete: a.internal,
       canReview: this.canReview(r, a),
@@ -79,9 +124,9 @@ export class DeliveryRegistersService {
   async list(projectId: string, userId: string, key: string) {
     const r = this.register(key);
     const a = await this.access(projectId, userId);
-    if (a.contractor && !r.contractorsSee) throw new ForbiddenException('This register is not shared with contractors');
+    if (this.scope(r, a) === null) throw new ForbiddenException(a.contractor ? 'This register is not shared with contractors' : 'This register is for Setjeka, the client and the QS');
     const rows = await this.prisma.projectRegisterEntry.findMany({ where: { projectId, register: key }, include: INCLUDE, orderBy: [{ date: 'desc' }, { createdAt: 'desc' }] });
-    return this.withReviews(r, rows, a.roles);
+    return this.withReviews(r, await this.visibleRows(r, a, rows), a.roles);
   }
 
   /** Entries reviewed by one consultant in particular: a payment valuation

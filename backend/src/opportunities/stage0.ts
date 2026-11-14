@@ -1,3 +1,4 @@
+import { formatDay } from '../common/dates.js';
 /** PROCSA Stage 0 — Project Initiation & Briefing, for every role the
  * matrix and the requirements register name at this stage:
  *  - Development Manager: PROCSA 0.1-0.8 (the only PROCSA role at Stage 0);
@@ -43,7 +44,7 @@ const rules: Record<string, Rule> = {
     f.preferredBusinessCase
       ? `Preferred business case: ${f.preferredBusinessCase.profitOnCostPct?.toFixed(1) ?? '—'}% profit on cost${f.preferredBusinessCase.viable ? '' : ' (below target)'}`
       : null,
-  vision: (f) => (f.clientVision && f.visionConfirmedAt ? `Confirmed by the client ${f.visionConfirmedAt.toLocaleDateString('en-ZA')}` : null),
+  vision: (f) => (f.clientVision && f.visionConfirmedAt ? `Confirmed by the client ${formatDay(f.visionConfirmedAt)}` : null),
   land: (f) => (f.selectedSite ? `Selected: ${f.selectedSite.name}` : null),
   landRights: (f) => {
     if (!f.selectedSite || !SECURED.includes(f.selectedSite.acquisitionStatus)) return null;
@@ -57,13 +58,13 @@ const rules: Record<string, Rule> = {
     if (live.length === 0 || live.some((p) => p.status !== 'PAID')) return null;
     return `All ${live.length} creditor payment(s) processed`;
   },
-  decision: (f) => (f.approvedDecisionAt ? `Approved ${f.approvedDecisionAt.toLocaleDateString('en-ZA')}` : null),
+  decision: (f) => (f.approvedDecisionAt ? `Approved ${formatDay(f.approvedDecisionAt)}` : null),
   paymentsApproved: (f) => {
     const live = f.payments.filter((p) => p.status !== 'REJECTED');
     if (live.length === 0 || live.some((p) => !p.approvedById)) return null;
     return `${live.length} payment(s) approved`;
   },
-  clientConfirmed: (f) => (f.visionConfirmedAt ? `Confirmed ${f.visionConfirmedAt.toLocaleDateString('en-ZA')}` : null),
+  clientConfirmed: (f) => (f.visionConfirmedAt ? `Confirmed ${formatDay(f.visionConfirmedAt)}` : null),
 };
 
 export const STAGE0_ROLES: { key: string; label: string; source: string; items: Item[] }[] = [

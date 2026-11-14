@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Compass, Lightbulb, RotateCcw, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useCurrentProject } from '@/lib/current-project-context';
+import { useProjectAccess } from '@/lib/project-access';
 import { JOURNEY, PERSONA_LABEL, START, screenGuide, screenKey, welcomeTour, type GuidePersona, type GuideStep, type JourneyItem } from '@/lib/guide';
 
 interface GuideState {
@@ -35,6 +36,14 @@ export function Guide() {
   const pathname = usePathname();
   const tab = useSearchParams().get('tab');
   const key = screenKey(pathname, tab);
+  // The project on screen: the guide speaks to the person's role there
+  // (critique V3-L-02), and gives no tip on a screen their role can't open
+  // (V3-M-07).
+  const { currentProject } = useCurrentProject();
+  const urlProject = pathname.startsWith('/projects/') ? (pathname.split('/')[2] ?? null) : null;
+  const projectId = urlProject && urlProject !== 'new' ? urlProject : (currentProject?.id ?? null);
+  const access = useProjectAccess(urlProject && urlProject !== 'new' ? urlProject : null);
+  const barred = Boolean(urlProject && tab && (!access.roleKnown || !access.canOpen(tab)));
   const [state, setState] = useState<GuideState | null>(null);
   const [panel, setPanel] = useState(false);
   const [tourAgain, setTourAgain] = useState(false);
@@ -42,10 +51,10 @@ export function Guide() {
 
   useEffect(() => {
     if (!user) return;
-    authedFetch<GuideState>('/me/guide')
+    authedFetch<GuideState>(`/me/guide${projectId ? `?projectId=${projectId}` : ''}`)
       .then(setState)
       .catch(() => {});
-  }, [authedFetch, user]);
+  }, [authedFetch, user, projectId]);
 
   useEffect(() => {
     const open = () => setPanel(true);
@@ -65,7 +74,7 @@ export function Guide() {
   const firstName = user.fullName.trim().split(/\s+/)[0] || 'there';
   const showTour = tourAgain || !state.seen.includes('welcome');
   const guide = screenGuide(key, state.persona);
-  const showTip = !showTour && !panel && guide && key && (tipAgain === key || (!state.off && !state.seen.includes(`screen:${key}`)));
+  const showTip = !showTour && !panel && !barred && guide && key && (tipAgain === key || (!state.off && !state.seen.includes(`screen:${key}`)));
 
   return (
     <>
@@ -130,6 +139,7 @@ interface Rect {
 
 function WelcomeTour({ steps, persona, onDone }: { steps: GuideStep[]; persona: GuidePersona; onDone: () => void }) {
   const router = useRouter();
+  const { authedFetch } = useAuth();
   const { currentProject } = useCurrentProject();
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<{ step: number; r: Rect | null; target?: string } | null>(null);
@@ -184,12 +194,17 @@ function WelcomeTour({ steps, persona, onDone }: { steps: GuideStep[]; persona: 
     else pos = { left: Math.max(16, Math.min(r.left + r.width / 2 - W / 2, window.innerWidth - W - 16)), top: r.top + r.height + 14, width: W };
   }
 
-  function finish() {
+  async function finish() {
     onDone();
     const start = START[persona];
     if (start.href) router.push(start.href);
     else if (start.tab && currentProject) router.push(`/projects/${currentProject.id}?tab=${start.tab}`);
-    else if (start.tab) router.push('/projects');
+    else if (start.tab) {
+      // No project chosen yet (a new account): open the screen on their
+      // only project, or the list to choose one (critique V3-L-05).
+      const list = await authedFetch<{ id: string }[]>('/projects').catch(() => []);
+      router.push(list.length === 1 ? `/projects/${list[0].id}?tab=${start.tab}` : '/projects');
+    }
   }
 
   return (
@@ -257,9 +272,18 @@ function ScreenTip({ title, steps, persona, onDone, onOff }: { title: string; st
   const [i, setI] = useState(0);
   const step = steps[i];
   const last = i === steps.length - 1;
+  // Escape closes the tip, like the tour and the guide panel (V3-L-12).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onDone();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onDone]);
+  // Out of the way of the screen's own buttons (critique V3-M-06): on a
+  // phone a slim card under the header; on a desktop, the bottom left of the
+  // page, where screens keep no actions, clear of the menu.
   return (
     <aside
-      className={`fixed bottom-24 right-4 z-[60] w-[min(360px,calc(100vw-2rem))] p-4 motion-safe:animate-[guide-in_200ms_ease-out] sm:right-6 ${card}`}
+      className={`fixed inset-x-2 top-16 z-[60] max-h-[45vh] overflow-y-auto p-3 motion-safe:animate-[guide-in_200ms_ease-out] sm:inset-x-auto sm:bottom-4 sm:left-4 sm:top-auto sm:w-[340px] sm:p-4 lg:left-[19rem] ${card}`}
       role="complementary"
       aria-label={`Tips for ${title}`}
     >

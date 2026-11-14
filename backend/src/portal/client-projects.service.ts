@@ -22,7 +22,11 @@ export class ClientProjectsService {
 
   private async clientMember(userId: string, projectId?: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { accountType: true, clientId: true, status: true } });
-    if (!user?.clientId || user.accountType !== 'EXTERNAL' || user.status !== 'ACTIVE') throw new ForbiddenException('This account has no client portal access');
+    // A client signs in through a client organisation, or is simply the
+    // client on the project team (critique V3-H-04: the sample clients are
+    // set up that way, and the client guide sends them here).
+    const onTeamAsClient = Boolean(await this.prisma.projectMember.findFirst({ where: { userId, role: 'CLIENT' }, select: { id: true } }));
+    if ((!user?.clientId && !onTeamAsClient) || user?.accountType !== 'EXTERNAL' || user.status !== 'ACTIVE') throw new ForbiddenException('This account has no client portal access');
     if (!projectId) return null;
     const member = await this.prisma.projectMember.findFirst({ where: { projectId, userId, role: 'CLIENT' } });
     if (!member) throw new NotFoundException('Project not found');

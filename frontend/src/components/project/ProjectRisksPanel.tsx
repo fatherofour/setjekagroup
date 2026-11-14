@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from './CommentThread';
+import { DateInput } from '@/components/ui/DateInput';
 
 type RiskStatus = 'OPEN' | 'MITIGATING' | 'ESCALATED' | 'CLOSED';
 
@@ -161,7 +163,7 @@ function RiskDetailPanel({
               onChange={(v) => setForm({ ...form, status: v as RiskStatus })}
               options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
             />
-            <input type="date" className={inputClass} value={form.reviewDate} onChange={(e) => setForm({ ...form, reviewDate: e.target.value })} title="Next review date" />
+            <DateInput className={inputClass} value={form.reviewDate} onChange={(e) => setForm({ ...form, reviewDate: e.target.value })} title="Next review date" />
           </div>
           <Select
             className={`${inputClass} w-full`}
@@ -194,6 +196,9 @@ function RiskDetailPanel({
 }
 
 export function ProjectRisksPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('RISKS', 'CREATE');
   const { authedFetch } = useAuth();
   const [risks, setRisks] = useState<Risk[] | null>(null);
   const [members, setMembers] = useState<MemberLite[]>([]);
@@ -288,6 +293,7 @@ export function ProjectRisksPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
+      {canAdd && (
       <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <input aria-label="New risk title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New risk title" className={`${inputClass} flex-1`} />
         <Select value={probability} onChange={setProbability} className={`${inputClass} w-20`} options={PROB_IMPACT_OPTIONS} />
@@ -308,6 +314,7 @@ export function ProjectRisksPanel({ projectId }: { projectId: string }) {
           Add
         </button>
       </form>
+      )}
 
       {openRisk && (
         <RiskDetailPanel projectId={projectId} risk={openRisk} members={members} onClose={() => setOpenRiskId(null)} onChanged={load} />

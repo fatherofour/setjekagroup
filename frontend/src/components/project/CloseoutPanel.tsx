@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, openSignedCopy, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Completion {
   id: string;
@@ -185,11 +186,11 @@ export function CloseoutPanel({ projectId, isClient, onChanged }: { projectId: s
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="text-xs text-slate-600 dark:text-slate-300">
                       Works completed on
-                      <input type="date" className={inputClass} value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} />
+                      <DateInput className={inputClass} value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} />
                     </label>
                     <label className="text-xs text-slate-600 dark:text-slate-300">
                       Respond by
-                      <input type="date" min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
+                      <DateInput min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
                     </label>
                   </div>
                   <label className="block text-xs text-slate-600 dark:text-slate-300">

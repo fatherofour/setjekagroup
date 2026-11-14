@@ -7,6 +7,7 @@ import type { ActionStatusDto, CreateCommentDto, CreateOpportunityNoteDto } from
 import type { CommentEntityType } from '../generated/prisma/enums.js';
 import { describeRecords } from './note-context.js';
 import { RecordAccessService } from './record-access.service.js';
+import { formatDay } from '../common/dates.js';
 
 const PERSON = { select: { id: true, fullName: true } } as const;
 const NOTE_INCLUDE = { author: PERSON, recipient: PERSON, completedBy: PERSON } as const;
@@ -129,7 +130,7 @@ export class CommentsService {
       type: note.isAction ? 'ACTION_ASSIGNED' : 'NOTE_FOR_YOU',
       entityType: note.entityType,
       entityId: note.entityId,
-      message: `${author?.fullName ?? 'Someone'} ${note.isAction ? 'gave you an action' : 'left you a note'}${where ? ` on ${where}` : ''}: "${shorten(note.body)}"${note.isAction && note.dueDate ? ` (due ${note.dueDate.toLocaleDateString('en-ZA')})` : ''}`,
+      message: `${author?.fullName ?? 'Someone'} ${note.isAction ? 'gave you an action' : 'left you a note'}${where ? ` on ${where}` : ''}: "${shorten(note.body)}"${note.isAction && note.dueDate ? ` (due ${formatDay(note.dueDate)})` : ''}`,
     });
   }
 

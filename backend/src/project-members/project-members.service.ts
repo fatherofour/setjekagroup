@@ -22,10 +22,24 @@ export class ProjectMembersService {
 
   async findAll(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    return this.prisma.projectMember.findMany({
+    const rows = await this.prisma.projectMember.findMany({
       where: { projectId },
-      include: MEMBER_INCLUDE,
+      include: { ...MEMBER_INCLUDE, user: { select: { id: true, fullName: true, email: true, accountType: true, role: true } } },
       orderBy: { createdAt: 'asc' },
+    });
+    // An outside party sees the email and phone of Setjeka's staff, the
+    // client and their own firm, not of other firms' people (critique
+    // V3-L-09). Names, roles and firms stay visible to everyone.
+    const me = await this.prisma.user.findUnique({ where: { id: ownerId }, select: { role: true, accountType: true } });
+    const strip = <T extends (typeof rows)[number]>(m: T) => ({ ...m, user: m.user ? { id: m.user.id, fullName: m.user.fullName, email: m.user.email } : null });
+    if (me?.role === 'ADMIN' || me?.accountType === 'INTERNAL') return rows.map(strip);
+    const mine = rows.filter((m) => m.userId === ownerId);
+    const myFirms = new Set(mine.flatMap((m) => (m.contractorId ? [m.contractorId] : [])));
+    const shown = (m: (typeof rows)[number]) =>
+      m.userId === ownerId || m.role === 'CLIENT' || m.user?.accountType === 'INTERNAL' || m.user?.role === 'ADMIN' || (m.contractorId != null && myFirms.has(m.contractorId));
+    return rows.map((m) => {
+      const out = strip(m);
+      return shown(m) ? out : { ...out, externalEmail: null, externalPhone: null, user: out.user ? { ...out.user, email: null } : null };
     });
   }
 

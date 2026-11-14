@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardCls, fmtDay, inputCls, labelCls, primaryBtn, selectCls } from '@/lib/architect';
+import { formatMoney } from '@/lib/money';
 
 export interface RomRate {
   id: string;
@@ -59,7 +60,7 @@ interface Saved {
 }
 
 export const QUALITY_LABEL: Record<string, string> = { ECONOMY: 'Economy', STANDARD: 'Standard', PRESTIGE: 'Prestige' };
-export const money = (n: number, currency = 'ZAR') => n.toLocaleString('en-ZA', { style: 'currency', currency, maximumFractionDigits: 0 });
+export const money = (n: number, currency = 'ZAR') => formatMoney(n, currency);
 const err = (e: unknown, f: string) => (e instanceof ApiError ? e.message : f);
 
 /** The rough order-of-magnitude estimate: floor area x a rate per m² for the
@@ -202,7 +203,7 @@ export function RomPanel({ projectId, opportunityId, scopePicker }: { projectId?
               <dl className="space-y-1">
                 <div className="flex justify-between">
                   <dt className="text-slate-500">
-                    {calc.gfa.toLocaleString('en-ZA')} m² × {money(calc.baseRate, calc.currency)} × {calc.regionFactor}
+                    {calc.gfa.toLocaleString('en-GB')} m² × {money(calc.baseRate, calc.currency)} × {calc.regionFactor}
                   </dt>
                   <dd className="tabular-nums">{money(calc.construction, calc.currency)}</dd>
                 </div>
@@ -277,7 +278,7 @@ export function RomPanel({ projectId, opportunityId, scopePicker }: { projectId?
                     <tr>
                       <td />
                       <td colSpan={3} className="pb-3 pr-3 text-xs text-slate-600 dark:text-slate-300">
-                        {s.breakdown.gfa.toLocaleString('en-ZA')} m² at {money(s.breakdown.baseRate, s.currency)}/m² × {s.breakdown.regionFactor} ({s.region}); escalation {s.breakdown.escalationPct}%, contingency {s.breakdown.contingencyPct}%. Excl. VAT {money(s.breakdown.net, s.currency)}.
+                        {s.breakdown.gfa.toLocaleString('en-GB')} m² at {money(s.breakdown.baseRate, s.currency)}/m² × {s.breakdown.regionFactor} ({s.region}); escalation {s.breakdown.escalationPct}%, contingency {s.breakdown.contingencyPct}%. Excl. VAT {money(s.breakdown.net, s.currency)}.
                         {s.notes && <span className="mt-1 block">Assumptions: {s.notes}</span>}
                       </td>
                     </tr>

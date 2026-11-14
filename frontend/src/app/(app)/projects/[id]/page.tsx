@@ -70,6 +70,7 @@ import type { TabItem } from '@/components/ui/Tabs';
 import { useProjectAccess } from '@/lib/project-access';
 import { PROJECT_NAV, projectPlace, projectTabOf } from '@/components/nav';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 /** Where this screen sits (project, module, screen) and the other screens
  * of its module, in place of the old row of every screen: the sidebar
@@ -491,8 +492,7 @@ export default function ProjectDetailPage() {
             </div>
             <div>
               <label htmlFor="page-start-date" className="text-xs text-slate-400 dark:text-slate-500">Start date</label>
-              <input id="page-start-date"
-                type="date"
+              <DateInput id="page-start-date"
                 className={inputClass}
                 value={form.startDate ? form.startDate.slice(0, 10) : ''}
                 onChange={(e) => setForm({ ...form, startDate: e.target.value })}
@@ -500,8 +500,7 @@ export default function ProjectDetailPage() {
             </div>
             <div>
               <label htmlFor="page-end-date" className="text-xs text-slate-400 dark:text-slate-500">End date</label>
-              <input id="page-end-date"
-                type="date"
+              <DateInput id="page-end-date"
                 className={inputClass}
                 value={form.endDate ? form.endDate.slice(0, 10) : ''}
                 onChange={(e) => setForm({ ...form, endDate: e.target.value })}
@@ -548,7 +547,7 @@ export default function ProjectDetailPage() {
               <>
                 <Field
                   label="Project value (agreed with the client)"
-                  value={project.value != null ? `${CURRENCY_LABEL[project.currency].split(' ')[0]} ${project.value.toLocaleString()}` : ''}
+                  value={project.value != null ? `${CURRENCY_LABEL[project.currency].split(' ')[0]} ${project.value.toLocaleString('en-GB')}` : ''}
                 />
                 <Field label="Contingency allowance" value={project.contingencyPct != null ? `${project.contingencyPct}% of the budget` : ''} />
                 {/* What the work is planned to cost, beside what the client

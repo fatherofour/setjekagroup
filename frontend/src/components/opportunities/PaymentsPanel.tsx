@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, formatMoney, inputClass, isExecutive, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'INVOICED' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -189,7 +190,7 @@ export function PaymentsPanel({ opportunityId, currency, onChange }: { opportuni
             <label className={labelClass} htmlFor="pay-date">
               Invoice date
             </label>
-            <input id="pay-date" type="date" className={inputClass} value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} />
+            <DateInput id="pay-date" className={inputClass} value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} />
           </div>
           <div>
             <label className={labelClass} htmlFor="pay-amount">

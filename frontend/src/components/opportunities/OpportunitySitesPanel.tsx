@@ -19,6 +19,7 @@ import {
   type SiteStatus,
 } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface Site {
   id: string;
@@ -114,10 +115,9 @@ function AcquisitionEditor({ opportunityId, site, readOnly, onSaved }: { opportu
               <label className={labelClass} htmlFor={`agr-${site.id}`}>
                 Agreement signed
               </label>
-              <input
+              <DateInput
                 id={`agr-${site.id}`}
                 disabled={readOnly}
-                type="date"
                 className={inputClass}
                 value={f.agreementDate}
                 onChange={(e) => setF({ ...f, agreementDate: e.target.value })}
@@ -129,10 +129,9 @@ function AcquisitionEditor({ opportunityId, site, readOnly, onSaved }: { opportu
           <label className={labelClass} htmlFor={`trf-${site.id}`}>
             {f.acquisitionStatus === 'CLIENT_OWNED' ? 'Title registered (if known)' : 'Transfer / registration'}
           </label>
-          <input
+          <DateInput
             id={`trf-${site.id}`}
             disabled={readOnly}
-            type="date"
             className={inputClass}
             value={f.transferDate}
             onChange={(e) => setF({ ...f, transferDate: e.target.value })}
@@ -426,7 +425,7 @@ export function OpportunitySitesPanel({ opportunityId, readOnly, onChange }: { o
               {s.address && <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{s.address}</p>}
               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
                 <Fact label="Erf" value={s.erfNumber} />
-                <Fact label="Size" value={s.sizeSqm != null ? `${s.sizeSqm.toLocaleString()} m²` : null} />
+                <Fact label="Size" value={s.sizeSqm != null ? `${s.sizeSqm.toLocaleString('en-GB')} m²` : null} />
                 <Fact label="Zoning" value={s.zoning} />
                 <Fact label="Owner" value={s.ownership} />
                 <Fact label="Asking" value={s.askingPrice != null ? formatMoney(s.askingPrice, s.currency) : null} />

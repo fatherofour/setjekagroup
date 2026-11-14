@@ -11,6 +11,7 @@ import { memberLabel, type MemberRef } from '@/lib/inception';
 import { CommentThread } from './CommentThread';
 import { formatDate } from '@/lib/dates';
 import { formatDateTime } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type MeetingType = 'INITIATION' | 'DESIGN' | 'CONSULTANTS' | 'CLIENT' | 'SITE' | 'OTHER';
 
@@ -234,7 +235,7 @@ function MeetingCard({
               <div className="w-56">
                 <Select aria-label="Action owner" value={action.assignedToId} onChange={(v) => setAction({ ...action, assignedToId: v })} className={`${inputClass} h-8 text-xs`} options={[{ value: '', label: 'Owner…' }, ...members.map((m) => ({ value: m.id, label: memberLabel(m) }))]} />
               </div>
-              <input aria-label="Due date" type="date" className={`${inputClass} h-8 w-36 text-xs`} value={action.dueDate} onChange={(e) => setAction({ ...action, dueDate: e.target.value })} />
+              <DateInput aria-label="Due date" className={`${inputClass} h-8 w-36 text-xs`} value={action.dueDate} onChange={(e) => setAction({ ...action, dueDate: e.target.value })} />
               <button type="submit" disabled={busy || !action.title.trim()} className={`${secondaryButton} h-8`}>
                 <Plus size={13} />
                 Add

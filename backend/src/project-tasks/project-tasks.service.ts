@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertMayChange, editRights, ownRight, setKeys } from '../common/own-record.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -56,6 +57,7 @@ export class ProjectTasksService {
         status: dto.status,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         assignedToId: dto.assignedToId,
+        createdByUserId: ownerId,
         scheduleActivityId: dto.scheduleActivityId,
         projectNodeId: dto.projectNodeId,
         checklist: (dto.checklist ?? []) as unknown as Prisma.InputJsonValue,
@@ -86,6 +88,8 @@ export class ProjectTasksService {
   async update(projectId: string, ownerId: string, id: string, dto: UpdateTaskDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const existing = await this.getOne(projectId, id);
+    const right = ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId, assigneeMemberIds: [existing.assignedToId] });
+    assertMayChange(right, setKeys(dto), ['status', 'checklist'], 'task');
     if (dto.assignedToId) await this.assertMemberInProject(dto.assignedToId, projectId);
     if (dto.scheduleActivityId) await this.assertScheduleActivityInProject(dto.scheduleActivityId, projectId);
     if (dto.projectNodeId) await this.assertProjectNodeInProject(dto.projectNodeId, projectId);
@@ -124,7 +128,8 @@ export class ProjectTasksService {
 
   async remove(projectId: string, ownerId: string, id: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    await this.getOne(projectId, id);
+    const existing = await this.getOne(projectId, id);
+    assertMayChange(ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId }), ['delete'], [], 'task');
     await this.prisma.projectTask.delete({ where: { id } });
   }
 }

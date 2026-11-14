@@ -531,7 +531,10 @@ export class CommercialService {
         pendingExposure: round(pendingVar),
         remainingIfPendingApproved: round(contingency - approvedVar - pendingVar),
       },
-      projectedFinalCost: round(sum('forecastFinal') + Math.max(contingency - approvedVar, 0)),
+      // One forecast for every screen (critique V3-M-02): the cost report's
+      // forecast final cost. Unspent contingency is a reserve, shown beside
+      // it, not counted as cost.
+      projectedFinalCost: round(sum('forecastFinal')),
       missingFx: [...missingFx],
     };
   }

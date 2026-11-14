@@ -23,7 +23,7 @@ export class RfisController {
   @Post()
   @RequirePermission('RFIS', 'CREATE')
   create(@Param('projectId') projectId: string, @Body() dto: CreateRfiDto, @CurrentUser() user: JwtPayload) {
-    return this.rfisService.create(projectId, user.sub, dto);
+    return this.rfisService.create(projectId, user.sub, dto).then((r) => this.rfisService.forViewerOne(projectId, user.sub, r));
   }
 
   @Patch(':id')
@@ -34,7 +34,7 @@ export class RfisController {
     @Body() dto: UpdateRfiDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.rfisService.update(projectId, user.sub, id, dto);
+    return this.rfisService.update(projectId, user.sub, id, dto).then((r) => this.rfisService.forViewerOne(projectId, user.sub, r));
   }
 
   @Patch(':id/respond')
@@ -45,7 +45,7 @@ export class RfisController {
     @Body() dto: RespondRfiDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.rfisService.respond(projectId, user.sub, id, dto);
+    return this.rfisService.respond(projectId, user.sub, id, dto).then((r) => this.rfisService.forViewerOne(projectId, user.sub, r));
   }
 
   @Delete(':id')

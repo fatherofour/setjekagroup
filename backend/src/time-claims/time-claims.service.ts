@@ -8,6 +8,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { addDays, contractTerms } from '../common/contract-forms.js';
 import type { AssessClaimDto, NotifyDelayDto, RespondClaimDto, SubmitClaimDto } from './dto/time-claims.dto.js';
 import { diaryOver } from '../site-diary/site-diary.service.js';
+import { formatDay } from '../common/dates.js';
 
 const DAY = 86_400_000;
 const INCLUDE = {
@@ -200,7 +201,7 @@ export class TimeClaimsService {
       },
       include: INCLUDE,
     });
-    await this.tell(projectId, await this.people(projectId, { role: { in: ['PROJECT_MANAGER', 'QUANTITY_SURVEYOR'] } }), userId, 'TIME_CLAIM_NOTIFIED', c.id, `${c.number}: ${c.contract.contractor.name} gave notice of a delay - "${c.title}". The claim is due by ${c.claimDueAt.toLocaleDateString('en-ZA')}.`);
+    await this.tell(projectId, await this.people(projectId, { role: { in: ['PROJECT_MANAGER', 'QUANTITY_SURVEYOR'] } }), userId, 'TIME_CLAIM_NOTIFIED', c.id, `${c.number}: ${c.contract.contractor.name} gave notice of a delay - "${c.title}". The claim is due by ${formatDay(c.claimDueAt)}.`);
     return this.shape(w, c);
   }
 
@@ -250,7 +251,7 @@ export class TimeClaimsService {
     });
     const entryId = await this.syncRegister(updated, userId, 'UNDER_REVIEW');
     await this.prisma.timeClaim.update({ where: { id }, data: { registerEntryId: entryId } });
-    await this.tell(projectId, await this.people(projectId, { role: { in: ['PROJECT_MANAGER', 'QUANTITY_SURVEYOR'] } }), userId, 'TIME_CLAIM_SUBMITTED', id, `${c.number} "${c.title}": ${dto.requestedDays} days claimed. Assess it by ${addDays(now, terms.assessWithinDays).toLocaleDateString('en-ZA')}.`);
+    await this.tell(projectId, await this.people(projectId, { role: { in: ['PROJECT_MANAGER', 'QUANTITY_SURVEYOR'] } }), userId, 'TIME_CLAIM_SUBMITTED', id, `${c.number} "${c.title}": ${dto.requestedDays} days claimed. Assess it by ${formatDay(addDays(now, terms.assessWithinDays))}.`);
     return this.findOne(projectId, userId, id);
   }
 
@@ -284,7 +285,7 @@ export class TimeClaimsService {
     await this.tell(projectId, [c.notifiedById, ...contractor], userId, 'TIME_CLAIM_DECIDED', id, `${c.number} "${c.title}": ${dto.grantedDays} of ${c.requestedDays} days granted`);
     if (dto.grantedDays > 0) {
       const summary = (await this.contracts(projectId, userId)).find((x) => x.id === c.contractId);
-      const moved = summary?.revisedCompletion ? `; completion is now ${summary.revisedCompletion.toLocaleDateString('en-ZA')}` : '';
+      const moved = summary?.revisedCompletion ? `; completion is now ${formatDay(summary.revisedCompletion)}` : '';
       await this.tell(projectId, await this.people(projectId, { role: 'CLIENT' }), userId, 'TIME_CLAIM_DECIDED', id, `${c.contract.title}: ${dto.grantedDays} days' extension of time granted${moved}`);
     }
     return this.findOne(projectId, userId, id);

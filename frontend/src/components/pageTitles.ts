@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   FileSignature,
   type LucideIcon,
+  Settings,
 } from 'lucide-react';
 import { projectPlace } from './nav';
 
@@ -43,6 +44,7 @@ const PAGE_TITLES: Record<string, PageTitle> = {
   '/portal/rfqs': { label: 'My RFQs', icon: FileSignature },
   '/notifications': { label: 'Notifications', icon: Bell },
   '/account/signature': { label: 'My signature', icon: PenLine },
+  '/account/settings': { label: 'My settings', icon: Settings },
   '/search': { label: 'Search documents', icon: FileSearch },
   '/administration': { label: 'Administration', icon: ShieldCheck },
 };

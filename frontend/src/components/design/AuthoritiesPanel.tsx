@@ -23,6 +23,7 @@ import {
   type ConsentStatus,
   type Member,
 } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface ConsentEvent {
   id: string;
@@ -210,11 +211,11 @@ export function AuthoritiesPanel({ projectId }: { projectId: string }) {
             </div>
             <label className={labelCls}>
               Planned submission
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.plannedSubmission} onChange={(e) => setForm({ ...form, plannedSubmission: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.plannedSubmission} onChange={(e) => setForm({ ...form, plannedSubmission: e.target.value })} />
             </label>
             <label className={labelCls}>
               Decision expected by
-              <input type="date" className={`${inputCls} mt-0.5`} value={form.expectedDecisionAt} onChange={(e) => setForm({ ...form, expectedDecisionAt: e.target.value })} />
+              <DateInput className={`${inputCls} mt-0.5`} value={form.expectedDecisionAt} onChange={(e) => setForm({ ...form, expectedDecisionAt: e.target.value })} />
             </label>
             <label className={`${labelCls} sm:col-span-2 lg:col-span-4`}>
               Notes
@@ -296,7 +297,7 @@ export function AuthoritiesPanel({ projectId }: { projectId: string }) {
                             </div>
                             <label className={labelCls}>
                               Date
-                              <input type="date" max={todayIso()} className={`${inputCls} mt-0.5`} value={round.date} onChange={(e) => setRound({ ...round, date: e.target.value })} />
+                              <DateInput max={todayIso()} className={`${inputCls} mt-0.5`} value={round.date} onChange={(e) => setRound({ ...round, date: e.target.value })} />
                             </label>
                             {(round.kind === 'SUBMITTED' || round.kind === 'RESUBMITTED') && (
                               <label className={labelCls}>

@@ -253,7 +253,7 @@ export function InceptionWorkspace({ projectId, projectName, stage, currency, on
               primary: (
                 <span className="font-medium">
                   {String(row.category)}
-                  {row.value != null && <span className="ml-2 tabular-nums text-slate-600 dark:text-slate-300">{Number(row.value).toLocaleString()} {row.unit ? String(row.unit) : ''}</span>}
+                  {row.value != null && <span className="ml-2 tabular-nums text-slate-600 dark:text-slate-300">{Number(row.value).toLocaleString('en-GB')} {row.unit ? String(row.unit) : ''}</span>}
                 </span>
               ),
               secondary: [row.description, row.raisedBy && `Set by ${memberLabel(row.raisedBy as MemberRef)}`].filter(Boolean).join(' · ') || undefined,

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, inputClass, labelClass, primaryButton } from '@/lib/stage0';
 import { CommentThread } from '@/components/project/CommentThread';
+import { DateInput } from '@/components/ui/DateInput';
 
 const SECTIONS: { name: string; label: string; hint: string; required?: boolean }[] = [
   { name: 'clientRequirements', label: 'Client requirements & preferences', hint: 'What the client has asked for, in their words', required: true },
@@ -93,7 +94,7 @@ export function BriefSection({ projectId, currency, onChange }: { projectId: str
                 <label className={labelClass} htmlFor="brief-completion">
                   Target completion
                 </label>
-                <input id="brief-completion" type="date" className={inputClass} value={form.targetCompletion ?? ''} onChange={(e) => setForm({ ...form, targetCompletion: e.target.value })} />
+                <DateInput id="brief-completion" className={inputClass} value={form.targetCompletion ?? ''} onChange={(e) => setForm({ ...form, targetCompletion: e.target.value })} />
               </div>
             </div>
             {SECTIONS.map((s) => (

@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import { Tabs } from '@/components/ui/Tabs';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, fmtDayTime, inputCls, labelCls, primaryBtn, secondaryBtn, selectCls, textareaCls, todayIso } from '@/lib/architect';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Rule = 'MIN' | 'MAX' | 'RANGE' | 'PASS_FAIL';
 type Outcome = 'PASS' | 'FAIL';
@@ -656,11 +657,11 @@ function TestsSection({ projectId, opts, criteria, draft }: { projectId: string;
           )}
           <label className={labelCls}>
             Tested on
-            <input type="date" className={`${inputCls} mt-0.5`} value={form.testedAt} onChange={(e) => setForm({ ...form, testedAt: e.target.value })} />
+            <DateInput className={`${inputCls} mt-0.5`} value={form.testedAt} onChange={(e) => setForm({ ...form, testedAt: e.target.value })} />
           </label>
           <label className={labelCls}>
             Sample taken on
-            <input type="date" className={`${inputCls} mt-0.5`} value={form.sampledAt} onChange={(e) => setForm({ ...form, sampledAt: e.target.value })} />
+            <DateInput className={`${inputCls} mt-0.5`} value={form.sampledAt} onChange={(e) => setForm({ ...form, sampledAt: e.target.value })} />
           </label>
           <label className={labelCls}>
             Sample / cube ref

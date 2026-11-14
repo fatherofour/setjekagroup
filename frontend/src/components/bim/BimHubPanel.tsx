@@ -229,7 +229,7 @@ function Coordination({ ctx, onGo, onReload }: { ctx: HubContext; onGo: (v: View
     <div className="space-y-4">
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Models read" value={`${done.length}/${hub.models.length}`} sub={`${done.reduce((t, m) => t + m.elements, 0).toLocaleString('en-ZA')} elements`} onClick={() => onGo('elements')} />
+        <Stat label="Models read" value={`${done.length}/${hub.models.length}`} sub={`${done.reduce((t, m) => t + m.elements, 0).toLocaleString('en-GB')} elements`} onClick={() => onGo('elements')} />
         <Stat label="Open clashes" value={hub.clashes.open} sub={`${hub.clashes.RESOLVED} resolved · ${hub.clashes.APPROVED} approved`} tone={hub.clashes.open ? 'text-red-700 dark:text-red-400' : undefined} onClick={() => onGo('clashes')} />
         <Stat label="Model issues open" value={hub.modelIssues.open} sub={`${hub.modelIssues.total} raised · ${hub.bcfIssues} via BCF`} tone={hub.modelIssues.open ? 'text-amber-700 dark:text-amber-400' : undefined} />
         <Stat label="Federations" value={hub.federations} />
@@ -289,7 +289,7 @@ function Coordination({ ctx, onGo, onReload }: { ctx: HubContext; onGo: (v: View
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 tabular-nums">{m.elements.toLocaleString('en-ZA')}</td>
+                  <td className="px-3 py-2 tabular-nums">{m.elements.toLocaleString('en-GB')}</td>
                   <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">{m.storeys.join(', ') || '—'}</td>
                   <td className="px-3 py-2 tabular-nums">{m.issues}</td>
                   <td className="px-3 py-2 text-right">

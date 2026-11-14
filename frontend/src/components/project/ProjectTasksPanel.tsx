@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2, CheckSquare, Square, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -8,6 +9,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import Link from 'next/link';
 import { CommentThread } from './CommentThread';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
@@ -161,7 +163,7 @@ function TaskDetailPanel({
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+            <DateInput className={inputClass} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
             <Select
               className={inputClass}
               value={form.assignedToId}
@@ -221,6 +223,9 @@ function TaskDetailPanel({
 }
 
 export function ProjectTasksPanel({ projectId }: { projectId: string }) {
+  // Only those the API lets add see the add controls (critique V3-M-01).
+  const { can } = useMyPermissions(projectId);
+  const canAdd = can('TASKS', 'CREATE');
   const { authedFetch } = useAuth();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [members, setMembers] = useState<ProjectMemberLite[]>([]);
@@ -297,6 +302,7 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
         </ul>
       )}
 
+      {canAdd && (
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={TITLE_MAX} placeholder="New task title" aria-label="New task title" aria-describedby="task-title-hint" className={`${inputClass} flex-1`} />
         <Select
@@ -317,6 +323,7 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
           {!title.trim() ? 'Type a title to add a task; set its due date and details once added.' : `${title.length}/${TITLE_MAX} characters`}
         </p>
       </form>
+      )}
 
       {openTask && (
         <TaskDetailPanel

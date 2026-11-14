@@ -53,7 +53,6 @@ const DOT: Record<Health, string> = { GREEN: 'bg-emerald-500', AMBER: 'bg-amber-
 const WORD: Record<Health, string> = { GREEN: 'On track', AMBER: 'Watch', RED: 'Needs attention', NONE: 'Not tracked' };
 const RANK: Record<Health, number> = { RED: 0, AMBER: 1, GREEN: 2, NONE: 3 };
 const card = 'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900';
-const money = (n: number, currency = 'ZAR') => new Intl.NumberFormat('en-ZA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
 // Each project's amounts in its own currency (critique H-05: Lekki's naira
 // read as rand); the totals are converted to rand. Two decimals under 10m,
 // so R 1.12m and R 1.05m don't both read R 1.1m; billions as "bn".
@@ -95,7 +94,8 @@ function costLine(r: Row) {
   if (r.cost.revisedBudget <= 0) return 'No budget set';
   // Against what was set aside: the budget and its contingency.
   const c = r.currency;
-  return `${short(r.cost.projectedFinalCost, c)} of ${short(r.cost.budget + r.cost.contingency, c)}${r.cost.overBudget > 0 ? `, ${short(r.cost.overBudget, c)} over` : ''}`;
+  // Forecast against the budget, with the contingency held beside it (V3-M-02).
+  return `forecast ${short(r.cost.projectedFinalCost, c)} of ${short(r.cost.revisedBudget, c)} budget${r.cost.contingency ? ` + ${short(r.cost.contingency, c)} contingency` : ''}${r.cost.overBudget > 0 ? `, ${short(r.cost.overBudget, c)} over` : ''}`;
 }
 function timeLine(r: Row) {
   const p = r.programme;

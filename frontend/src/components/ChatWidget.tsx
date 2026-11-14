@@ -163,7 +163,7 @@ export function ChatWidget() {
           aria-label="Open AI chat (drag to move)"
           // Critique L-08: smaller on a phone, and see-through at rest so a
           // row behind it can still be read; it can also be dragged aside.
-          className={`fixed z-50 flex h-11 w-11 items-center justify-center rounded-full opacity-80 shadow-lg transition hover:opacity-100 focus-visible:opacity-100 sm:h-14 sm:w-14 ${
+          className={`fixed z-30 flex h-11 w-11 items-center justify-center rounded-full opacity-80 shadow-lg transition hover:opacity-100 focus-visible:opacity-100 sm:h-14 sm:w-14 ${
             isDragging ? 'scale-105 cursor-grabbing' : 'cursor-grab hover:scale-105'
           }`}
           style={{ backgroundColor: GREEN, right: position.right, bottom: position.bottom, touchAction: 'none' }}

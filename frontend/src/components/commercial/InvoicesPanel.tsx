@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { formatRate } from '@/lib/commercial';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 type Status = 'RECEIVED' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -134,7 +135,7 @@ export function InvoicesPanel({ projectId, readOnly, onChanged }: { projectId: s
               <label className={labelClass} htmlFor="inv-date">
                 Invoice date
               </label>
-              <input id="inv-date" type="date" className={inputClass} value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} />
+              <DateInput id="inv-date" className={inputClass} value={form.invoiceDate} onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })} />
             </div>
             <div>
               <label className={labelClass} htmlFor="inv-amt">

@@ -9,6 +9,7 @@ import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type Appr
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { formatDate } from '@/lib/dates';
+import { DateInput } from '@/components/ui/DateInput';
 
 interface StageTransition {
   id: string;
@@ -200,7 +201,7 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-xs text-slate-500">
               Respond by
-              <input type="date" min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
+              <DateInput min={todayInput()} className={inputClass} value={dueBy} onChange={(e) => setDueBy(e.target.value)} />
             </label>
             <button onClick={requestAdvance} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
               Request advancement to {projectStageInfo(target).label}

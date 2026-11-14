@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertMayChange, editRights, ownRight, setKeys } from '../common/own-record.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -42,6 +43,7 @@ export class ProjectIssuesService {
         resolutionNotes: dto.resolutionNotes,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         ownerId: dto.ownerId,
+        createdByUserId: ownerId,
       },
     });
 
@@ -69,6 +71,8 @@ export class ProjectIssuesService {
   async update(projectId: string, ownerId: string, id: string, dto: UpdateIssueDto) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
     const existing = await this.getOne(projectId, id);
+    const right = ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId, assigneeMemberIds: [existing.ownerId] });
+    assertMayChange(right, setKeys(dto), ['status', 'resolutionNotes'], 'issue');
     if (dto.ownerId) await this.assertMemberInProject(dto.ownerId, projectId);
 
     await this.prisma.projectIssue.update({
@@ -102,7 +106,8 @@ export class ProjectIssuesService {
 
   async remove(projectId: string, ownerId: string, id: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    await this.getOne(projectId, id);
+    const existing = await this.getOne(projectId, id);
+    assertMayChange(ownRight(await editRights(this.prisma, projectId, ownerId), ownerId, { createdByUserId: existing.createdByUserId }), ['delete'], [], 'issue');
     await this.prisma.projectIssue.delete({ where: { id } });
   }
 }
