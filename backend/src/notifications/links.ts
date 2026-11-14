@@ -7,15 +7,17 @@ export function recordLink(entityType: CommentEntityType, ids: { projectId?: str
   if (!ids.projectId) return ids.opportunityId ? `/opportunities/${ids.opportunityId}` : '/my-day';
   const p = `/projects/${ids.projectId}`;
   switch (entityType) {
+    // With the record's id, so the panel opens it (critique M-06).
     case 'TASK':
-      return `${p}?tab=tasks`;
+      return ids.entityId ? `${p}?tab=tasks&task=${ids.entityId}` : `${p}?tab=tasks`;
     case 'ISSUE':
-      return `${p}?tab=issues`;
+      return ids.entityId ? `${p}?tab=issues&issue=${ids.entityId}` : `${p}?tab=issues`;
     case 'RISK':
-      return `${p}?tab=risks`;
+      return ids.entityId ? `${p}?tab=risks&risk=${ids.entityId}` : `${p}?tab=risks`;
     case 'RFI':
+      return ids.entityId ? `${p}?tab=technical&rfi=${ids.entityId}` : `${p}?tab=technical`;
     case 'SUBMITTAL':
-      return `${p}?tab=technical`;
+      return ids.entityId ? `${p}?tab=technical&submittal=${ids.entityId}` : `${p}?tab=technical`;
     case 'DOCUMENT_REVISION':
       return `${p}?tab=documents`;
     case 'SCHEDULE_ACTIVITY':
@@ -24,9 +26,9 @@ export function recordLink(entityType: CommentEntityType, ids: { projectId?: str
     case 'STAGE_DELIVERABLE':
       return `${p}?tab=inception`;
     case 'MEETING':
-      return `${p}?tab=meetings`;
+      return ids.entityId ? `${p}?tab=meetings&meeting=${ids.entityId}` : `${p}?tab=meetings`;
     case 'VARIATION':
-      return `${p}?tab=commercial`;
+      return ids.entityId ? `${p}?tab=commercial&ctab=variations&variation=${ids.entityId}` : `${p}?tab=commercial&ctab=variations`;
     case 'PROJECT':
       return `${p}?tab=actions`;
     case 'COMMUNICATION':

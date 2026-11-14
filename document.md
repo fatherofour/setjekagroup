@@ -4091,6 +4091,84 @@ The user's rule, refining M-01: a contractor or consultant sees the value of the
 - Browser, 8 of 8 (`e2e/firm-deals-ui.mjs`).
 - Still passing: 43 of 43 (`e2e/notes-access-journey.mjs`), 8 of 8 (`e2e/h04-h05-ui.mjs`) and the sign-off journey, 39 of 39.
 
+### 2.56 The rest of the critique: programme privacy, sign-in lockout, the dashboard, dates and Setjeka-only work (2026-11-14)
+
+Fixes critique findings M-02 to M-15, H-06 and H-07, the Gantt overlap the user reported, and the user's rule that Setjeka's own work stays with Setjeka. M-01 stays as in 2.54 (the user's choice: the QS keeps Commercial).
+
+**What a contractor sees of the programme (M-02, the user's choice).**
+- A person whose only role on the project is Contractor sees their own firm's activities, plus other firms' activities linked to theirs. Linked means their work waits on it ("you're waiting on this", e.g. HVAC before the electrical wiring), or it waits on theirs ("waiting on your work").
+- The summary rows above these are shown too, so the outline still reads.
+- Another firm's activity shows its name, dates and % complete. Its description, who it's assigned to, its progress notes and hold-point details are hidden.
+- **Where:** `schedule/schedule-visibility.ts`, used by the Gantt, the dependencies, the baseline variance, the Look-ahead and activity notes. A contractor reads and writes notes on their own firm's activities only.
+- Everyone else (Setjeka, the client, consultants, the site team) sees the whole programme as before.
+
+**Sign-in lockout (M-03, the user's rule).**
+- Six wrong passwords in a row lock the account. A locked account can't sign in, even with the right password, and its open sessions can't be refreshed.
+- Only an administrator unlocks it (Administration › Users shows "Locked" and an Unlock button; `POST /users/:id/unlock`). Resetting the password doesn't unlock it.
+- **The trade-off:** anyone who knows an email address can lock that account by guessing wrongly six times. The nginx limit below slows this down.
+- **If the only administrator is locked:** unlock by SQL on the server (`deploy/README.md`).
+- **nginx:** sign-in, forgot-password and reset-password get 6 quick tries per address, then one every 10 seconds; more are refused with 429. The app shows "Too many attempts. Wait a minute and try again."
+- The API no longer sends `x-powered-by`.
+
+**The dashboard (H-06) and the Portfolio's speed (H-07).**
+- The tiles count projects by stage, which moves as the project does: Before construction, In construction, In close-out, Completed. They used to count by a status that stayed at Planning.
+- "Today, across live projects" shows open tasks (with how many are overdue), open RFIs and open safety incidents. It's for Setjeka staff (`GET /portfolio/today`).
+- **Removed:** the "Soon" steps in Getting started, the ten "coming soon" widgets and the "Not tracked yet" tiles.
+- **The Portfolio:** built in the background shortly after start-up and kept. A request is served from the copy at once; a copy over a minute old is rebuilt behind it.
+- The dashboard's budget tile reads the light `GET /portfolio/totals`.
+- **Locally:** 447 projects used to take about 30 s per request; once built, the copy answers in milliseconds.
+
+**Purchase orders in the project's currency (M-04):** a new order starts in the project's currency (naira on Lekki).
+
+**The project's money, one reading (M-05, the user's brief: favour Setjeka, expose nothing).**
+- The Overview's "Project value" now reads "Project value (agreed with the client)". It's still shown only to Setjeka, the client and the QS.
+- "Contingency" reads "Contingency allowance: N% of the budget".
+- **For Setjeka's staff only,** a line beside them shows the cost report's budget, projected final cost and contingency left, with a link to Commercial. So the two figures are no longer read as rivals: the value is what the client pays, and the budget is what the work is planned to cost.
+- **The budget's contingency:** until Setjeka enters an amount, it's the project's contingency % of the budget, labelled "(the project's N% of the budget...)". Locking the budget with no amount entered fixes it at that figure.
+- **Effect:** forecasts always carry a reserve. The Portfolio and cost report now include it: Lekki shows ₦20.5bn, its ₦16.4bn budget plus ₦4.10bn contingency at 25%.
+
+**Links open the record (M-06):** a notification, My Day or the action register now opens the task, issue, risk, RFI, submittal, meeting or variation itself (`?task=<id>`, etc.), not just its list. The other records already did.
+
+**Dates (M-07, the user's rule).**
+- Every date in the app is written one way: DD/MM/YYYY unless the person chooses otherwise.
+- Each person picks their own format under My settings (account menu › My settings): DD/MM/YYYY, DD MMM YYYY, YYYY-MM-DD or MM/DD/YYYY.
+- The choice is kept on their account (`User.dateFormat`, `PATCH /auth/me/preferences`), so it follows them across devices.
+- Times use the 24-hour clock.
+- **Where:** `frontend/src/lib/dates.ts`. About 110 places now use it; month-only labels such as chart axes are unchanged.
+
+**The screens offer only what the API allows.**
+- **M-08:** the Schedule no longer asks outsiders for the directory of firms, so there are no more 403s.
+- **M-09:** `GET /projects/:id/my-permissions` returns what the person may do on the project, area by area, using the same rules as the API.
+  - View-only roles get a read-only programme: no Add activity, Import MS Project or Baselines, no dragging, and no Save or Delete on an activity. The legend says "Setjeka keeps the programme".
+  - The project structure's add and delete buttons follow the same check.
+  - The stage gate and "Edit details" were already Setjeka-only.
+- **M-10:** Opportunities, Clients, the cost database, Estimates and the directory of firms show an outside account one plain message, "… is for Setjeka staff", with a link to their projects. Before, they showed tools and then failed. Their APIs were already Setjeka-only.
+
+**Setjeka-only work (the user's rule).**
+- An outside account can't create, edit, delete or approve anything under these areas, whatever its role:
+  - purchasing (RFQs, quotes, purchase orders, deliveries);
+  - the project team;
+  - the project's structure;
+  - stage-gate requests.
+- They keep view and comment. The client still signs stage moves.
+- **Before:** the matrix let contractors and the QS raise purchase orders, and let an outside site manager add team members.
+- **The QS's tender:** the QS still prepares a tender from their bill (QS 4.5), which is now a Commercial right. Setjeka invites, issues and awards it.
+- The directory of firms, clients and RFQs were already Setjeka-only.
+
+**Accessibility and layout.**
+- **M-11:** form labels are tied to their fields: 87 visible labels, plus names for 60 fields that only had a placeholder. Sample text such as "Labourer cut hand on rebar" was not used as a name. The permission matrix's checkboxes are named "Role: action on area".
+- **M-12:** the dark-mode greeting is light green.
+- **M-13:** a "Skip to content" link is the first thing the keyboard reaches.
+- **M-14:** the Gantt opens at today. Phones open the programme on the Card view.
+- **M-15:** a tab row that doesn't fit scrolls sideways, with a fade and an arrow on the side that has more, and the current tab scrolls into view (`components/ui/ScrollRow.tsx`, used by Tabs and the project's screen tabs).
+- **The Gantt overlap (the user's screenshot):** the frozen task columns had see-through backgrounds on alternate rows, so bars and weekend shading showed through as the timeline scrolled under them. They are solid now.
+
+**Verified (14 Nov, local, throwaway accounts):**
+- API, 40 of 40 (`e2e/batch-1114-journey.mjs`): the programme and look-ahead for two contractors with linked work; my-permissions; Setjeka-only purchasing, team and structure; contingency from the %; task links; date formats; dashboard totals; the Portfolio under 2 s; lockout and unlock.
+- Browser, 16 of 16 (`e2e/batch-1114-ui.mjs`): the dashboard tiles, Today, budget and dates; the skip link; Commercial tabs; the contractor's read-only Gantt with the "waiting on" marker; the Setjeka-only pages; changing the date format; the phone's Card view.
+- Still passing: 43/43 notes access, 22/22 firm deals, 39/39 sign-off. The 8/8 Portfolio check was updated for the contingency now carried (Lekki ₦20.5bn including ₦4.10bn).
+- **Not tested locally:** the nginx rate limit (nginx runs only on the server).
+
 ## 3. Frontend (Next.js)
 
 ### 3.1 App shell

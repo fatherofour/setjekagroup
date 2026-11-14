@@ -8,6 +8,7 @@ import { PROJECT_STAGES, projectStageInfo, type ProjectStage } from '@/lib/proje
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
+import { formatDate } from '@/lib/dates';
 
 interface StageTransition {
   id: string;
@@ -123,7 +124,7 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
         <div className="mb-3 rounded-md bg-sky-50 p-3 text-sm dark:bg-sky-950/40">
           <p className="text-sky-800 dark:text-sky-300">
             {unsigned.overriddenByName ?? 'Setjeka'} advanced to <span className="font-medium">{projectStageInfo(unsigned.toStage).label}</span> without the client&apos;s sign-off
-            {unsigned.overriddenAt ? ` on ${new Date(unsigned.overriddenAt).toLocaleDateString()}` : ''}. The client&apos;s sign-off is still requested.
+            {unsigned.overriddenAt ? ` on ${formatDate(unsigned.overriddenAt)}` : ''}. The client&apos;s sign-off is still requested.
           </p>
           {unsigned.overrideReason && <p className="mt-1 text-xs text-sky-700 dark:text-sky-400">Reason: {unsigned.overrideReason}</p>}
           {!setjeka && (
@@ -241,7 +242,7 @@ export function StageGatePanel({ currentStage, projectId, onStageChanged }: { cu
                           : 'Rejected'}
                   </span>
                   <span className="ml-2 text-slate-400">
-                    by {t.decidedBy?.fullName ?? '—'} · {t.decidedAt ? new Date(t.decidedAt).toLocaleString() : ''}
+                    by {t.decidedBy?.fullName ?? '—'} · {t.decidedAt ? formatDate(t.decidedAt) : ''}
                   </span>
                   {t.overrideReason && <p className="mt-0.5 text-slate-500 dark:text-slate-400">Reason for advancing: {t.overrideReason}</p>}
                   {t.decisionComment && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{t.decisionComment}</p>}

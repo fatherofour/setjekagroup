@@ -9,6 +9,7 @@ import { DELIVERABLE_STATUS_LABEL, DELIVERABLE_STATUS_TONE, type DeliverableStat
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
+import { formatDate } from '@/lib/dates';
 
 export interface Deliverable {
   key: string;
@@ -154,7 +155,7 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
                 {!d.ready && d.status !== 'APPROVED' && <p className="mt-1.5 pl-6 text-xs text-slate-500 dark:text-slate-400">To prepare: {d.readyWhen.toLowerCase()}.</p>}
                 {d.status === 'SUBMITTED' && d.submittedBy && (
                   <p className="mt-1.5 flex flex-wrap items-center gap-2 pl-6 text-xs text-slate-500">
-                    Submitted by {d.submittedBy.fullName} on {new Date(d.submittedAt!).toLocaleDateString()}
+                    Submitted by {d.submittedBy.fullName} on {formatDate(d.submittedAt!)}
                     {(() => {
                       const due = dueLabel(d.responseDueAt);
                       return due && <span className={`rounded-full px-2 py-0.5 font-medium ${dueTone(due)}`}>{due.text}</span>;
@@ -169,7 +170,7 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
                 )}
                 {d.status === 'APPROVED' && d.decidedBy && (
                   <p className="mt-1.5 pl-6 text-xs text-slate-500">
-                    {d.decisionOutcome ? OUTCOME_LABEL[d.decisionOutcome] : 'Approved'} by {d.decidedBy.fullName} on {new Date(d.decidedAt!).toLocaleDateString()}
+                    {d.decisionOutcome ? OUTCOME_LABEL[d.decisionOutcome] : 'Approved'} by {d.decidedBy.fullName} on {formatDate(d.decidedAt!)}
                     {d.decisionOutcome === 'APPROVED_WITH_COMMENTS' && d.decisionComment ? ` - ${d.decisionComment}` : ''}
                   </p>
                 )}
@@ -229,7 +230,7 @@ export function SignOffSection({ projectId, stage, onGoTo, onChanged }: { projec
                       <ul className="mt-1 space-y-0.5">
                         {d.events.map((e) => (
                           <li key={e.id} className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {new Date(e.createdAt).toLocaleString()} — v{e.version} {EVENT_LABEL[e.type] ?? e.type} by {e.actor.fullName}
+                            {formatDate(e.createdAt)} — v{e.version} {EVENT_LABEL[e.type] ?? e.type} by {e.actor.fullName}
                             {e.comment && `: ${e.comment}`}
                           </li>
                         ))}

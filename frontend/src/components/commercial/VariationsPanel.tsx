@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { ChevronDown, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -12,6 +13,7 @@ import { contractTerms, type ContractTerms } from '@/lib/projectMeta';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { SignedCopies } from '@/components/signoff/SignedCopies';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
+import { formatDateTime } from '@/lib/dates';
 
 type Status = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 type Reason = 'CLIENT_INSTRUCTION' | 'DESIGN_CHANGE' | 'SITE_CONDITION' | 'RFI' | 'OMISSION' | 'OTHER';
@@ -71,7 +73,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged, inte
   const [codes, setCodes] = useState<CostCode[]>([]);
   const [rfis, setRfis] = useState<{ id: string; rfiNumber: string; title: string }[]>([]);
   const [contracts, setContracts] = useState<{ id: string; title: string; contractor: { name: string } }[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useLinkedId('variation');
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', reason: 'CLIENT_INSTRUCTION' as Reason, estimatedValue: '', timeImpactDays: '', costCodeId: '', rfiId: '', contractId: '' });
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -326,7 +328,7 @@ export function VariationsPanel({ projectId, currency, isClient, onChanged, inte
                   <ol className="space-y-0.5 text-xs text-slate-500">
                     {v.events.map((e) => (
                       <li key={e.id}>
-                        {new Date(e.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {e.actor.fullName} · {STATUS_LABEL[e.toStatus]}
+                        {formatDateTime(e.createdAt)} · {e.actor.fullName} · {STATUS_LABEL[e.toStatus]}
                         {e.comment && ` — ${e.comment}`}
                       </li>
                     ))}

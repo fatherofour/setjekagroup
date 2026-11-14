@@ -6,6 +6,7 @@ import { CalendarRange, GanttChart } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface Activity {
   id: string;
@@ -90,8 +91,8 @@ export function ProgrammeSection({ projectId, onChange }: { projectId: string; o
                 <span className={`h-2 w-2 shrink-0 rounded-full ${a.isCriticalPath ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-600'}`} title={a.isCriticalPath ? 'Critical path' : undefined} />
                 <span className="min-w-0 flex-1 text-slate-800 dark:text-slate-100">{a.name.replace('Stage 1 — ', '')}</span>
                 <span className="text-xs tabular-nums text-slate-500">
-                  {new Date(a.startDate).toLocaleDateString()}
-                  {a.activityType === 'TASK' && ` → ${new Date(a.endDate).toLocaleDateString()}`}
+                  {formatDate(a.startDate)}
+                  {a.activityType === 'TASK' && ` → ${formatDate(a.endDate)}`}
                 </span>
               </li>
             ))}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FileSignature } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { OUTCOME_LABEL, OUTCOME_TONE, openSignedCopy, type ApprovalRecord } from '@/lib/signoff';
+import { formatDateTime } from '@/lib/dates';
 
 /** The signed copies of one item's decisions, newest first. Renders nothing
  * until there is at least one. `refresh` reloads after a new decision. */
@@ -26,7 +27,7 @@ export function SignedCopies({ projectId, subjectId, refresh = 0, compact = fals
           <span className={`rounded-full px-2 py-0.5 font-medium ${OUTCOME_TONE[r.outcome]}`}>{OUTCOME_LABEL[r.outcome]}</span>
           <span>
             {r.signerName}
-            {r.signerRole ? `, ${r.signerRole}` : ''} · {new Date(r.signedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+            {r.signerRole ? `, ${r.signerRole}` : ''} · {formatDateTime(r.signedAt)}
           </span>
           <button type="button" onClick={() => openSignedCopy(projectId, r.id, accessToken)} className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400">
             <FileSignature size={12} /> Signed copy

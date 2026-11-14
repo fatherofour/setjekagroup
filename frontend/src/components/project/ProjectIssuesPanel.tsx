@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -131,7 +132,7 @@ function IssueDetailPanel({
 
         <div className="space-y-3">
           <input className={`${inputClass} h-9 w-full`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea
+          <textarea aria-label="Description"
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Description"
             value={form.description}
@@ -151,7 +152,7 @@ function IssueDetailPanel({
               options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
             />
           </div>
-          <input
+          <input aria-label="Impact"
             className={`${inputClass} w-full`}
             placeholder="Impact (e.g. delays plastering by 2 days)"
             value={form.impact}
@@ -166,7 +167,7 @@ function IssueDetailPanel({
               options={[{ value: '', label: '— Unassigned —' }, ...members.map((m) => ({ value: m.id, label: memberLabel(m) }))]}
             />
           </div>
-          <textarea
+          <textarea aria-label="Resolution notes"
             className="h-14 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Resolution notes"
             value={form.resolutionNotes}
@@ -205,7 +206,7 @@ export function ProjectIssuesPanel({ projectId }: { projectId: string }) {
   const [title, setTitle] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [openIssueId, setOpenIssueId] = useState<string | null>(null);
+  const [openIssueId, setOpenIssueId] = useLinkedId('issue');
 
   const load = () => {
     authedFetch<Issue[]>(`/projects/${projectId}/issues`)
@@ -263,7 +264,7 @@ export function ProjectIssuesPanel({ projectId }: { projectId: string }) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New issue title" className={`${inputClass} flex-1`} />
+        <input aria-label="New issue title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New issue title" className={`${inputClass} flex-1`} />
         <Select
           value={ownerId}
           onChange={setOwnerId}

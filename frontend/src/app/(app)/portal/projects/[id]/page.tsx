@@ -15,6 +15,8 @@ import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { ReportsPanel } from '@/components/reports/ReportsPanel';
 import { InstructionsPanel } from '@/components/design/InstructionsPanel';
 import { dueLabel, dueTone, openSignedCopy } from '@/lib/signoff';
+import { formatDate } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 interface PortalProject {
   project: { id: string; name: string; projectCode: string | null; description: string | null; stage: string; location: string | null; startDate: string | null; endDate: string | null; currency: string; closureType?: 'COMPLETED' | 'ABANDONED' | null; closureReason?: string | null; closedAt?: string | null };
@@ -239,7 +241,7 @@ export default function ClientProjectPage() {
         {project.closureType && (
           <p className="mt-2 rounded-md bg-white/15 px-3 py-1.5 text-sm">
             {project.closureType === 'COMPLETED' ? 'This project is completed.' : 'This project was abandoned and is archived.'}
-            {project.closedAt && ` Closed ${new Date(project.closedAt).toLocaleDateString()}.`}
+            {project.closedAt && ` Closed ${formatDate(project.closedAt)}.`}
             {project.closureType === 'ABANDONED' && project.closureReason && ` Reason: ${project.closureReason}`}
           </p>
         )}
@@ -254,7 +256,7 @@ export default function ClientProjectPage() {
             <CalendarCheck size={12} />
             Completion
           </p>
-          <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{completion ? new Date(completion).toLocaleDateString() : '—'}</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{completion ? formatDate(completion) : '—'}</p>
         </div>
         <div className={card}>
           <p className="flex items-center gap-1 text-xs text-slate-500">
@@ -289,7 +291,7 @@ export default function ClientProjectPage() {
                 onDecide={() =>
                   setDeciding({
                     title: 'Certificate of completion',
-                    context: `Works completed ${new Date(approvals.completion!.completionDate).toLocaleDateString()}`,
+                    context: `Works completed ${formatDate(approvals.completion!.completionDate)}`,
                     endpoint: `/projects/${id}/closeout/completion-certificate/${approvals.completion!.id}/decide`,
                     method: 'POST',
                     subjectId: approvals.completion!.id,
@@ -298,7 +300,7 @@ export default function ClientProjectPage() {
                 }
               >
                 <p>
-                  Setjeka certifies that the works were completed on <strong>{new Date(approvals.completion.completionDate).toLocaleDateString()}</strong>. By approving, you accept the project as complete.
+                  Setjeka certifies that the works were completed on <strong>{formatDate(approvals.completion.completionDate)}</strong>. By approving, you accept the project as complete.
                 </p>
                 <p className="text-xs text-slate-500">
                   Sent by {approvals.completion.issuedBy}
@@ -411,7 +413,7 @@ export default function ClientProjectPage() {
                 </p>
                 <p className="text-xs text-slate-500">
                   Submitted by {d.submittedBy ?? 'Setjeka'}
-                  {d.submittedAt && ` on ${new Date(d.submittedAt).toLocaleDateString()}`}
+                  {d.submittedAt && ` on ${formatDate(d.submittedAt)}`}
                   {d.note && ` — "${d.note}"`}
                 </p>
                 <Link href={`/projects/${id}?tab=inception`} className="mt-1 inline-block text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-400">
@@ -441,7 +443,7 @@ export default function ClientProjectPage() {
                   {r.name} <span className="text-xs font-normal text-slate-500">Rev {r.revisionNumber}</span>
                 </p>
                 <p className="text-xs text-slate-500">
-                  Sent by {r.requestedBy} on {new Date(r.requestedAt).toLocaleDateString()}
+                  Sent by {r.requestedBy} on {formatDate(r.requestedAt)}
                   {r.message && ` — "${r.message}"`}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">Your signature is added to the drawing itself when you approve.</p>
@@ -456,7 +458,7 @@ export default function ClientProjectPage() {
           <ul className="space-y-2">
             {myActions.map((n) => (
               <li key={n.id} className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/20">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">Action for you{n.dueDate && ` · due ${new Date(n.dueDate).toLocaleDateString()}`}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">Action for you{n.dueDate && ` · due ${formatDate(n.dueDate)}`}</p>
                 <p className="mt-1 whitespace-pre-wrap text-slate-800 dark:text-slate-100">{n.body}</p>
                 <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                   <span>{n.author}</span>
@@ -471,7 +473,7 @@ export default function ClientProjectPage() {
                 <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-100">{n.body}</p>
                 <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                   <span>
-                    {n.author} · {new Date(n.createdAt).toLocaleDateString()}
+                    {n.author} · {formatDate(n.createdAt)}
                   </span>
                   <button type="button" onClick={() => acknowledge(n.id)} className="font-medium text-emerald-700 hover:underline dark:text-emerald-400">
                     Got it
@@ -489,7 +491,7 @@ export default function ClientProjectPage() {
             <div className="h-full rounded-full bg-emerald-600" style={{ width: `${programme.percent}%` }} />
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            {programme.percent}% complete · {new Date(programme.start).toLocaleDateString()} to {new Date(programme.finish).toLocaleDateString()} · {programme.activities} activities
+            {programme.percent}% complete · {formatDate(programme.start)} to {formatDate(programme.finish)} · {programme.activities} activities
           </p>
           {programme.upcoming.length > 0 && (
             <>
@@ -501,7 +503,7 @@ export default function ClientProjectPage() {
                       {a.name}
                       {a.activityType === 'MILESTONE' && <span className="ml-1.5 rounded bg-violet-50 px-1 text-[10px] text-violet-700 dark:bg-violet-950 dark:text-violet-300">milestone</span>}
                     </span>
-                    <span className="shrink-0 text-xs text-slate-500">{new Date(a.startDate).toLocaleDateString()}</span>
+                    <span className="shrink-0 text-xs text-slate-500">{formatDate(a.startDate)}</span>
                     <span className="w-10 shrink-0 text-right text-xs tabular-nums text-slate-500">{a.percentComplete}%</span>
                   </li>
                 ))}
@@ -517,7 +519,7 @@ export default function ClientProjectPage() {
             {data.milestones.map((m) => (
               <li key={m.id} className="flex items-center gap-2 py-2 text-sm">
                 <span className="min-w-0 flex-1 text-slate-800 dark:text-slate-100">{m.name}</span>
-                <span className="text-xs text-slate-500">{m.actualDate ? `done ${new Date(m.actualDate).toLocaleDateString()}` : m.targetDate ? `target ${new Date(m.targetDate).toLocaleDateString()}` : ''}</span>
+                <span className="text-xs text-slate-500">{m.actualDate ? `done ${formatDate(m.actualDate)}` : m.targetDate ? `target ${formatDate(m.targetDate)}` : ''}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${m.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : m.status === 'OVERDUE' || m.status === 'SLIPPED' || m.status === 'COMPLETED_LATE' ? 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
                   {roleLabel(m.status)}
                 </span>
@@ -562,7 +564,7 @@ export default function ClientProjectPage() {
                   <FileText size={18} className="shrink-0 text-slate-400" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-slate-800 dark:text-slate-100">{d.name}</span>
-                    <span className="block text-xs text-slate-500">{[d.documentType, d.discipline, d.current && `Rev ${d.current.revisionNumber}`, d.current && new Date(d.current.uploadedAt).toLocaleDateString()].filter(Boolean).join(' · ')}</span>
+                    <span className="block text-xs text-slate-500">{[d.documentType, d.discipline, d.current && `Rev ${d.current.revisionNumber}`, d.current && formatDate(d.current.uploadedAt)].filter(Boolean).join(' · ')}</span>
                   </span>
                   <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">View</span>
                 </button>
@@ -593,7 +595,7 @@ export default function ClientProjectPage() {
               <li key={m.id} className="rounded-xl bg-emerald-50/60 p-3 text-sm dark:bg-emerald-950/30">
                 <p className="font-medium text-slate-900 dark:text-slate-100">{m.title}</p>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  {new Date(m.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  {formatDateTime(m.scheduledAt)}
                   {m.location && ` · ${m.location}`}
                 </p>
                 {m.agenda && <p className="mt-1 whitespace-pre-line text-xs text-slate-500">{m.agenda}</p>}
@@ -604,7 +606,7 @@ export default function ClientProjectPage() {
                 <button type="button" onClick={() => setOpenMinutes(openMinutes === m.id ? null : m.id)} className="flex w-full items-center gap-2 text-left">
                   <span className="flex-1">
                     <span className="block font-medium text-slate-800 dark:text-slate-100">{m.title}</span>
-                    <span className="block text-xs text-slate-500">{new Date(m.scheduledAt).toLocaleDateString()} · minutes issued</span>
+                    <span className="block text-xs text-slate-500">{formatDate(m.scheduledAt)} · minutes issued</span>
                   </span>
                   <ChevronDown size={14} className={`text-slate-400 transition-transform ${openMinutes === m.id ? '' : '-rotate-90'}`} />
                 </button>
@@ -628,7 +630,7 @@ export default function ClientProjectPage() {
                 </p>
                 <p className="text-xs text-slate-500">
                   <span className={d.outcome.startsWith('Approved') ? 'font-medium text-emerald-700 dark:text-emerald-400' : 'font-medium text-amber-700 dark:text-amber-400'}>{d.outcome}</span> by {d.by},{' '}
-                  {new Date(d.at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                  {formatDateTime(d.at)}
                   {d.comment && ` — "${d.comment}"`}
                 </p>
                 {d.recordId && (

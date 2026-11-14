@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import type { useScheduleData } from './useScheduleData';
+import { formatDate } from '@/lib/dates';
 
 type Flag = 'SLIPPED' | 'AHEAD' | 'ON_PLAN' | 'NEW';
 type Critical = 'CRITICAL' | 'NOW_CRITICAL' | 'OFF_CRITICAL' | null;
@@ -54,7 +55,7 @@ interface Variance {
   activities: Row[];
 }
 
-const fmt = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const fmt = (d: string | null | undefined) => (d ? formatDate(d) : '—');
 const days = (n: number | null) => (n == null ? '—' : n === 0 ? 'on plan' : `${n > 0 ? '+' : '−'}${Math.abs(n)} day${Math.abs(n) === 1 ? '' : 's'}`);
 const tone = (n: number | null) => (n == null || n === 0 ? 'text-slate-500' : n > 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400');
 const card = 'rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900';

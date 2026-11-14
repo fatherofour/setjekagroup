@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { defaultDueDate, dueLabel, dueTone, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { SignedCopies } from './SignedCopies';
+import { formatDate } from '@/lib/dates';
 
 interface Request {
   id: string;
@@ -72,7 +73,7 @@ export function ClientApprovalBox({ projectId, documentId, revisionId, onChanged
       {pending ? (
         <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
           <span>
-            With the client since {new Date(pending.createdAt).toLocaleDateString('en-ZA')} (sent by {pending.requestedBy.fullName})
+            With the client since {formatDate(pending.createdAt)} (sent by {pending.requestedBy.fullName})
           </span>
           {due && <span className={`rounded-full px-2 py-0.5 font-medium ${dueTone(due)}`}>{due.text}</span>}
           {internal && (

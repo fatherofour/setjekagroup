@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, formatMoney, inputClass, isExecutive, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
+import { formatDate } from '@/lib/dates';
 
 type Status = 'INVOICED' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -236,10 +237,10 @@ export function PaymentsPanel({ opportunityId, currency, onChange }: { opportuni
                 <p className="mt-0.5 text-xs text-slate-400">
                   {[
                     p.invoiceReference && `Invoice ${p.invoiceReference}`,
-                    p.invoiceDate && new Date(p.invoiceDate).toLocaleDateString(),
+                    p.invoiceDate && formatDate(p.invoiceDate),
                     `recorded by ${p.recordedBy.fullName}`,
                     p.approvedBy && `${p.status === 'REJECTED' ? 'rejected' : 'approved'} by ${p.approvedBy.fullName}`,
-                    p.paidAt && `paid ${new Date(p.paidAt).toLocaleDateString()}${p.paymentReference ? ` (${p.paymentReference})` : ''}`,
+                    p.paidAt && `paid ${formatDate(p.paidAt)}${p.paymentReference ? ` (${p.paymentReference})` : ''}`,
                   ]
                     .filter(Boolean)
                     .join(' · ')}

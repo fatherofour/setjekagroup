@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { AuthedImage } from './AuthedImage';
 import { mapLink, type PhotoLinkOptions, type SitePhoto } from '@/lib/sitePhotos';
+import { formatDateTime } from '@/lib/dates';
 
 const input =
   'h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-base shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 sm:h-9 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -310,10 +311,7 @@ export function PhotoViewer({
                 <CalendarDays size={14} className="shrink-0 text-slate-400" />
                 <dt className="sr-only">Taken</dt>
                 <dd>
-                  {new Date(photo.takenAt).toLocaleString('en-ZA', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
+                  {formatDateTime(photo.takenAt)}
                 </dd>
               </div>
               <div className="flex items-center gap-2">

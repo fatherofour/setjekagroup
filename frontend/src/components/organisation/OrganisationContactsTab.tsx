@@ -126,12 +126,12 @@ export function OrganisationContactsTab({ contractorId, onChange }: { contractor
 
       <form onSubmit={handleAdd} className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className={`${inputClass} flex-1`} />
-          <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job title" className={`${inputClass} flex-1`} />
+          <input aria-label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className={`${inputClass} flex-1`} />
+          <input aria-label="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job title" className={`${inputClass} flex-1`} />
         </div>
         <div className="flex flex-wrap gap-2">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={`${inputClass} flex-1`} />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className={`${inputClass} flex-1`} />
+          <input aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className={`${inputClass} flex-1`} />
+          <input aria-label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className={`${inputClass} flex-1`} />
         </div>
         <div className="flex flex-wrap gap-3">
           <label className={checkClass}>

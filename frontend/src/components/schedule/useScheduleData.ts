@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useMyPermissions } from '@/lib/my-permissions';
 import { ApiError } from '@/lib/api-client';
 import type { Contractor } from '@/lib/contractors';
 import type {
@@ -44,13 +45,16 @@ export interface DependencyInput {
 // endpoint), and every mutation goes through here so all four views and
 // the shared detail panel stay in sync without duplicating fetch/CRUD logic.
 export function useScheduleData(projectId: string) {
-  const { authedFetch } = useAuth();
+  const { authedFetch, user } = useAuth();
   const [activities, setActivities] = useState<ScheduleActivity[] | null>(null);
   const [dependencies, setDependencies] = useState<ScheduleDependency[] | null>(null);
   const [projectNodes, setProjectNodes] = useState<ProjectNodeLite[]>([]);
   const [contractors, setContractors] = useState<ContractorLite[]>([]);
   const [members, setMembers] = useState<ProjectMemberLite[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Who may change the programme (critique M-09): view-only roles get a
+  // read-only Gantt, with no add, import, baseline or drag controls.
+  const perms = useMyPermissions(projectId);
 
   const reload = useCallback(async () => {
     try {
@@ -69,7 +73,9 @@ export function useScheduleData(projectId: string) {
   useEffect(() => {
     reload();
     authedFetch<ProjectNodeLite[]>(`/projects/${projectId}/nodes`).then(setProjectNodes).catch(() => {});
-    authedFetch<Contractor[]>('/contractors').then(setContractors).catch(() => {});
+    // The firm directory is Setjeka's, for assigning activities; outside
+    // parties can't read it (critique M-08), so they don't ask.
+    if (user?.accountType === 'INTERNAL' || user?.role === 'ADMIN') authedFetch<Contractor[]>('/contractors').then(setContractors).catch(() => {});
     authedFetch<ProjectMemberLite[]>(`/projects/${projectId}/members`).then(setMembers).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
@@ -102,6 +108,9 @@ export function useScheduleData(projectId: string) {
   }
 
   return {
+    canCreate: perms.can('SCHEDULE', 'CREATE'),
+    canEdit: perms.can('SCHEDULE', 'EDIT'),
+    canDelete: perms.can('SCHEDULE', 'DELETE'),
     activities,
     dependencies,
     projectNodes,

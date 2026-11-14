@@ -5,6 +5,7 @@ import { Gavel } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { acquisitionLabel, cardClass, formatMoney, inputClass, isExecutive, primaryButton, secondaryButton } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface Decision {
   id: string;
@@ -83,7 +84,7 @@ export function InvestmentDecisionPanel({ opportunityId, stage, onChanged }: { o
       {pending && (
         <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
           <p className="text-sm text-slate-800 dark:text-slate-100">
-            Awaiting an Executive — requested by {pending.requestedBy.fullName} on {new Date(pending.createdAt).toLocaleDateString()}
+            Awaiting an Executive — requested by {pending.requestedBy.fullName} on {formatDate(pending.createdAt)}
           </p>
           {pending.requestComment && <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">“{pending.requestComment}”</p>}
           {pending.snapshot && <SnapshotSummary snapshot={pending.snapshot} />}
@@ -118,7 +119,7 @@ export function InvestmentDecisionPanel({ opportunityId, stage, onChanged }: { o
             .map((d) => (
               <li key={d.id} className="text-xs text-slate-600 dark:text-slate-300">
                 <span className={`mr-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${TONE[d.status]}`}>{d.status === 'APPROVED' ? 'Approved' : 'Declined'}</span>
-                by {d.decidedBy?.fullName} on {d.decidedAt && new Date(d.decidedAt).toLocaleDateString()}
+                by {d.decidedBy?.fullName} on {d.decidedAt && formatDate(d.decidedAt)}
                 {d.decisionComment && ` — ${d.decisionComment}`}
               </li>
             ))}

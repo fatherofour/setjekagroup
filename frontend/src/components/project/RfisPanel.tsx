@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -132,7 +133,7 @@ function RfiDetailPanel({
 
         <div className="space-y-3">
           <input className={`${inputClass} h-9 w-full`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea
+          <textarea aria-label="Question"
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Question"
             value={form.question}
@@ -140,8 +141,8 @@ function RfiDetailPanel({
           />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Raised by</label>
-              <Select
+              <label htmlFor="rfispanel-raised-by" className="mb-1 block text-xs text-slate-400">Raised by</label>
+              <Select id="rfispanel-raised-by"
                 className={inputClass}
                 value={form.raisedById}
                 onChange={(v) => setForm({ ...form, raisedById: v })}
@@ -149,8 +150,8 @@ function RfiDetailPanel({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Assigned to</label>
-              <Select
+              <label htmlFor="rfispanel-assigned-to" className="mb-1 block text-xs text-slate-400">Assigned to</label>
+              <Select id="rfispanel-assigned-to"
                 className={inputClass}
                 value={form.assignedToId}
                 onChange={(v) => setForm({ ...form, assignedToId: v })}
@@ -163,28 +164,28 @@ function RfiDetailPanel({
           <div className="border-t border-slate-100 pt-3 dark:border-slate-800">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Impact</p>
             <div className="grid grid-cols-2 gap-2">
-              <input
+              <input aria-label="Cost impact (potential)"
                 type="number"
                 className={inputClass}
                 placeholder="Cost impact (potential)"
                 value={form.costImpactPotential}
                 onChange={(e) => setForm({ ...form, costImpactPotential: e.target.value })}
               />
-              <input
+              <input aria-label="Cost impact (confirmed)"
                 type="number"
                 className={inputClass}
                 placeholder="Cost impact (confirmed)"
                 value={form.costImpactConfirmed}
                 onChange={(e) => setForm({ ...form, costImpactConfirmed: e.target.value })}
               />
-              <input
+              <input aria-label="Schedule days (potential)"
                 type="number"
                 className={inputClass}
                 placeholder="Schedule days (potential)"
                 value={form.scheduleImpactPotentialDays}
                 onChange={(e) => setForm({ ...form, scheduleImpactPotentialDays: e.target.value })}
               />
-              <input
+              <input aria-label="Schedule days (confirmed)"
                 type="number"
                 className={inputClass}
                 placeholder="Schedule days (confirmed)"
@@ -205,7 +206,7 @@ function RfiDetailPanel({
             <p className="mb-2 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{rfi.officialResponse}</p>
           ) : (
             <div className="flex items-end gap-2">
-              <textarea
+              <textarea aria-label="Official response"
                 className="h-16 flex-1 resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 placeholder="Write the official response…"
                 value={responseText}
@@ -239,7 +240,7 @@ export function RfisPanel({ projectId }: { projectId: string }) {
   const [title, setTitle] = useState('');
   const [assignedToId, setAssignedToId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [openRfiId, setOpenRfiId] = useState<string | null>(null);
+  const [openRfiId, setOpenRfiId] = useLinkedId('rfi');
 
   const load = () => {
     authedFetch<Rfi[]>(`/projects/${projectId}/rfis`)
@@ -298,7 +299,7 @@ export function RfisPanel({ projectId }: { projectId: string }) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New RFI title" className={`${inputClass} flex-1`} />
+        <input aria-label="New RFI title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New RFI title" className={`${inputClass} flex-1`} />
         <Select
           value={assignedToId}
           onChange={setAssignedToId}

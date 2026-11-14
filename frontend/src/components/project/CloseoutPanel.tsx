@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, openSignedCopy, todayInput, type ApprovalOutcome } from '@/lib/signoff';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
+import { formatDate } from '@/lib/dates';
 
 interface Completion {
   id: string;
@@ -32,7 +33,7 @@ export interface CloseoutState {
 }
 
 const inputClass = 'h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
-const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmt = (iso: string) => formatDate(iso);
 
 /** How a project ends (7 Nov 2026). Setjeka sends the client the
  * certificate of completion to sign, then marks the project completed; or

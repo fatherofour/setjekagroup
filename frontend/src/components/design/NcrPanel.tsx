@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from '@/components/project/CommentThread';
 import { cardCls, fmtDay, inputCls, labelCls, memberName, primaryBtn, secondaryBtn, selectCls, textareaCls, type Member } from '@/lib/architect';
+import { formatDateTime } from '@/lib/dates';
 
 type Status = 'OPEN' | 'RESPONDED' | 'ACTION_AGREED' | 'READY_FOR_VERIFICATION' | 'CLOSED' | 'VOID';
 type Kind = 'MATERIAL' | 'WORKMANSHIP' | 'DESIGN' | 'DOCUMENTATION' | 'OTHER';
@@ -209,7 +210,7 @@ function NcrDetail({ projectId, n, onBack, onChanged }: { projectId: string; n: 
       <ol className="mt-4 space-y-0.5 text-xs text-slate-500">
         {n.events.map((e) => (
           <li key={e.id}>
-            {new Date(e.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {e.actor.fullName} · {STATUS[e.toStatus].label}
+            {formatDateTime(e.createdAt)} · {e.actor.fullName} · {STATUS[e.toStatus].label}
             {e.comment && ` — ${e.comment}`}
           </li>
         ))}
@@ -356,7 +357,7 @@ export function NcrPanel({ projectId }: { projectId: string }) {
             </div>
             <label className={`${labelCls} sm:col-span-4`}>
               Description
-              <textarea className={`${textareaCls} mt-0.5`} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What was found, against which drawing or specification clause" />
+              <textarea aria-label="What was found" className={`${textareaCls} mt-0.5`} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What was found, against which drawing or specification clause" />
             </label>
             <label className={`${labelCls} sm:col-span-2`}>
               Where

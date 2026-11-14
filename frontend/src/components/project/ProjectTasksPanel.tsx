@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2, CheckSquare, Square, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -139,7 +140,7 @@ function TaskDetailPanel({
 
         <div className="space-y-3">
           <input className={`${inputClass} h-9 w-full`} maxLength={TITLE_MAX} aria-label="Task title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea
+          <textarea aria-label="Description"
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Description"
             value={form.description}
@@ -190,7 +191,7 @@ function TaskDetailPanel({
             ))}
           </ul>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Add checklist item"
               className={`${inputClass} flex-1`}
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
@@ -227,7 +228,7 @@ export function ProjectTasksPanel({ projectId }: { projectId: string }) {
   const [title, setTitle] = useState('');
   const [assignedToId, setAssignedToId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [openTaskId, setOpenTaskId] = useLinkedId('task');
 
   const load = () => {
     authedFetch<Task[]>(`/projects/${projectId}/tasks`)

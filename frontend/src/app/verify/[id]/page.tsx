@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { CheckCircle2, ShieldAlert, XCircle } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api-client';
+import { formatDateTime } from '@/lib/dates';
 
 interface Verified {
   id: string;
@@ -69,7 +70,7 @@ export default function VerifyPage() {
                   <p className="font-semibold">Genuine sign-off: {record.outcomeLabel}</p>
                   <p className="mt-1 text-sm">
                     Recorded in the Setjeka platform on{' '}
-                    {new Date(record.signedAt).toLocaleString('en-ZA', { timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} (SAST).
+                    {formatDateTime(record.signedAt)} (SAST).
                   </p>
                 </div>
               </div>

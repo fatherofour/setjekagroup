@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Patch, Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { PreferencesDto } from './dto/preferences.dto.js';
 import { JwtAccessGuard } from './guards/jwt-access.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { UsersService } from '../users/users.service.js';
@@ -54,6 +55,17 @@ export class AuthController {
       fullName: record.fullName,
       role: record.role,
       accountType: record.accountType,
+      clientId: record.clientId,
+      contractorId: record.contractorId,
+      dateFormat: record.dateFormat,
     };
+  }
+
+  /** Each person's own settings: how dates are written (critique M-07). */
+  @Patch('me/preferences')
+  @UseGuards(JwtAccessGuard)
+  async preferences(@CurrentUser() user: JwtPayload, @Body() dto: PreferencesDto) {
+    const record = await this.usersService.setPreferences(user.sub, dto);
+    return { dateFormat: record.dateFormat };
   }
 }

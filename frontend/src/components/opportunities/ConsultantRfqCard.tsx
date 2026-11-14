@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { RFQ_STATUS_LABEL, RFQ_STATUS_TONE, formatMoney, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { ratingText, type ConsultantRfq, type RankingEntry } from './consultantTypes';
+import { formatDate } from '@/lib/dates';
 
 interface Props {
   // "/opportunities/<id>/rfqs" or "/projects/<id>/consultant-rfqs"
@@ -114,7 +115,7 @@ export function ConsultantRfqCard({ basePath, rfq, readOnly, onChange }: Props) 
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span>Discipline: {rfq.discipline}</span>
-            {rfq.dueDate && <span>Quotes due {new Date(rfq.dueDate).toLocaleDateString()}</span>}
+            {rfq.dueDate && <span>Quotes due {formatDate(rfq.dueDate)}</span>}
             <span>
               Evaluated on price {rfq.priceWeight}% · track record {rfq.ratingWeight}%
             </span>
@@ -159,8 +160,8 @@ export function ConsultantRfqCard({ basePath, rfq, readOnly, onChange }: Props) 
           {showQuoteForm && canQuote && (
             <form onSubmit={recordQuote} className="grid grid-cols-1 gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-4 dark:bg-slate-800/40">
               <div className="sm:col-span-2">
-                <label className={labelClass}>From</label>
-                <Select
+                <label htmlFor={`consultantrfqcard-from-${rfq.id}`} className={labelClass}>From</label>
+                <Select id={`consultantrfqcard-from-${rfq.id}`}
                   aria-label="Consultant"
                   value={quoteForm.contractorId}
                   onChange={(v) => setQuoteForm({ ...quoteForm, contractorId: v })}

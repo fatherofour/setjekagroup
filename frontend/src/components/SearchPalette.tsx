@@ -73,7 +73,7 @@ export function SearchPalette() {
           >
             <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
               <Search size={16} className="text-slate-400" />
-              <input
+              <input aria-label="Search"
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

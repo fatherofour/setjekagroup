@@ -518,7 +518,7 @@ export function HsePanel({ projectId }: { projectId: string }) {
             </label>
             <label className={`${labelCls} sm:col-span-2`}>
               Who was involved (optional)
-              <textarea className={`${textareaCls} mt-0.5`} rows={2} value={form.personsInvolved} onChange={(e) => setForm({ ...form, personsInvolved: e.target.value })} placeholder="Names and roles; no ID numbers" />
+              <textarea aria-label="Names and roles" className={`${textareaCls} mt-0.5`} rows={2} value={form.personsInvolved} onChange={(e) => setForm({ ...form, personsInvolved: e.target.value })} placeholder="Names and roles; no ID numbers" />
             </label>
             <div className="flex gap-2 sm:col-span-4">
               <button type="submit" disabled={!form.title.trim() || !form.description.trim()} className={primaryBtn}>

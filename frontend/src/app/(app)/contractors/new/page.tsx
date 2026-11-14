@@ -150,28 +150,28 @@ export default function NewContractorPage() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Organisation</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Organisation name *</label>
-              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} onBlur={checkDuplicates} required />
+              <label htmlFor="page-organisation-name" className={labelClass}>Organisation name *</label>
+              <input id="page-organisation-name" className={inputClass} value={name} onChange={(e) => setName(e.target.value)} onBlur={checkDuplicates} required />
             </div>
             <div>
-              <label className={labelClass}>Trading name</label>
-              <input className={inputClass} value={tradingName} onChange={(e) => setTradingName(e.target.value)} />
+              <label htmlFor="page-trading-name" className={labelClass}>Trading name</label>
+              <input id="page-trading-name" className={inputClass} value={tradingName} onChange={(e) => setTradingName(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>Registration number</label>
-              <input className={inputClass} value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} onBlur={checkDuplicates} />
+              <label htmlFor="page-registration-number" className={labelClass}>Registration number</label>
+              <input id="page-registration-number" className={inputClass} value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} onBlur={checkDuplicates} />
             </div>
             <div>
-              <label className={labelClass}>Tax / VAT number</label>
-              <input className={inputClass} value={taxVatNumber} onChange={(e) => setTaxVatNumber(e.target.value)} onBlur={checkDuplicates} />
+              <label htmlFor="page-tax-vat-number" className={labelClass}>Tax / VAT number</label>
+              <input id="page-tax-vat-number" className={inputClass} value={taxVatNumber} onChange={(e) => setTaxVatNumber(e.target.value)} onBlur={checkDuplicates} />
             </div>
             <div>
-              <label className={labelClass}>Year established</label>
-              <input type="number" className={inputClass} value={yearEstablished} onChange={(e) => setYearEstablished(e.target.value)} />
+              <label htmlFor="page-year-established" className={labelClass}>Year established</label>
+              <input id="page-year-established" type="number" className={inputClass} value={yearEstablished} onChange={(e) => setYearEstablished(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>Website</label>
-              <input className={inputClass} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="example.com" />
+              <label htmlFor="page-website" className={labelClass}>Website</label>
+              <input id="page-website" className={inputClass} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="example.com" />
             </div>
           </div>
         </div>
@@ -192,20 +192,20 @@ export default function NewContractorPage() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Location</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <label className={labelClass}>Country</label>
-              <input className={inputClass} value={country} onChange={(e) => setCountry(e.target.value)} />
+              <label htmlFor="page-country" className={labelClass}>Country</label>
+              <input id="page-country" className={inputClass} value={country} onChange={(e) => setCountry(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>State / Province</label>
-              <input className={inputClass} value={stateProvince} onChange={(e) => setStateProvince(e.target.value)} />
+              <label htmlFor="page-state-province" className={labelClass}>State / Province</label>
+              <input id="page-state-province" className={inputClass} value={stateProvince} onChange={(e) => setStateProvince(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>City</label>
-              <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} />
+              <label htmlFor="page-city" className={labelClass}>City</label>
+              <input id="page-city" className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
             <div className="sm:col-span-3">
-              <label className={labelClass}>Physical address</label>
-              <input className={inputClass} value={address} onChange={(e) => setAddress(e.target.value)} />
+              <label htmlFor="page-physical-address" className={labelClass}>Physical address</label>
+              <input id="page-physical-address" className={inputClass} value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
           </div>
         </div>
@@ -214,24 +214,24 @@ export default function NewContractorPage() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">General contact</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Contact name</label>
-              <input className={inputClass} value={contactName} onChange={(e) => setContactName(e.target.value)} />
+              <label htmlFor="page-contact-name" className={labelClass}>Contact name</label>
+              <input id="page-contact-name" className={inputClass} value={contactName} onChange={(e) => setContactName(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>General email</label>
-              <input type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
+              <label htmlFor="page-general-email" className={labelClass}>General email</label>
+              <input id="page-general-email" type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>General phone</label>
-              <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <label htmlFor="page-general-phone" className={labelClass}>General phone</label>
+              <input id="page-general-phone" className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
           </div>
           <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
             Add named contacts (procurement, accounts, site, etc.) on the profile page after saving.
           </p>
           <div className="mt-3">
-            <label className={labelClass}>Notes</label>
-            <textarea className={`${inputClass} h-16 resize-none py-2`} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <label htmlFor="page-notes" className={labelClass}>Notes</label>
+            <textarea id="page-notes" className={`${inputClass} h-16 resize-none py-2`} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
 

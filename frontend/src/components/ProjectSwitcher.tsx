@@ -51,7 +51,7 @@ export function ProjectSwitcher() {
         <div className="absolute left-0 top-10 z-40 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 px-2 dark:border-slate-700">
             <Search size={14} className="text-slate-400" />
-            <input
+            <input aria-label="Filter projects"
               autoFocus
               value={filter}
               onChange={(e) => setFilter(e.target.value)}

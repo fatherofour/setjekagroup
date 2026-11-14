@@ -88,7 +88,7 @@ export function TagEditor({ projectId, documentId, value, onChanged }: { project
             </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
-            <input
+            <input aria-label="New tag"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), create())}

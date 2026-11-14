@@ -140,7 +140,18 @@ export class CommercialService {
     await this.project(projectId);
     if (lock && !(await this.prisma.budgetLine.count({ where: { projectId } }))) throw new BadRequestException('Add budget lines before locking the budget');
     await this.budgetRow(projectId);
-    await this.prisma.projectBudget.update({ where: { projectId }, data: lock ? { lockedAt: new Date(), lockedById: userId } : { lockedAt: null, lockedById: null } });
+    // Locking with no contingency entered takes the project's contingency %
+    // of the budget (critique M-05), so the locked budget carries a reserve.
+    let contingencyAmount: number | undefined;
+    if (lock) {
+      const [b, p, lines] = await Promise.all([
+        this.prisma.projectBudget.findUnique({ where: { projectId }, select: { contingencyAmount: true } }),
+        this.project(projectId),
+        this.prisma.budgetLine.findMany({ where: { projectId }, select: { amount: true } }),
+      ]);
+      if (!b?.contingencyAmount && p.contingencyPct) contingencyAmount = round((lines.reduce((t, l) => t + l.amount, 0) * p.contingencyPct) / 100);
+    }
+    await this.prisma.projectBudget.update({ where: { projectId }, data: lock ? { lockedAt: new Date(), lockedById: userId, ...(contingencyAmount !== undefined ? { contingencyAmount } : {}) } : { lockedAt: null, lockedById: null } });
     return this.getBudget(projectId);
   }
 
@@ -489,7 +500,11 @@ export class CommercialService {
       .map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === 'number' ? round(v) : v])) as typeof r);
 
     const sum = (k: keyof (typeof lines)[number]) => round(lines.reduce((s, l) => s + (l[k] as number), 0));
-    const contingency = budget?.contingencyAmount ?? 0;
+    // The contingency held against the budget: the amount Setjeka set, or
+    // until one is set, the project's contingency % of the budget, so the
+    // forecast always carries a reserve (critique M-05).
+    const fromPct = round((sum('budget') * (project.contingencyPct ?? 0)) / 100);
+    const contingency = budget?.contingencyAmount ? budget.contingencyAmount : fromPct;
     return {
       currency: to,
       budgetLocked: Boolean(budget?.lockedAt),
@@ -509,6 +524,8 @@ export class CommercialService {
       // it (Meeting 002, 2.5).
       contingency: {
         original: round(contingency),
+        source: budget?.contingencyAmount ? ('SET' as const) : ('PROJECT_PCT' as const),
+        pct: project.contingencyPct,
         drawn: round(approvedVar),
         remaining: round(contingency - approvedVar),
         pendingExposure: round(pendingVar),

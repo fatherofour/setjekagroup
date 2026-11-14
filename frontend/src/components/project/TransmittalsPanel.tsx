@@ -99,8 +99,8 @@ function DistributionLists({ projectId, members, lists, onChanged }: { projectId
       </ul>
       {editing && (
         <div className="mt-2 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-          <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="List name (e.g. Design team)" maxLength={80} className={`${inputClass} w-full`} />
-          <input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="What it is for (optional)" maxLength={500} className={`${inputClass} w-full`} />
+          <input aria-label="List name" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="List name (e.g. Design team)" maxLength={80} className={`${inputClass} w-full`} />
+          <input aria-label="What it is for" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="What it is for (optional)" maxLength={500} className={`${inputClass} w-full`} />
           <div className="flex flex-wrap gap-1.5">
             {members.map((m) => {
               const on = editing.memberIds.includes(m.id);
@@ -251,11 +251,11 @@ export function TransmittalsPanel({ projectId }: { projectId: string }) {
         </button>
       ) : (
         <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-          <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Purpose (e.g. For Construction)" className={`${inputClass} w-full`} />
+          <input aria-label="Purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Purpose (e.g. For Construction)" className={`${inputClass} w-full`} />
           <div>
             <div className="mb-1 flex items-center justify-between gap-2">
               <p className="text-xs text-slate-400">Documents ({revisionIds.length} chosen) — the current revision of each</p>
-              <input value={docFilter} onChange={(e) => setDocFilter(e.target.value)} placeholder="Filter…" className={`${inputClass} h-7 w-36 text-xs`} />
+              <input aria-label="Filter" value={docFilter} onChange={(e) => setDocFilter(e.target.value)} placeholder="Filter…" className={`${inputClass} h-7 w-36 text-xs`} />
             </div>
             <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-900">
               {docOptions.length === 0 && <p className="px-1 py-1 text-xs text-slate-400">No documents.</p>}

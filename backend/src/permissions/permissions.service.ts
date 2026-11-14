@@ -1,7 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { PermissionModule as Modules, PermissionAction as Actions } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { PermissionModule, PermissionAction, ProjectMemberRole } from '../generated/prisma/enums.js';
 import type { Prisma } from '../generated/prisma/client.js';
+
+/** Work that is Setjeka's own (the user's rule, 14 Nov 2026): buying (RFQs,
+ * quotes, orders), the project team, the project's structure and moving the
+ * stage. An outside account (a consultant, a contractor, an outside site or
+ * HSE manager, the client) can't do these, whatever role it holds; they keep
+ * VIEW and COMMENT, and the client still signs stage moves (APPROVE). */
+const SETJEKA_ONLY: Partial<Record<PermissionModule, PermissionAction[]>> = {
+  PROCUREMENT: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
+  TEAM: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
+  PROJECT_STRUCTURE: ['CREATE', 'EDIT', 'DELETE', 'APPROVE'],
+  STAGE_GATE: ['CREATE', 'EDIT', 'DELETE'],
+};
+export const setjekaOnly = (module: PermissionModule, action: PermissionAction) => Boolean(SETJEKA_ONLY[module]?.includes(action));
 
 @Injectable()
 export class PermissionsService {
@@ -27,6 +41,7 @@ export class PermissionsService {
 
     const member = await this.prisma.projectMember.findFirst({ where: { projectId, userId } });
     if (!member) return accountType === 'INTERNAL';
+    if (accountType !== 'INTERNAL' && setjekaOnly(module, action)) return false;
 
     // Budgets, variations, valuations and fees: Setjeka's own staff, the QS
     // and the client (critique M-01). An outside firm's site or HSE manager
@@ -58,6 +73,44 @@ export class PermissionsService {
       where: { role_module_action: { role: member.role, module, action } },
     });
     return rolePermission?.allowed ?? false;
+  }
+
+  /** Everything this person may do on a project, area by area, worked out
+   * the same way as can() (without record-specific overrides), so screens
+   * offer only the actions the API will accept (critique M-09). */
+  async mine(userId: string, projectId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
+    if (!user) throw new ForbiddenException('You do not have access to this project');
+    const modules = Object.values(Modules) as PermissionModule[];
+    const actions = Object.values(Actions) as PermissionAction[];
+    const all = (v: boolean) => Object.fromEntries(modules.map((m) => [m, Object.fromEntries(actions.map((a) => [a, v]))]));
+    if (user.role === 'ADMIN') return all(true);
+    const members = await this.prisma.projectMember.findMany({ where: { projectId, userId }, select: { id: true, role: true } });
+    if (!members.length) {
+      if (user.accountType === 'INTERNAL') return all(true);
+      throw new ForbiddenException('You do not have access to this project');
+    }
+    // can() reads the first membership row; so does this.
+    const member = members[0];
+    const [overrides, roleRows] = await Promise.all([
+      this.prisma.memberPermissionOverride.findMany({ where: { projectMemberId: member.id, recordId: null, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } }),
+      this.prisma.rolePermission.findMany({ where: { role: member.role } }),
+    ]);
+    const commercialOk = user.accountType === 'INTERNAL' || members.some((m) => m.role === 'CLIENT' || m.role === 'QUANTITY_SURVEYOR');
+    return Object.fromEntries(
+      modules.map((m) => [
+        m,
+        Object.fromEntries(
+          actions.map((a) => {
+            if (m === 'COMMERCIAL' && !commercialOk) return [a, false];
+            if (user.accountType !== 'INTERNAL' && setjekaOnly(m, a)) return [a, false];
+            const o = overrides.find((x) => x.module === m && x.action === a);
+            if (o) return [a, o.allowed];
+            return [a, roleRows.find((r) => r.module === m && r.action === a)?.allowed ?? false];
+          }),
+        ),
+      ]),
+    );
   }
 
   getRoleMatrix() {

@@ -211,7 +211,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
             <>
               <label className={labelCls}>
                 Given by
-                <input className={`${inputCls} mt-0.5`} value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} placeholder="Manufacturer or supplier" />
+                <input aria-label="Manufacturer or supplier" className={`${inputCls} mt-0.5`} value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} placeholder="Manufacturer or supplier" />
               </label>
               <label className={labelCls}>
                 Runs to

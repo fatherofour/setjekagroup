@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { X, FileWarning } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetchBlobUrl } from '@/lib/api-client';
+import { formatDate } from '@/lib/dates';
 
 interface RevisionForCompare {
   id: string;
@@ -38,7 +39,7 @@ function Pane({ projectId, documentId, revision }: { projectId: string; document
       <div className="border-b border-slate-200 px-3 py-2 text-xs dark:border-slate-800">
         <p className="font-medium text-slate-800 dark:text-slate-100">Rev {revision.revisionNumber}</p>
         <p className="text-slate-400">
-          {new Date(revision.uploadedAt).toLocaleString()} · {revision.reviewStatus.replace('_', ' ')}
+          {formatDate(revision.uploadedAt)} · {revision.reviewStatus.replace('_', ' ')}
         </p>
       </div>
       <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">

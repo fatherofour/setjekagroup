@@ -14,6 +14,7 @@ import { OUTCOME_LABEL, defaultDueDate, dueLabel, dueTone, todayInput, type Appr
 import { CONTRACT_FORMS, FINAL_ACCOUNT_STATUS, REVIEWER_OPTIONS, VALUATION_STATUS, download, money, reviewerTitle, type Contract, type Valuation, type ValuationLine } from '@/lib/qs';
 import { contractTerms, type ContractForm } from '@/lib/projectMeta';
 import { PriceAdjustmentCard } from '@/components/qs/EscalationPanels';
+import { formatDate } from '@/lib/dates';
 
 type Option = { value: string; label: string };
 
@@ -262,7 +263,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
           <ul className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-300">
             {v.reviews!.map((r) => (
               <li key={r.id}>
-                {new Date(r.signedAt).toLocaleDateString()} · {r.signerName}: {OUTCOME_LABEL[r.outcome as ApprovalOutcome] ?? r.outcome}
+                {formatDate(r.signedAt)} · {r.signerName}: {OUTCOME_LABEL[r.outcome as ApprovalOutcome] ?? r.outcome}
                 {r.comment && ` — ${r.comment}`}
               </li>
             ))}
@@ -291,11 +292,11 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
         )}
         {v.status === 'SUBMITTED' && !can.certify && (
           <p className="text-xs text-slate-500">
-            With the {reviewerTitle(v.contract.reviewerRole)} to review, then Setjeka issues the certificate{v.certifyDueAt && ` by ${new Date(v.certifyDueAt).toLocaleDateString()}`}.
+            With the {reviewerTitle(v.contract.reviewerRole)} to review, then Setjeka issues the certificate{v.certifyDueAt && ` by ${formatDate(v.certifyDueAt)}`}.
           </p>
         )}
-        {can.certify && v.certifyDueAt && <p className={`text-xs font-medium ${new Date(v.certifyDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be certified by {new Date(v.certifyDueAt).toLocaleDateString()} (the contract&apos;s period).</p>}
-        {v.status === 'APPROVED' && v.payDueAt && <p className={`text-xs font-medium ${new Date(v.payDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be paid by {new Date(v.payDueAt).toLocaleDateString()} (the contract&apos;s period).</p>}
+        {can.certify && v.certifyDueAt && <p className={`text-xs font-medium ${new Date(v.certifyDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be certified by {formatDate(v.certifyDueAt)} (the contract&apos;s period).</p>}
+        {v.status === 'APPROVED' && v.payDueAt && <p className={`text-xs font-medium ${new Date(v.payDueAt) < new Date() ? 'text-red-700 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>To be paid by {formatDate(v.payDueAt)} (the contract&apos;s period).</p>}
         {can.certify && (
           <div className="flex flex-wrap items-end gap-2">
             <p className="w-full text-xs text-slate-500">Once the {reviewerTitle(v.contract.reviewerRole)} has approved the valuation, approve and sign to issue the payment certificate; the client then approves payment. Reject it, with your comments, to send it back to the QS.</p>
@@ -327,7 +328,7 @@ function ValuationEditor({ projectId, id, onChanged, onClosed }: { projectId: st
         )}
         {v.status === 'PAID' && (
           <p className="text-xs text-slate-500">
-            Paid {v.paidAt && new Date(v.paidAt).toLocaleDateString()} ({v.paymentReference}). It is in this month&apos;s actual on the cash flow.
+            Paid {v.paidAt && formatDate(v.paidAt)} ({v.paymentReference}). It is in this month&apos;s actual on the cash flow.
           </p>
         )}
         {can.reopen && (
@@ -504,7 +505,7 @@ function ContractView({ projectId, contract, internal, isClient, onChanged, onCl
                     {v.certificateNumber ?? `Valuation ${v.number}`}
                     {v.isFinal && ' (final)'}
                   </span>
-                  <span className="flex-1 text-xs text-slate-500">{new Date(v.valuationDate).toLocaleDateString()}</span>
+                  <span className="flex-1 text-xs text-slate-500">{formatDate(v.valuationDate)}</span>
                   <span className="tabular-nums">{money(v.amountDue, c)}</span>
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${VALUATION_STATUS[v.status].tone}`}>{VALUATION_STATUS[v.status].label}</span>
                 </button>

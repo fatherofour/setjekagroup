@@ -15,6 +15,7 @@ import {
 } from '@/lib/organisationMeta';
 import { Select } from '@/components/ui/Select';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
+import { formatDate } from '@/lib/dates';
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -199,7 +200,7 @@ export function OrganisationComplianceTab({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{r.documentType}</p>
                 <p className="truncate text-xs text-slate-400 dark:text-slate-500">
-                  {[r.documentNumber, r.issuingAuthority, r.expiryDate ? `expires ${new Date(r.expiryDate).toLocaleDateString()}` : null]
+                  {[r.documentNumber, r.issuingAuthority, r.expiryDate ? `expires ${formatDate(r.expiryDate)}` : null]
                     .filter(Boolean)
                     .join(' · ') || 'No details'}
                 </p>
@@ -263,7 +264,7 @@ export function OrganisationComplianceTab({
 
       <form onSubmit={handleAdd} className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
-          <input
+          <input aria-label="Document type"
             value={documentType}
             onChange={(e) => setDocumentType(e.target.value)}
             placeholder="Document type (e.g. Tax Certificate)"
@@ -275,10 +276,10 @@ export function OrganisationComplianceTab({
               <option key={t} value={t} />
             ))}
           </datalist>
-          <input value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Document number" className={`${inputClass} flex-1`} />
+          <input aria-label="Document number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Document number" className={`${inputClass} flex-1`} />
         </div>
         <div className="flex flex-wrap gap-2">
-          <input value={issuingAuthority} onChange={(e) => setIssuingAuthority(e.target.value)} placeholder="Issuing authority" className={`${inputClass} flex-1`} />
+          <input aria-label="Issuing authority" value={issuingAuthority} onChange={(e) => setIssuingAuthority(e.target.value)} placeholder="Issuing authority" className={`${inputClass} flex-1`} />
           <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputClass} />
           <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className={inputClass} />
           <Select value={verificationStatus} onChange={setVerificationStatus} options={VERIFICATION_STATUSES.map((s) => ({ value: s, label: VERIFICATION_STATUS_LABEL[s] }))} className={inputClass} />

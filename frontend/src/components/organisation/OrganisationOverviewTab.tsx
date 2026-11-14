@@ -18,6 +18,7 @@ import {
 import { ToggleChips } from '@/components/ui/ToggleChips';
 import { TagInput } from '@/components/ui/TagInput';
 import { Select } from '@/components/ui/Select';
+import { formatDate } from '@/lib/dates';
 
 const inputClass =
   'h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -197,56 +198,56 @@ export function OrganisationOverviewTab({ contractor, onSaved }: { contractor: C
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Trading name</label>
-                <input className={inputClass} value={form.tradingName} onChange={(e) => setForm({ ...form, tradingName: e.target.value })} />
+                <label htmlFor="organisationoverview-trading-name" className="text-xs text-slate-400 dark:text-slate-500">Trading name</label>
+                <input id="organisationoverview-trading-name" className={inputClass} value={form.tradingName} onChange={(e) => setForm({ ...form, tradingName: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Registration number</label>
-                <input className={inputClass} value={form.registrationNumber} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} />
+                <label htmlFor="organisationoverview-registration-number" className="text-xs text-slate-400 dark:text-slate-500">Registration number</label>
+                <input id="organisationoverview-registration-number" className={inputClass} value={form.registrationNumber} onChange={(e) => setForm({ ...form, registrationNumber: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Tax / VAT number</label>
-                <input className={inputClass} value={form.taxVatNumber} onChange={(e) => setForm({ ...form, taxVatNumber: e.target.value })} />
+                <label htmlFor="organisationoverview-tax-vat-number" className="text-xs text-slate-400 dark:text-slate-500">Tax / VAT number</label>
+                <input id="organisationoverview-tax-vat-number" className={inputClass} value={form.taxVatNumber} onChange={(e) => setForm({ ...form, taxVatNumber: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Country</label>
-                <input className={inputClass} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                <label htmlFor="organisationoverview-country" className="text-xs text-slate-400 dark:text-slate-500">Country</label>
+                <input id="organisationoverview-country" className={inputClass} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">State / Province</label>
-                <input className={inputClass} value={form.stateProvince} onChange={(e) => setForm({ ...form, stateProvince: e.target.value })} />
+                <label htmlFor="organisationoverview-state-province" className="text-xs text-slate-400 dark:text-slate-500">State / Province</label>
+                <input id="organisationoverview-state-province" className={inputClass} value={form.stateProvince} onChange={(e) => setForm({ ...form, stateProvince: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">City</label>
-                <input className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                <label htmlFor="organisationoverview-city" className="text-xs text-slate-400 dark:text-slate-500">City</label>
+                <input id="organisationoverview-city" className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Year established</label>
-                <input type="number" className={inputClass} value={form.yearEstablished} onChange={(e) => setForm({ ...form, yearEstablished: e.target.value })} />
+                <label htmlFor="organisationoverview-year-established" className="text-xs text-slate-400 dark:text-slate-500">Year established</label>
+                <input id="organisationoverview-year-established" type="number" className={inputClass} value={form.yearEstablished} onChange={(e) => setForm({ ...form, yearEstablished: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Website</label>
-                <input className={inputClass} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
+                <label htmlFor="organisationoverview-website" className="text-xs text-slate-400 dark:text-slate-500">Website</label>
+                <input id="organisationoverview-website" className={inputClass} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Contact name</label>
-                <input className={inputClass} value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
+                <label htmlFor="organisationoverview-contact-name" className="text-xs text-slate-400 dark:text-slate-500">Contact name</label>
+                <input id="organisationoverview-contact-name" className={inputClass} value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">General email</label>
-                <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <label htmlFor="organisationoverview-general-email" className="text-xs text-slate-400 dark:text-slate-500">General email</label>
+                <input id="organisationoverview-general-email" type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">General phone</label>
-                <input className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <label htmlFor="organisationoverview-general-phone" className="text-xs text-slate-400 dark:text-slate-500">General phone</label>
+                <input id="organisationoverview-general-phone" className={inputClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs text-slate-400 dark:text-slate-500">Physical address</label>
-                <input className={inputClass} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                <label htmlFor="organisationoverview-physical-address" className="text-xs text-slate-400 dark:text-slate-500">Physical address</label>
+                <input id="organisationoverview-physical-address" className={inputClass} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="text-xs text-slate-400 dark:text-slate-500">Notes</label>
-                <textarea className={`${inputClass} h-16 resize-none py-2`} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <label htmlFor="organisationoverview-notes" className="text-xs text-slate-400 dark:text-slate-500">Notes</label>
+                <textarea id="organisationoverview-notes" className={`${inputClass} h-16 resize-none py-2`} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
             </div>
           </div>
@@ -277,16 +278,16 @@ export function OrganisationOverviewTab({ contractor, onSaved }: { contractor: C
         <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Registration &amp; prequalification</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <label className="text-xs text-slate-400 dark:text-slate-500">Registration status</label>
-            <Select value={regStatus} onChange={(v) => setRegStatus(v as typeof regStatus)} options={REGISTRATION_STATUSES.map((s) => ({ value: s, label: REGISTRATION_STATUS_LABEL[s] }))} className={inputClass} />
+            <label htmlFor="organisationoverview-registration-status" className="text-xs text-slate-400 dark:text-slate-500">Registration status</label>
+            <Select id="organisationoverview-registration-status" value={regStatus} onChange={(v) => setRegStatus(v as typeof regStatus)} options={REGISTRATION_STATUSES.map((s) => ({ value: s, label: REGISTRATION_STATUS_LABEL[s] }))} className={inputClass} />
           </div>
           <div>
-            <label className="text-xs text-slate-400 dark:text-slate-500">Prequalification status</label>
-            <Select value={preStatus} onChange={(v) => setPreStatus(v as typeof preStatus)} options={PREQUALIFICATION_STATUSES.map((s) => ({ value: s, label: PREQUALIFICATION_STATUS_LABEL[s] }))} className={inputClass} />
+            <label htmlFor="organisationoverview-prequalification-status" className="text-xs text-slate-400 dark:text-slate-500">Prequalification status</label>
+            <Select id="organisationoverview-prequalification-status" value={preStatus} onChange={(v) => setPreStatus(v as typeof preStatus)} options={PREQUALIFICATION_STATUSES.map((s) => ({ value: s, label: PREQUALIFICATION_STATUS_LABEL[s] }))} className={inputClass} />
           </div>
           <div>
-            <label className="text-xs text-slate-400 dark:text-slate-500">Comment</label>
-            <input className={inputClass} value={statusComment} onChange={(e) => setStatusComment(e.target.value)} placeholder="Optional" />
+            <label htmlFor="organisationoverview-comment" className="text-xs text-slate-400 dark:text-slate-500">Comment</label>
+            <input id="organisationoverview-comment" className={inputClass} value={statusComment} onChange={(e) => setStatusComment(e.target.value)} placeholder="Optional" />
           </div>
         </div>
         <button
@@ -306,7 +307,7 @@ export function OrganisationOverviewTab({ contractor, onSaved }: { contractor: C
                   <span className="font-medium text-slate-700 dark:text-slate-200">{h.previousStatus}</span> →{' '}
                   <span className="font-medium text-slate-700 dark:text-slate-200">{h.newStatus}</span>
                   {' · '}
-                  {new Date(h.changedAt).toLocaleString()}
+                  {formatDate(h.changedAt)}
                   {h.comment && <span className="italic"> — "{h.comment}"</span>}
                 </li>
               ))}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, CheckCircle2, Circle, ExternalLink, Undo2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
+import { formatDate } from '@/lib/dates';
 
 interface Item {
   code: string;
@@ -205,7 +206,7 @@ export function ProcsaTracker({ projectId, onGoTo }: { projectId: string; onGoTo
                               <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">{i.evidence}</p>
                             ) : i.manualCheck ? (
                               <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-                                Signed off by {i.manualCheck.doneBy} on {new Date(i.manualCheck.doneAt).toLocaleDateString('en-ZA')}
+                                Signed off by {i.manualCheck.doneBy} on {formatDate(i.manualCheck.doneAt)}
                                 {i.manualCheck.note && ` — ${i.manualCheck.note}`}
                               </p>
                             ) : (

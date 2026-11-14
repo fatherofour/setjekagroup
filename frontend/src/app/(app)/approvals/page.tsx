@@ -8,6 +8,7 @@ import { clientLink } from '@/lib/portal';
 import { ApiError } from '@/lib/api-client';
 import { cardClass } from '@/lib/stage0';
 import { dueLabel, dueTone } from '@/lib/signoff';
+import { formatDate } from '@/lib/dates';
 
 type Kind = 'STAGE_DELIVERABLE' | 'STAGE_TRANSITION' | 'PROJECT_COMPLETION' | 'INVESTMENT_DECISION' | 'STAGE0_PAYMENT' | 'VARIATION' | 'DOCUMENT_REVISION' | 'PAYMENT_CERTIFICATE' | 'VALUATION';
 
@@ -84,7 +85,7 @@ export default function ApprovalsPage() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {i.context}
                     {i.requestedBy && ` · from ${i.requestedBy}`}
-                    {i.requestedAt && `, ${new Date(i.requestedAt).toLocaleDateString()}`}
+                    {i.requestedAt && `, ${formatDate(i.requestedAt)}`}
                   </p>
                 </div>
                 {(() => {

@@ -11,16 +11,6 @@ import {
   PauseCircle,
   CheckCircle2,
   Plus,
-  Calculator,
-  Boxes,
-  Cog,
-  Camera,
-  CalendarClock,
-  MessageCircleQuestion,
-  FileCheck,
-  ClipboardCheck,
-  ListChecks,
-  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -32,13 +22,15 @@ import { TodaySnapshot } from '@/components/dashboard/TodaySnapshot';
 import { SitesPanel } from '@/components/dashboard/SitesPanel';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { AnalyticsSection } from '@/components/dashboard/AnalyticsSection';
-import { ComingSoonWidget } from '@/components/dashboard/ComingSoonWidget';
 import { OverallDealsCard } from '@/components/firm-deals/FirmDeals';
+import { formatDate } from '@/lib/dates';
 
 interface Project {
   id: string;
   name: string;
   status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'ARCHIVED';
+  stage: string;
+  closureType: 'COMPLETED' | 'ABANDONED' | null;
   latitude: number | null;
   longitude: number | null;
   createdAt: string;
@@ -85,19 +77,6 @@ function KpiTile({
 // Widgets that would exist once their underlying module is built. Shown with
 // an honest "coming soon" state rather than fabricated numbers, so the
 // dashboard's layout matches the full design without pretending data exists.
-const COMING_SOON_WIDGETS = [
-  { icon: Calculator, title: 'Estimate resources', description: 'Labour, material and equipment resourcing from the estimate builder.' },
-  { icon: Boxes, title: 'BIM coverage', description: 'How much of each project has a linked BIM model, once BIM Takeoff lands.' },
-  { icon: Cog, title: 'Operations snapshot', description: 'Daily diary and site operations at a glance.' },
-  { icon: Camera, title: 'Latest site photos', description: 'Recent photos from site, once photo capture is built.' },
-  { icon: CalendarClock, title: 'Upcoming milestones', description: 'Programme milestones due soon, once Schedule is wired to projects.' },
-  { icon: MessageCircleQuestion, title: 'RFI turnaround', description: 'Average time to close out RFIs, once RFIs exist.' },
-  { icon: FileCheck, title: 'Submittals pending', description: 'Submittals awaiting review, once the module exists.' },
-  { icon: ClipboardCheck, title: 'Inspections quality', description: 'Pass/fail rates from site inspections, once tracked.' },
-  { icon: ListChecks, title: 'Punch list quality', description: 'Open vs. closed punch items, once punch lists exist.' },
-  { icon: BookOpen, title: 'Cases', description: 'Learn-by-example cases from past projects.' },
-] as const;
-
 export default function DashboardPage() {
   const { user, authedFetch } = useAuth();
   const staff = user?.accountType === 'INTERNAL' || user?.role === 'ADMIN';
@@ -117,23 +96,29 @@ export default function DashboardPage() {
 
   const loading = projects === null;
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of projects ?? []) counts[p.status] = (counts[p.status] ?? 0) + 1;
-    return counts;
+  // Counted by stage, which moves as the project does; the status field
+  // stayed at Planning (critique H-06). Finished or abandoned projects and
+  // archived ones count as closed.
+  const counts = useMemo(() => {
+    const list = (projects ?? []).filter((p) => p.status !== 'ARCHIVED');
+    const closed = (p: Project) => Boolean(p.closureType) || p.status === 'COMPLETED';
+    const open = list.filter((p) => !closed(p));
+    return {
+      total: list.length,
+      preConstruction: open.filter((p) => !['CONSTRUCTION', 'CLOSEOUT'].includes(p.stage)).length,
+      construction: open.filter((p) => p.stage === 'CONSTRUCTION').length,
+      closeout: open.filter((p) => p.stage === 'CLOSEOUT').length,
+      completed: list.filter(closed).length,
+      onHold: open.filter((p) => p.status === 'ON_HOLD').length,
+      live: open.length,
+    };
   }, [projects]);
 
-  const counts = useMemo(() => {
-    const list = projects ?? [];
-    const nonArchived = list.filter((p) => p.status !== 'ARCHIVED');
-    return {
-      total: nonArchived.length,
-      planning: statusCounts.PLANNING ?? 0,
-      active: statusCounts.ACTIVE ?? 0,
-      onHold: statusCounts.ON_HOLD ?? 0,
-      completed: statusCounts.COMPLETED ?? 0,
-    };
-  }, [projects, statusCounts]);
+  const stageCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const p of projects ?? []) if (p.status !== 'ARCHIVED' && !p.closureType && p.status !== 'COMPLETED') c[p.stage] = (c[p.stage] ?? 0) + 1;
+    return c;
+  }, [projects]);
 
   const mappable = useMemo(
     () =>
@@ -148,7 +133,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "'Merriweather', serif", color: '#0E3D2C' }}>
+        {/* Brand green in light mode; a light green in dark mode, which was
+            dark green on near-black (critique M-12). */}
+        <h1 className="text-2xl font-bold text-[#0E3D2C] dark:text-emerald-200" style={{ fontFamily: "'Merriweather', serif" }}>
           {greeting()}, {user?.fullName.split(' ')[0]}.
         </h1>
         {/* Only Setjeka creates projects (critique H-04). */}
@@ -184,22 +171,22 @@ export default function DashboardPage() {
         />
         <KpiTile
           icon={ClipboardList}
-          value={counts.planning}
-          label="Planning"
+          value={counts.preConstruction}
+          label="Before construction"
           tone="bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-400"
           loading={loading}
         />
         <KpiTile
           icon={Activity}
-          value={counts.active}
-          label="Active"
+          value={counts.construction}
+          label="In construction"
           tone="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
           loading={loading}
         />
         <KpiTile
           icon={PauseCircle}
-          value={counts.onHold}
-          label="On hold"
+          value={counts.closeout}
+          label="In close-out"
           tone="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
           loading={loading}
         />
@@ -213,8 +200,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PortfolioOverview activeCount={counts.active} />
-        <TodaySnapshot />
+        <PortfolioOverview activeCount={counts.live} />
+        {staff && <TodaySnapshot />}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -225,10 +212,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SitesPanel sites={mappable} />
         <ActivityFeed projects={projects ?? []} />
-        <AnalyticsSection statusCounts={statusCounts} total={projects?.length ?? 0} />
-        {COMING_SOON_WIDGETS.map((widget) => (
-          <ComingSoonWidget key={widget.title} icon={widget.icon} title={widget.title} description={widget.description} />
-        ))}
+        <AnalyticsSection stageCounts={stageCounts} total={counts.live} />
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -257,7 +241,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{p.name}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">{new Date(p.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(p.createdAt)}</p>
                 </div>
               </li>
             ))}

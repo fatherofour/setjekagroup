@@ -53,6 +53,13 @@ function UserMenu() {
           >
             My signature
           </Link>
+          <Link
+            href="/account/settings"
+            onClick={() => setOpen(false)}
+            className="block w-full rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            My settings
+          </Link>
           <button
             onClick={logout}
             className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"

@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, ListChecks } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { CommentThread } from './CommentThread';
+import { formatDate } from '@/lib/dates';
 
 interface Row {
   kind: 'NOTE' | 'MEETING';
@@ -131,7 +132,7 @@ export function ActionRegister({ projectId }: { projectId: string }) {
                         {r.raisedBy && <span className="block text-[11px] text-slate-400">from {r.raisedBy}</span>}
                       </td>
                       <td className="py-2 pr-2 text-xs text-slate-600 dark:text-slate-300">{r.owner ?? '—'}</td>
-                      <td className={`py-2 pr-2 text-xs ${overdue ? 'font-semibold text-red-600' : 'text-slate-500'}`}>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—'}</td>
+                      <td className={`py-2 pr-2 text-xs ${overdue ? 'font-semibold text-red-600' : 'text-slate-500'}`}>{r.dueDate ? formatDate(r.dueDate) : '—'}</td>
                       <td className={`py-2 pr-2 text-xs ${r.priority ? PRIORITY_TONE[r.priority] : 'text-slate-400'}`}>{r.priority ? r.priority.toLowerCase() : '—'}</td>
                       <td className="py-2 text-xs">
                         <Link href={r.link} className="text-emerald-700 hover:underline dark:text-emerald-400">

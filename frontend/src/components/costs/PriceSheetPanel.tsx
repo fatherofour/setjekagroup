@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { RESOURCE_TYPE_LABEL, RESOURCE_TYPE_OPTIONS, UNIT_SUGGESTIONS, formatRate, type CostRegion, type CostResource, type ResourceType } from '@/lib/commercial';
+import { formatDate } from '@/lib/dates';
 
 interface HistoryRow {
   id: string;
@@ -304,7 +305,7 @@ export function PriceSheetPanel({ regions, regionId, onRegionChange }: { regions
                         <td className="py-1.5 pr-2 text-[11px] text-slate-400">
                           {r.price ? (
                             <>
-                              {new Date(r.price.updatedAt).toLocaleDateString()}
+                              {formatDate(r.price.updatedAt)}
                               {r.price.source && <span className="block truncate" title={r.price.source}>{r.price.source}</span>}
                             </>
                           ) : (
@@ -349,7 +350,7 @@ export function PriceSheetPanel({ regions, regionId, onRegionChange }: { regions
                               <ul className="space-y-0.5">
                                 {history.map((h) => (
                                   <li key={h.id} className="text-slate-600 dark:text-slate-300">
-                                    {new Date(h.createdAt).toLocaleDateString()} — {formatRate(h.previousRate)} → <strong>{formatRate(h.rate)}</strong>
+                                    {formatDate(h.createdAt)} — {formatRate(h.previousRate)} → <strong>{formatRate(h.rate)}</strong>
                                     {h.changedBy && ` by ${h.changedBy.fullName}`}
                                     {h.source && <span className="text-slate-400"> · {h.source}</span>}
                                   </li>

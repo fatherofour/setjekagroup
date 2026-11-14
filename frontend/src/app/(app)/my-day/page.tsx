@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, ListChecks, MessageSquare, X } from 'lucide-react
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { clientLink } from '@/lib/portal';
+import { formatDate } from '@/lib/dates';
 
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -50,7 +51,7 @@ function due(d: string | null) {
   if (days < 0) return { text: `${-days} day${days === -1 ? '' : 's'} overdue`, tone: 'font-semibold text-red-600' };
   if (days === 0) return { text: 'due today', tone: 'font-semibold text-amber-700 dark:text-amber-400' };
   if (days === 1) return { text: 'due tomorrow', tone: 'text-amber-700 dark:text-amber-400' };
-  return { text: `due ${date.toLocaleDateString()}`, tone: 'text-slate-500' };
+  return { text: `due ${formatDate(date)}`, tone: 'text-slate-500' };
 }
 
 /** "My Day" (Meeting 3 §2.4): the actions people have given me, notes left
@@ -163,7 +164,7 @@ export default function MyDayPage() {
                       </button>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
-                      {n.author.fullName} · {new Date(n.createdAt).toLocaleDateString()} ·{' '}
+                      {n.author.fullName} · {formatDate(n.createdAt)} ·{' '}
                       <Link href={clientLink(n.link, user)} className="text-emerald-700 hover:underline dark:text-emerald-400">
                         {[n.projectName, n.context].filter(Boolean).join(' · ') || 'Open'}
                       </Link>

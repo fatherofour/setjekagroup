@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, primaryButton } from '@/lib/stage0';
 import { ADVICE_TOPICS, type AdviceTopic } from '@/lib/inception';
 import { projectMemberRoleLabel, type ProjectMemberRole } from '@/lib/projectMemberRoles';
+import { formatDate } from '@/lib/dates';
 
 interface Advice {
   id: string;
@@ -88,7 +89,7 @@ export function AdvicePanel({ projectId, topics, title = 'Consultant advice' }: 
               <p className="mt-1 text-[11px] text-slate-400">
                 {a.author.fullName}
                 {a.authorRole && ` · ${projectMemberRoleLabel(a.authorRole)}`}
-                {topics.length > 1 && ` · ${ADVICE_TOPICS[a.topic]}`} · {new Date(a.createdAt).toLocaleDateString()}
+                {topics.length > 1 && ` · ${ADVICE_TOPICS[a.topic]}`} · {formatDate(a.createdAt)}
               </p>
             </li>
           ))}

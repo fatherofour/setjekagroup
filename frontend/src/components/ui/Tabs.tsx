@@ -1,5 +1,7 @@
 'use client';
 
+import { ScrollRow } from './ScrollRow';
+
 export interface TabItem {
   value: string;
   label: string;
@@ -14,16 +16,19 @@ interface TabsProps {
 
 // First tabs/segmented-control primitive in this app — plain buttons with an
 // active-underline, no new dependency. Used to keep multi-section pages
-// (like the contractor workspace) from becoming one long scroll.
+// (like the contractor workspace) from becoming one long scroll. A row that
+// doesn't fit scrolls with a fade and arrows (ScrollRow, critique M-15).
 export function Tabs({ tabs, value, onChange }: TabsProps) {
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+    <ScrollRow role="tablist" activeSelector='[aria-selected="true"]' watch={value}>
       {tabs.map((tab) => {
         const active = tab.value === value;
         return (
           <button
             key={tab.value}
             type="button"
+            role="tab"
+            aria-selected={active}
             onClick={() => onChange(tab.value)}
             className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition ${
               active
@@ -46,6 +51,6 @@ export function Tabs({ tabs, value, onChange }: TabsProps) {
           </button>
         );
       })}
-    </div>
+    </ScrollRow>
   );
 }

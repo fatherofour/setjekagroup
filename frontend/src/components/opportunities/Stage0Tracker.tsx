@@ -5,6 +5,7 @@ import { ArrowRight, CheckCircle2, Circle, CircleAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, primaryButton, type Readiness } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface Props {
   opportunityId: string;
@@ -83,7 +84,7 @@ export function Stage0Tracker({ opportunityId, readiness, converted, busy, onGoT
                         {item.evidence && <span className="block text-[11px] text-emerald-700 dark:text-emerald-400">✓ {item.evidence}</span>}
                         {item.manualCheck && (
                           <span className="block text-[11px] text-slate-500">
-                            Signed off by {item.manualCheck.doneBy}, {new Date(item.manualCheck.doneAt).toLocaleDateString()}
+                            Signed off by {item.manualCheck.doneBy}, {formatDate(item.manualCheck.doneAt)}
                             {item.manualCheck.note && ` — ${item.manualCheck.note}`}
                           </span>
                         )}

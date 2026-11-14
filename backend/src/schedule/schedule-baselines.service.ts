@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { workingDaysBetween } from './schedule-cpm.util.js';
 import { ProjectsService } from '../projects/projects.service.js';
 import type { CreateBaselineDto } from './dto/create-baseline.dto.js';
+import { scheduleVisibility } from './schedule-visibility.js';
 
 const BASELINE_INCLUDE = { snapshots: true } as const;
 
@@ -115,7 +116,11 @@ export class ScheduleBaselinesService {
         offCritical: rows.filter((r) => r.critical === 'OFF_CRITICAL').length,
         added: rows.filter((r) => r.isNew).length,
       },
-      activities: rows,
+      // A contractor: only their own and linked activities (critique M-02).
+      activities: await (async () => {
+        const vis = await scheduleVisibility(this.prisma, projectId, ownerId);
+        return vis ? rows.filter((r) => vis.ids.has(r.id)) : rows;
+      })(),
     };
   }
 

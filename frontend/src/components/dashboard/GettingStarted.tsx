@@ -19,8 +19,6 @@ export function GettingStarted({ hasProjects, hasSitedProjects }: Props) {
   const steps: Step[] = [
     { label: 'Create your first project', done: hasProjects, href: '/projects', available: true },
     { label: 'Add site coordinates for the map & weather', done: hasSitedProjects, href: '/projects', available: true },
-    { label: 'Ask the AI assistant a question', done: false, available: false },
-    { label: 'Invite your team', done: false, available: false },
   ];
   const doneCount = steps.filter((s) => s.done).length;
 

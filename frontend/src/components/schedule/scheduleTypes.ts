@@ -1,3 +1,4 @@
+import { formatDate as formatAppDate } from '@/lib/dates';
 export type ActivityType = 'TASK' | 'MILESTONE';
 export type SchedulePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ScheduleActivityStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'DELAYED';
@@ -31,6 +32,8 @@ export interface ScheduleDependency {
 
 export interface ScheduleActivity {
   id: string;
+  /** For a contractor: another firm's work linked to theirs (critique M-02). */
+  link?: 'WAITING_ON' | 'WAITS_FOR_YOU' | null;
   projectId: string;
   parentId: string | null;
   projectNodeId: string | null;
@@ -106,7 +109,7 @@ export function assigneeLabel(activity: ScheduleActivity): string | null {
 
 export function formatDate(value: string | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  return formatAppDate(value);
 }
 
 export function toDateInputValue(value: string | null): string {

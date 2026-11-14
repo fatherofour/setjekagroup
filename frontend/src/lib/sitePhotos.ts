@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/dates';
 export interface SitePhoto {
   id: string;
   projectId: string;
@@ -152,10 +153,5 @@ export function dayLabel(key: string) {
   yesterday.setDate(today.getDate() - 1);
   if (date.toDateString() === today.toDateString()) return 'Today';
   if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return date.toLocaleDateString('en-ZA', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatDate(date);
 }

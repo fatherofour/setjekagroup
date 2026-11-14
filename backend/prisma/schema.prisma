@@ -322,6 +322,12 @@ model User {
   // The in-app guide: { seen: string[], off: boolean } - which screens'
   // tips and tours this person has been through, kept across devices.
   guideState          Json            @default("{}")
+  // Login lockout (critique M-03, the user's rule of 14 Nov 2026): six wrong
+  // passwords in a row lock the account until an administrator unlocks it.
+  failedLogins        Int             @default(0)
+  lockedAt            DateTime?
+  // How this person reads dates (M-07): DD/MM/YYYY unless they change it.
+  dateFormat          String          @default("DD/MM/YYYY")
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 

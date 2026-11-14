@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { formatDate } from '@/lib/dates';
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Columns3, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -57,7 +58,8 @@ const isWeekend = (t: number) => {
   return d === 0 || d === 6;
 };
 const fmt = (t: number, opts: Intl.DateTimeFormatOptions) => new Date(t).toLocaleDateString('en-ZA', { timeZone: 'UTC', ...opts });
-const fmtCell = (t: number) => fmt(t, { day: '2-digit', month: 'short', year: '2-digit' });
+// The grid's Start and Finish columns, in the person's date format (M-07).
+const fmtCell = (t: number) => formatDate(new Date(t).toISOString().slice(0, 10));
 const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
 
 /** Working days from a to b, both included (the schedule counts Monday to Friday). */
@@ -213,10 +215,13 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
   const visibleColumns = COLUMNS.filter((c) => columns.includes(c.key));
   const tableWidth = ID_WIDTH + nameWidth + visibleColumns.reduce((s, c) => s + c.width, 0);
 
-  // Open on the start of the work, as MS Project does.
+  // Open at today, with a little of the past in view (critique M-14);
+  // before the work starts, at its start.
   const firstStart = tree.length ? Math.min(...tree.map((r) => span.get(r.activity.id)?.start ?? today)) : today;
+  const openAt = Math.max(firstStart, today);
   useEffect(() => {
-    if (scroller.current) scroller.current.scrollLeft = Math.max(0, x(firstStart) - 2 * 7 * px);
+    const el = scroller.current;
+    if (el) el.scrollLeft = Math.max(0, x(openAt) - Math.min(el.clientWidth * 0.25, 4 * 7 * px));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom, activities === null]);
 
@@ -507,6 +512,11 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
               const isMilestone = a.activityType === 'MILESTONE' && !isSummary;
               const sel = selected === a.id;
               const bg = sel ? 'bg-blue-50 dark:bg-blue-950/40' : i % 2 ? 'bg-slate-50/60 dark:bg-slate-800/20' : 'bg-white dark:bg-slate-900';
+              // The frozen task columns need a solid fill: the see-through row
+              // tints let bars and weekend shading show through them when the
+              // timeline scrolls underneath (the user's screenshot, 14 Nov).
+              // Same colours as the row tints, made opaque.
+              const stickyBg = sel ? 'bg-blue-50 dark:bg-[#121d3b]' : i % 2 ? 'bg-[#f9fafc] dark:bg-[#131c2f]' : 'bg-white dark:bg-slate-900';
               const dragging = drag?.id === a.id ? drag : null;
               const shiftDays = dragging?.kind === 'move' ? dragging.days : 0;
               const stretchDays = dragging?.kind === 'resize' ? dragging.days : 0;
@@ -514,8 +524,8 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
               const bw = Math.max(px, x(s.end) + px - x(s.start) + stretchDays * px);
               const base = baseline.get(a.id);
               const crit = critical(a) && !isSummary;
-              const movable = !isSummary && !isMilestone && !a.asSuccessorOf?.length;
-              const editable = !isSummary;
+              const movable = data.canEdit && !isSummary && !isMilestone && !a.asSuccessorOf?.length;
+              const editable = data.canEdit && !isSummary;
               const tip = `${a.name}\n${fmtCell(s.start)} – ${fmtCell(s.end)} · ${isSummary ? '' : `${a.durationDays}d · `}${s.percent}% complete${a.totalFloatDays != null && !isSummary ? ` · float ${a.totalFloatDays}d` : ''}${a.asSuccessorOf?.length ? '\nStart set by its predecessors' : ''}`;
               const value = (col: Column) => {
                 switch (col) {
@@ -536,7 +546,7 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
               const canEdit = (col: Column) => editable && (col === 'percent' || col === 'start' || (col === 'duration' && !isMilestone));
               return (
                 <div key={a.id} role="row" aria-label={a.name} aria-selected={sel} className={`flex ${bg}`} style={{ height: ROW }} onClick={() => setSelected(a.id)}>
-                  <div className={`sticky left-0 z-20 flex border-r-2 border-slate-300 dark:border-slate-700 ${bg}`} style={{ width: tableWidth }}>
+                  <div className={`sticky left-0 z-20 flex border-r-2 border-slate-300 dark:border-slate-700 ${stickyBg}`} style={{ width: tableWidth }}>
                     <div className={`${cell} justify-center text-[11px] text-slate-400`} style={{ width: ID_WIDTH }}>
                       {number.get(a.id)}
                     </div>
@@ -563,6 +573,11 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
                         className={`truncate text-left text-[13px] hover:text-emerald-700 hover:underline dark:hover:text-emerald-400 ${isSummary ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200'} ${crit ? 'text-red-700 dark:text-red-400' : ''}`}
                       >
                         {a.name}
+                        {a.link && (
+                          <span title={a.link === 'WAITING_ON' ? "Another firm's work your activity waits on" : "Another firm's work that waits on yours"} className={`ml-1.5 rounded px-1 text-[10px] font-normal ${a.link === 'WAITING_ON' ? 'bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-300'}`}>
+                            {a.link === 'WAITING_ON' ? "you're waiting on this" : 'waiting on your work'}
+                          </span>
+                        )}
                       </button>
                     </div>
                     {visibleColumns.map((c) =>
@@ -639,11 +654,13 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
                           style={{ left: bx, width: bw, top: base ? 6 : 8, height: base ? 14 : 16, background: crit ? COLOURS.critical : COLOURS.task }}
                         >
                           <div className="h-full" style={{ width: `${a.percentComplete}%`, background: crit ? COLOURS.criticalProgress : COLOURS.taskProgress }} />
-                          <span
-                            aria-hidden
-                            onPointerDown={(e) => startDrag(e, a, 'resize')}
-                            className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/40"
-                          />
+                          {data.canEdit && (
+                            <span
+                              aria-hidden
+                              onPointerDown={(e) => startDrag(e, a, 'resize')}
+                              className="absolute right-0 top-0 h-full w-2 cursor-ew-resize hover:bg-white/40"
+                            />
+                          )}
                         </div>
                         <span className="pointer-events-none absolute whitespace-nowrap text-[11px] text-slate-600 dark:text-slate-300" style={{ left: bx + bw + 6, top: base ? 6 : 8, lineHeight: '16px' }}>
                           {dragging
@@ -684,7 +701,11 @@ export function ScheduleGanttView({ data, projectId, onSelect }: { data: ReturnT
         <Key swatch={<span className="inline-block h-2.5 w-2.5 rotate-45 rounded-[1px]" style={{ background: COLOURS.milestone }} />} label="Milestone" />
         {baselineId && <Key swatch={<span className="inline-block h-1 w-6 rounded-sm" style={{ background: COLOURS.baseline }} />} label="Baseline" />}
         <Key swatch={<span className="inline-block h-3 w-0 border-l-2 border-dashed" style={{ borderColor: COLOURS.today }} />} label="Today" />
-        <span>Drag a bar to move it, or its right end to change the duration. Click a duration, start or % to edit it.</span>
+        {data.canEdit ? (
+          <span>Drag a bar to move it, or its right end to change the duration. Click a duration, start or % to edit it.</span>
+        ) : (
+          <span>Setjeka keeps the programme; double-click a bar to see its details.</span>
+        )}
       </div>
     </div>
   );

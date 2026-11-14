@@ -12,6 +12,7 @@ import { ClientApprovalBox } from '@/components/signoff/ClientApprovalBox';
 import type { ProjectDocument } from './DocumentsPanel';
 import { DOCUMENT_ACCEPT } from '@/lib/documentUpload';
 import { TagEditor } from '@/components/files/Tags';
+import { formatDate } from '@/lib/dates';
 
 interface ShareableMember {
   id: string;
@@ -205,15 +206,15 @@ export function DocumentDetailPanel({
 
         <div className="space-y-2">
           <input className={`${inputClass} h-9 w-full`} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <textarea
+          <textarea aria-label="Description"
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Description"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
           <div className="grid grid-cols-2 gap-2">
-            <input className={inputClass} placeholder="Type" value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} />
-            <input className={inputClass} placeholder="Discipline" value={form.discipline} onChange={(e) => setForm({ ...form, discipline: e.target.value })} />
+            <input aria-label="Type" className={inputClass} placeholder="Type" value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} />
+            <input aria-label="Discipline" className={inputClass} placeholder="Discipline" value={form.discipline} onChange={(e) => setForm({ ...form, discipline: e.target.value })} />
           </div>
           <TagEditor projectId={projectId} documentId={document.id} value={(document.tags ?? []).map((t) => t.tag)} onChanged={onChanged} />
           <button onClick={save} disabled={saving} className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
@@ -250,7 +251,7 @@ export function DocumentDetailPanel({
                   </span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${REVIEW_BADGE[rev.reviewStatus]}`}>{rev.reviewStatus.replace('_', ' ')}</span>
                 </div>
-                <p className="mb-1.5 text-slate-400">{new Date(rev.uploadedAt).toLocaleString()}</p>
+                <p className="mb-1.5 text-slate-400">{formatDate(rev.uploadedAt)}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => viewRevision(rev.id, rev.originalFilename, rev.mimeType)} className="flex items-center gap-1 text-emerald-700 hover:underline dark:text-emerald-400">
                     <Eye size={12} />
@@ -307,7 +308,7 @@ export function DocumentDetailPanel({
           </ul>
 
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <input aria-label="Revision number"
               value={newRevisionNumber}
               onChange={(e) => setNewRevisionNumber(e.target.value)}
               placeholder="Revision # (optional)"

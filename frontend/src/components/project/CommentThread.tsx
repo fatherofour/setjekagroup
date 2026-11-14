@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Send, Trash2, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
+import { formatDate, formatDateTime } from '@/lib/dates';
 
 type CommentEntityType =
   | 'TASK'
@@ -71,7 +72,7 @@ const fieldClass =
   'h-8 rounded-md border border-slate-300 bg-white px-2 text-xs shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
 function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatDateTime(iso);
 }
 
 /** Notes on a record (Meeting 3 §2.4 — "leave a note", not chat). A note can
@@ -193,7 +194,7 @@ export function CommentThread({
                       </span>
                     )}
                     {c.isAction && c.priority && !done && <span className={`rounded-full px-1.5 py-px text-[10px] ${PRIORITY_TONE[c.priority]}`}>{c.priority.toLowerCase()}</span>}
-                    {c.isAction && c.dueDate && !done && <span className={`text-[10px] ${new Date(c.dueDate) < new Date() ? 'font-semibold text-red-600' : 'text-slate-500'}`}>due {new Date(c.dueDate).toLocaleDateString()}</span>}
+                    {c.isAction && c.dueDate && !done && <span className={`text-[10px] ${new Date(c.dueDate) < new Date() ? 'font-semibold text-red-600' : 'text-slate-500'}`}>due {formatDate(c.dueDate)}</span>}
                   </span>
                   <span className="flex items-center gap-2 text-slate-400">
                     {formatWhen(c.createdAt)}
@@ -214,7 +215,7 @@ export function CommentThread({
                 <p className={`whitespace-pre-wrap ${done ? 'text-slate-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{c.body}</p>
                 {c.isAction && (
                   <div className="mt-1 flex items-center gap-2">
-                    {done && c.completedBy && <span className="text-[10px] text-slate-500">Done by {c.completedBy.fullName}{c.completedAt && ` ${new Date(c.completedAt).toLocaleDateString()}`}</span>}
+                    {done && c.completedBy && <span className="text-[10px] text-slate-500">Done by {c.completedBy.fullName}{c.completedAt && ` ${formatDate(c.completedAt)}`}</span>}
                     {canChange && (
                       <button type="button" onClick={() => setStatus(c, done ? 'OPEN' : 'DONE')} className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950">
                         {done ? <Circle size={11} /> : <CheckCircle2 size={11} />}

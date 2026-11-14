@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { TAKEOFF_BASIS_LABEL, formatQty, type TakeoffBasis, type WorkItem } from '@/lib/commercial';
 import { SearchPicker } from '@/components/costs/SearchPicker';
+import { formatDate } from '@/lib/dates';
 
 interface Suggestion {
   id: string;
@@ -189,7 +190,7 @@ export function ModelTakeoffPanel({ estimateId, takeoffs, readOnly, onChanged }:
                   {t.fileName}
                 </button>
                 <span className="flex-1 text-xs text-slate-400">
-                  {t.format.toUpperCase()} · {t.totalElements} elements · {t.createdBy.fullName} · {new Date(t.createdAt).toLocaleDateString()}
+                  {t.format.toUpperCase()} · {t.totalElements} elements · {t.createdBy.fullName} · {formatDate(t.createdAt)}
                 </span>
                 {!readOnly && (
                   <button type="button" aria-label={`Remove ${t.fileName}`} onClick={() => remove(t.id)} className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950">

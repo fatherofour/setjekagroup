@@ -5,6 +5,7 @@ import { CloudSun, Droplets, Wind } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { describeWeather } from '@/components/dashboard/WeatherWidget';
+import { formatDate } from '@/lib/dates';
 
 interface WeatherDay {
   id: string;
@@ -26,7 +27,7 @@ interface History {
 const inputClass =
   'h-9 rounded-md border border-slate-300 bg-white px-2 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
 
-const dayLabel = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const dayLabel = (iso: string) => formatDate(`${iso.slice(0, 10)}T12:00:00`);
 const round = (n: number | null) => (n == null ? '—' : Math.round(n).toString());
 
 /** The site's weather, recorded daily for the life of the project (App

@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime } from '@/lib/dates';
 // Labels for the architect-role modules (26 Oct 2026): drawings, authority
 // approvals, instructions and letters, inspections. Keep in step with the
 // backend enums.
@@ -93,8 +94,8 @@ export const CONSENT_EVENT: Record<ConsentEventKind, string> = {
   NOTE: 'Note',
 };
 
-export const fmtDay = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-export const fmtDayTime = (d: string | null | undefined) => (d ? new Date(d).toLocaleString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+export const fmtDay = (d: string | null | undefined) => (d ? formatDate(d) : '—');
+export const fmtDayTime = (d: string | null | undefined) => (d ? formatDateTime(d) : '—');
 export const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

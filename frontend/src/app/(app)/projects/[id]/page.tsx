@@ -29,6 +29,8 @@ import { ProjectTasksPanel } from '@/components/project/ProjectTasksPanel';
 import { ProjectIssuesPanel } from '@/components/project/ProjectIssuesPanel';
 import { ProjectRisksPanel } from '@/components/project/ProjectRisksPanel';
 import { ProjectOverviewDashboard } from '@/components/project/ProjectOverviewDashboard';
+import { ScrollRow } from '@/components/ui/ScrollRow';
+import { BudgetAtAGlance } from '@/components/commercial/BudgetAtAGlance';
 import { DocumentsPanel } from '@/components/project/DocumentsPanel';
 import { TransmittalsPanel } from '@/components/project/TransmittalsPanel';
 import { RfisPanel } from '@/components/project/RfisPanel';
@@ -67,6 +69,7 @@ import { Select } from '@/components/ui/Select';
 import type { TabItem } from '@/components/ui/Tabs';
 import { useProjectAccess } from '@/lib/project-access';
 import { PROJECT_NAV, projectPlace, projectTabOf } from '@/components/nav';
+import { formatDate } from '@/lib/dates';
 
 /** Where this screen sits (project, module, screen) and the other screens
  * of its module, in place of the old row of every screen: the sidebar
@@ -96,7 +99,7 @@ function ScreenBar({ projectId, projectName, tab, ctab, canOpen }: { projectId: 
       {/* Commercial's screens are its own tabs (cost report, bills...), so a
           second row would repeat them. */}
       {screens.length > 1 && tab !== 'commercial' && (
-        <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+        <ScrollRow activeSelector='[aria-current="page"]' watch={`${tab}:${ctab}`}>
           {screens.map((c) => {
             const t = projectTabOf(c)!;
             const leafCtab = new URLSearchParams((c.projectPathSuffix ?? '').replace(/^\?/, '')).get('ctab');
@@ -116,7 +119,7 @@ function ScreenBar({ projectId, projectName, tab, ctab, canOpen }: { projectId: 
               </Link>
             );
           })}
-        </div>
+        </ScrollRow>
       )}
     </div>
   );
@@ -357,7 +360,7 @@ export default function ProjectDetailPage() {
       {project.closureType && (
         <p className={`rounded-md px-3 py-2 text-sm ${project.closureType === 'COMPLETED' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
           {project.closureType === 'COMPLETED' ? 'This project is completed.' : 'This project was abandoned and is archived.'}
-          {project.closedAt && ` Closed ${new Date(project.closedAt).toLocaleDateString()}.`}
+          {project.closedAt && ` Closed ${formatDate(project.closedAt)}.`}
           {project.closureType === 'ABANDONED' && project.closureReason && ` Reason: ${project.closureReason}`}
         </p>
       )}
@@ -401,28 +404,28 @@ export default function ProjectDetailPage() {
         {editing ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-3">
-              <label className="text-xs text-slate-400 dark:text-slate-500">Description</label>
-              <textarea
+              <label htmlFor="page-description" className="text-xs text-slate-400 dark:text-slate-500">Description</label>
+              <textarea id="page-description"
                 className={`${inputClass} h-20 resize-none py-2`}
                 value={form.description ?? ''}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Client</label>
-              <input className={inputClass} value={form.client ?? ''} onChange={(e) => setForm({ ...form, client: e.target.value })} />
+              <label htmlFor="page-client" className="text-xs text-slate-400 dark:text-slate-500">Client</label>
+              <input id="page-client" className={inputClass} value={form.client ?? ''} onChange={(e) => setForm({ ...form, client: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Developer</label>
-              <input className={inputClass} value={form.developer ?? ''} onChange={(e) => setForm({ ...form, developer: e.target.value })} />
+              <label htmlFor="page-developer" className="text-xs text-slate-400 dark:text-slate-500">Developer</label>
+              <input id="page-developer" className={inputClass} value={form.developer ?? ''} onChange={(e) => setForm({ ...form, developer: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Location</label>
-              <input className={inputClass} value={form.location ?? ''} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+              <label htmlFor="page-location" className="text-xs text-slate-400 dark:text-slate-500">Location</label>
+              <input id="page-location" className={inputClass} value={form.location ?? ''} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Country</label>
-              <Select
+              <label htmlFor="page-country" className="text-xs text-slate-400 dark:text-slate-500">Country</label>
+              <Select id="page-country"
                 aria-label="Country"
                 className={inputClass}
                 value={form.country ?? 'ZA'}
@@ -431,8 +434,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Currency</label>
-              <Select
+              <label htmlFor="page-currency" className="text-xs text-slate-400 dark:text-slate-500">Currency</label>
+              <Select id="page-currency"
                 className={inputClass}
                 value={form.currency ?? 'ZAR'}
                 onChange={(v) => setForm({ ...form, currency: v as Currency })}
@@ -440,8 +443,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Project value</label>
-              <input
+              <label htmlFor="page-project-value-agreed-with-the-client" className="text-xs text-slate-400 dark:text-slate-500">Project value (agreed with the client)</label>
+              <input id="page-project-value-agreed-with-the-client"
                 type="number"
                 className={inputClass}
                 value={form.value ?? ''}
@@ -449,8 +452,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Contingency %</label>
-              <input
+              <label htmlFor="page-contingency-of-the-budget" className="text-xs text-slate-400 dark:text-slate-500">Contingency % of the budget</label>
+              <input id="page-contingency-of-the-budget"
                 type="number"
                 min={0}
                 max={100}
@@ -460,8 +463,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Classification standard</label>
-              <Select
+              <label htmlFor="page-classification-standard" className="text-xs text-slate-400 dark:text-slate-500">Classification standard</label>
+              <Select id="page-classification-standard"
                 className={inputClass}
                 value={form.classificationStandard ?? 'ASAQS'}
                 onChange={(v) => setForm({ ...form, classificationStandard: v as ClassificationStandard })}
@@ -469,8 +472,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Project type</label>
-              <Select
+              <label htmlFor="page-project-type" className="text-xs text-slate-400 dark:text-slate-500">Project type</label>
+              <Select id="page-project-type"
                 className={inputClass}
                 value={form.projectType ?? ''}
                 onChange={(v) => setForm({ ...form, projectType: (v || null) as ProjectType | null })}
@@ -478,8 +481,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Contract form</label>
-              <Select
+              <label htmlFor="page-contract-form" className="text-xs text-slate-400 dark:text-slate-500">Contract form</label>
+              <Select id="page-contract-form"
                 className={inputClass}
                 value={form.contractForm ?? ''}
                 onChange={(v) => setForm({ ...form, contractForm: (v || null) as ContractForm | null })}
@@ -487,8 +490,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Start date</label>
-              <input
+              <label htmlFor="page-start-date" className="text-xs text-slate-400 dark:text-slate-500">Start date</label>
+              <input id="page-start-date"
                 type="date"
                 className={inputClass}
                 value={form.startDate ? form.startDate.slice(0, 10) : ''}
@@ -496,8 +499,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">End date</label>
-              <input
+              <label htmlFor="page-end-date" className="text-xs text-slate-400 dark:text-slate-500">End date</label>
+              <input id="page-end-date"
                 type="date"
                 className={inputClass}
                 value={form.endDate ? form.endDate.slice(0, 10) : ''}
@@ -505,8 +508,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Latitude</label>
-              <input
+              <label htmlFor="page-latitude" className="text-xs text-slate-400 dark:text-slate-500">Latitude</label>
+              <input id="page-latitude"
                 type="number"
                 step="any"
                 className={inputClass}
@@ -515,8 +518,8 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Longitude</label>
-              <input
+              <label htmlFor="page-longitude" className="text-xs text-slate-400 dark:text-slate-500">Longitude</label>
+              <input id="page-longitude"
                 type="number"
                 step="any"
                 className={inputClass}
@@ -544,17 +547,20 @@ export default function ProjectDetailPage() {
             {seesCommercial && (
               <>
                 <Field
-                  label="Project value"
+                  label="Project value (agreed with the client)"
                   value={project.value != null ? `${CURRENCY_LABEL[project.currency].split(' ')[0]} ${project.value.toLocaleString()}` : ''}
                 />
-                <Field label="Contingency" value={project.contingencyPct != null ? `${project.contingencyPct}%` : ''} />
+                <Field label="Contingency allowance" value={project.contingencyPct != null ? `${project.contingencyPct}% of the budget` : ''} />
+                {/* What the work is planned to cost, beside what the client
+                    pays (critique M-05): Setjeka's own figure. */}
+                {!isExternal && <BudgetAtAGlance projectId={project.id} />}
               </>
             )}
             <Field label="Classification standard" value={CLASSIFICATION_STANDARD_LABEL[project.classificationStandard]} />
             <Field label="Project type" value={project.projectType ? PROJECT_TYPE_LABEL[project.projectType] : ''} />
             <Field label="Contract form" value={project.contractForm ? CONTRACT_FORM_LABEL[project.contractForm] : ''} />
-            <Field label="Start date" value={project.startDate ? new Date(project.startDate).toLocaleDateString() : ''} />
-            <Field label="End date" value={project.endDate ? new Date(project.endDate).toLocaleDateString() : ''} />
+            <Field label="Start date" value={project.startDate ? formatDate(project.startDate) : ''} />
+            <Field label="End date" value={project.endDate ? formatDate(project.endDate) : ''} />
             <Field
               label="Coordinates"
               value={project.latitude != null && project.longitude != null ? `${project.latitude}, ${project.longitude}` : ''}
@@ -590,7 +596,7 @@ export default function ProjectDetailPage() {
       {tab === 'procurement' && (
         <div className="space-y-4">
           <RfqsPanel projectId={project.id} isExternal={isExternal} />
-          <PurchaseOrdersPanel projectId={project.id} isExternal={isExternal} />
+          <PurchaseOrdersPanel projectId={project.id} isExternal={isExternal} currency={project.currency} />
         </div>
       )}
       {tab === 'actions' && <ActionRegister projectId={project.id} />}

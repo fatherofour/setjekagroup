@@ -27,7 +27,7 @@ export interface CostReport {
   budgetLocked: boolean;
   lines: ReportLine[];
   totals: Omit<ReportLine, 'costCodeId' | 'code' | 'name'>;
-  contingency: { original: number; drawn: number; remaining: number; pendingExposure: number; remainingIfPendingApproved: number };
+  contingency: { original: number; drawn: number; remaining: number; pendingExposure: number; remainingIfPendingApproved: number; source?: 'SET' | 'PROJECT_PCT'; pct?: number | null };
   projectedFinalCost: number;
   missingFx: string[];
 }
@@ -95,7 +95,8 @@ export function CostReportPanel({ projectId, version }: { projectId: string; ver
             <div className={`h-full rounded-full ${pctLeft < 25 ? 'bg-red-500' : pctLeft < 50 ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pctLeft}%` }} />
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            of {formatRate(c.original)} · drawn {formatRate(c.drawn)}
+            of {formatRate(c.original)}
+            {c.source === 'PROJECT_PCT' && ` (the project's ${c.pct ?? 0}% of the budget, until Setjeka sets an amount)`} · drawn {formatRate(c.drawn)}
             {c.pendingExposure !== 0 && ` · ${formatRate(c.pendingExposure)} awaiting the client (would leave ${formatRate(c.remainingIfPendingApproved)})`}
           </p>
         </div>

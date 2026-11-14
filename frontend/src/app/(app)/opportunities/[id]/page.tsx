@@ -35,6 +35,7 @@ import {
   type OpportunityStage,
   type Readiness,
 } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface Opportunity {
   id: string;
@@ -393,7 +394,7 @@ export default function OpportunityDetailPage() {
                       {OPPORTUNITY_STAGE_LABEL[h.previousStage as OpportunityStage] ?? h.previousStage} → {OPPORTUNITY_STAGE_LABEL[h.newStage as OpportunityStage] ?? h.newStage}
                     </span>
                     <span className="ml-2 text-slate-400">
-                      by {h.changedBy.fullName} · {new Date(h.changedAt).toLocaleString()}
+                      by {h.changedBy.fullName} · {formatDate(h.changedAt)}
                     </span>
                     {h.comment && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{h.comment}</p>}
                   </li>
@@ -457,7 +458,7 @@ export default function OpportunityDetailPage() {
               {opportunity.visionConfirmedAt ? (
                 <span className="flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 size={13} />
-                  Confirmed by {opportunity.visionConfirmedBy?.fullName ?? 'the client'} on {new Date(opportunity.visionConfirmedAt).toLocaleDateString()}
+                  Confirmed by {opportunity.visionConfirmedBy?.fullName ?? 'the client'} on {formatDate(opportunity.visionConfirmedAt)}
                 </span>
               ) : opportunity.clientVision ? (
                 <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">

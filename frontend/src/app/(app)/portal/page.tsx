@@ -6,6 +6,7 @@ import { ArrowRight, Building2, CalendarCheck, Lightbulb, MapPin, Stamp } from '
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { PROJECT_STAGES } from '@/lib/projectStages';
+import { formatDate } from '@/lib/dates';
 
 interface ClientProject {
   id: string;
@@ -87,7 +88,7 @@ export default function ClientPortalHome() {
                         {p.completion && (
                           <span className="inline-flex items-center gap-1">
                             <CalendarCheck size={11} />
-                            Completion {new Date(p.completion).toLocaleDateString()}
+                            Completion {formatDate(p.completion)}
                           </span>
                         )}
                       </p>

@@ -11,6 +11,7 @@ import { TagChip } from '@/components/files/Tags';
 import { DocumentSearch } from '@/components/files/DocumentSearch';
 import type { DocTag } from '@/lib/files';
 import { DOCUMENT_ACCEPT, DOCUMENT_ACCEPT_HINT as ACCEPT_HINT } from '@/lib/documentUpload';
+import { formatDate } from '@/lib/dates';
 
 interface DocumentFolder {
   id: string;
@@ -122,9 +123,9 @@ function AddDocumentForm({ projectId, folders, onAdded }: { projectId: string; f
     <form onSubmit={submit} className="rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
       {error && <p className="mb-2 rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{error}</p>}
       <div className="flex flex-wrap gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Document name" className={`${inputClass} flex-1`} />
-        <input value={documentType} onChange={(e) => setDocumentType(e.target.value)} placeholder="Type (e.g. Drawing)" className={inputClass} />
-        <input value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="Discipline" className={inputClass} />
+        <input aria-label="Document name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Document name" className={`${inputClass} flex-1`} />
+        <input aria-label="Type" value={documentType} onChange={(e) => setDocumentType(e.target.value)} placeholder="Type (e.g. Drawing)" className={inputClass} />
+        <input aria-label="Discipline" value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="Discipline" className={inputClass} />
         <Select
           value={folderId}
           onChange={setFolderId}
@@ -322,7 +323,7 @@ export function DocumentsPanel({ projectId }: { projectId: string }) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-slate-700 dark:text-slate-200">{d.name}</span>
                     <span className="block truncate text-xs text-slate-400">
-                      {[d.discipline, d.createdBy.fullName, new Date(rev?.uploadedAt ?? d.createdAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })].filter(Boolean).join(' · ')}
+                      {[d.discipline, d.createdBy.fullName, formatDate(rev?.uploadedAt ?? d.createdAt)].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   {d.tags?.slice(0, 3).map((t) => (

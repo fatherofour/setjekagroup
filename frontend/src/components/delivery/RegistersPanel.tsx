@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { DecisionDialog } from '@/components/signoff/DecisionDialog';
 import { OUTCOME_LABEL, OUTCOME_TONE, type ApprovalOutcome } from '@/lib/signoff';
 import { formatMoney, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 type FieldType = 'text' | 'longtext' | 'money' | 'int' | 'decimal' | 'date' | 'enum' | 'contractor' | 'member' | 'document';
 interface Field {
@@ -67,7 +68,7 @@ function display(f: Field, e: Entry): string {
     case 'decimal':
       return `${(v as number).toLocaleString('en-ZA', { maximumFractionDigits: 2 })}${f.unit ? ` ${f.unit}` : ''}`;
     case 'date':
-      return new Date(v as string).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+      return formatDate(v as string);
     case 'enum':
       return f.options?.[v as string] ?? String(v);
     case 'contractor':

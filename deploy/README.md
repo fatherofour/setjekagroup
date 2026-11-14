@@ -49,6 +49,16 @@ After a change to `deploy/nginx.conf`, run `docker restart setjeka-erp-nginx-1`.
 
 Back up the database first: `docker exec setjeka-erp-postgres-1 pg_dump -U setjeka_erp setjeka_erp | gzip > /root/backups/setjeka-erp-db-$(date +%Y%m%d-%H%M).sql.gz`.
 
+## Locked accounts
+
+Six wrong passwords in a row lock an account until an administrator unlocks it (Administration › Users › Unlock; document.md §2.56). Resetting the password doesn't unlock it. If the only administrator is locked out, unlock it on the server:
+
+```bash
+docker exec setjeka-erp-postgres-1 psql -U setjeka_erp setjeka_erp -c "UPDATE \"User\" SET \"lockedAt\" = NULL, \"failedLogins\" = 0 WHERE email = '<admin email>';"
+```
+
+nginx also limits sign-in, forgot-password and reset-password to 6 quick tries per address, then one every 10 seconds (429 Too Many Requests). After pulling a change to `deploy/nginx.conf`, test the new file in a throwaway container before restarting the real one (the running container still sees the old file): `docker run --rm -v "$PWD/deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro" -v "$PWD/deploy/certs:/certs:ro" nginx:alpine nginx -t`, then `docker restart setjeka-erp-nginx-1`.
+
 ## The assistant's model (docker-compose.ai.yml)
 
 The second compose file adds Ollama for the Setjeka assistant (document.md §2.50). On the VPS it reads the Qwen models the NACOL portal's Ollama already downloaded, read-only: `.env` has `OLLAMA_MODELS_VOLUME=nacolm_ollama_models`. The model is `AI_MODEL` (default `qwen2.5:3b`). Leave the file out and the assistant says it isn't connected.

@@ -9,6 +9,7 @@ import { cardClass, formatMoney, secondaryButton } from '@/lib/stage0';
 import { ConsultantRfqForm } from './ConsultantRfqForm';
 import { ConsultantRfqCard } from './ConsultantRfqCard';
 import type { ConsultantRfq } from './consultantTypes';
+import { formatDate } from '@/lib/dates';
 
 interface Appointment {
   id: string;
@@ -102,7 +103,7 @@ export function OpportunityConsultantsPanel({ opportunityId, opportunityName, re
                     {formatMoney(a.contractValue, a.currency)}
                     {a.rfq && ` · ${a.rfq.rfqNumber}`}
                     {a.rankAtAward != null && ` · ranked #${a.rankAtAward}`}
-                    {` · by ${a.appointedBy.fullName}, ${new Date(a.createdAt).toLocaleDateString()}`}
+                    {` · by ${a.appointedBy.fullName}, ${formatDate(a.createdAt)}`}
                   </p>
                 </div>
                 {!readOnly && !a.projectAppointmentId && (

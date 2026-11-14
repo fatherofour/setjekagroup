@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select';
 import type { Contractor } from '@/lib/contractors';
 import { formatQty, formatRate, type CostRegion, type CostResource } from '@/lib/commercial';
 import { SearchPicker } from '@/components/costs/SearchPicker';
+import { formatDate } from '@/lib/dates';
 
 type RfqStatus = 'DRAFT' | 'ISSUED' | 'CLOSED' | 'AWARDED' | 'CANCELLED';
 
@@ -432,7 +433,7 @@ function RfqDetailPanel({
             )}
             {rfq.status === 'AWARDED' && rfq.costRegion && items.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                {rfq.pricesUpdatedAt ? `Price sheet updated ${new Date(rfq.pricesUpdatedAt).toLocaleString()}.` : 'Price sheet not updated yet.'}
+                {rfq.pricesUpdatedAt ? `Price sheet updated ${formatDate(rfq.pricesUpdatedAt)}.` : 'Price sheet not updated yet.'}
                 <button type="button" disabled={saving} onClick={reapply} className="rounded-md bg-slate-100 px-2 py-1 font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200">
                   Re-apply awarded rates
                 </button>
@@ -717,7 +718,7 @@ export function RfqsPanel({ projectId, isExternal }: { projectId: string; isExte
 
       {!isExternal && (
         <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New RFQ title" className={`${inputClass} flex-1`} />
+          <input aria-label="New RFQ title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New RFQ title" className={`${inputClass} flex-1`} />
           <button
             type="submit"
             disabled={saving || !title.trim()}

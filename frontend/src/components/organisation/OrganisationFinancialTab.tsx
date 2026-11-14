@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import type { ContractorDetail, PaymentRecord } from '@/lib/contractors';
 import { CURRENCY_LABEL, CURRENCY_SYMBOL, type Currency } from '@/lib/projectMeta';
 import { Select } from '@/components/ui/Select';
+import { formatDate } from '@/lib/dates';
 
 const inputClass =
   'h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -152,7 +153,7 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
                   {p.amount.toLocaleString()} <span className="text-slate-400 dark:text-slate-500">{p.currency}</span>
                 </p>
                 <p className="truncate text-xs text-slate-400 dark:text-slate-500">
-                  {[new Date(p.paymentDate).toLocaleDateString(), p.method, p.reference, p.appointment?.project.name].filter(Boolean).join(' · ')}
+                  {[formatDate(p.paymentDate), p.method, p.reference, p.appointment?.project.name].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <button
@@ -169,7 +170,7 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
 
       <form onSubmit={handleAdd} className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
-          <input
+          <input aria-label="Amount"
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -194,8 +195,8 @@ function PaymentsSection({ contractor }: { contractor: ContractorDetail }) {
             ]}
             className={`${compactInputClass} flex-1`}
           />
-          <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Reference" className={`${compactInputClass} flex-1`} />
-          <input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="Method (e.g. EFT)" className={compactInputClass} />
+          <input aria-label="Reference" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Reference" className={`${compactInputClass} flex-1`} />
+          <input aria-label="Payment method" value={method} onChange={(e) => setMethod(e.target.value)} placeholder="Method (e.g. EFT)" className={compactInputClass} />
         </div>
         <button
           type="submit"
@@ -295,20 +296,20 @@ export function OrganisationFinancialTab({ contractor, onSaved }: { contractor: 
         {editing ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Bank name</label>
-              <input className={inputClass} value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
+              <label htmlFor="organisationfinancia-bank-name" className="text-xs text-slate-400 dark:text-slate-500">Bank name</label>
+              <input id="organisationfinancia-bank-name" className={inputClass} value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Account name</label>
-              <input className={inputClass} value={form.bankAccountName} onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })} />
+              <label htmlFor="organisationfinancia-account-name" className="text-xs text-slate-400 dark:text-slate-500">Account name</label>
+              <input id="organisationfinancia-account-name" className={inputClass} value={form.bankAccountName} onChange={(e) => setForm({ ...form, bankAccountName: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Account number</label>
-              <input className={inputClass} value={form.bankAccountNumber} onChange={(e) => setForm({ ...form, bankAccountNumber: e.target.value })} />
+              <label htmlFor="organisationfinancia-account-number" className="text-xs text-slate-400 dark:text-slate-500">Account number</label>
+              <input id="organisationfinancia-account-number" className={inputClass} value={form.bankAccountNumber} onChange={(e) => setForm({ ...form, bankAccountNumber: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Preferred payment method</label>
-              <input
+              <label htmlFor="organisationfinancia-preferred-payment-method" className="text-xs text-slate-400 dark:text-slate-500">Preferred payment method</label>
+              <input id="organisationfinancia-preferred-payment-method"
                 className={inputClass}
                 value={form.preferredPaymentMethod}
                 onChange={(e) => setForm({ ...form, preferredPaymentMethod: e.target.value })}
@@ -316,16 +317,16 @@ export function OrganisationFinancialTab({ contractor, onSaved }: { contractor: 
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Payment terms</label>
-              <input className={inputClass} value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })} placeholder="e.g. Net 30" />
+              <label htmlFor="organisationfinancia-payment-terms" className="text-xs text-slate-400 dark:text-slate-500">Payment terms</label>
+              <input id="organisationfinancia-payment-terms" className={inputClass} value={form.paymentTerms} onChange={(e) => setForm({ ...form, paymentTerms: e.target.value })} placeholder="e.g. Net 30" />
             </div>
             <div>
-              <label className="text-xs text-slate-400 dark:text-slate-500">Credit terms</label>
-              <input className={inputClass} value={form.creditTerms} onChange={(e) => setForm({ ...form, creditTerms: e.target.value })} />
+              <label htmlFor="organisationfinancia-credit-terms" className="text-xs text-slate-400 dark:text-slate-500">Credit terms</label>
+              <input id="organisationfinancia-credit-terms" className={inputClass} value={form.creditTerms} onChange={(e) => setForm({ ...form, creditTerms: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
-              <label className="text-xs text-slate-400 dark:text-slate-500">Withholding tax information</label>
-              <input className={inputClass} value={form.withholdingTaxInfo} onChange={(e) => setForm({ ...form, withholdingTaxInfo: e.target.value })} />
+              <label htmlFor="organisationfinancia-withholding-tax-information" className="text-xs text-slate-400 dark:text-slate-500">Withholding tax information</label>
+              <input id="organisationfinancia-withholding-tax-information" className={inputClass} value={form.withholdingTaxInfo} onChange={(e) => setForm({ ...form, withholdingTaxInfo: e.target.value })} />
             </div>
           </div>
         ) : (

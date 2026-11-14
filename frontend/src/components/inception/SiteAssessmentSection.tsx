@@ -4,6 +4,7 @@ import { RegisterPanel, type FieldDef } from './RegisterPanel';
 import { AdvicePanel } from './AdvicePanel';
 import { formatMoney } from '@/lib/stage0';
 import { STAGE_OPTIONS, memberLabel, type MemberRef } from '@/lib/inception';
+import { formatDate } from '@/lib/dates';
 
 const IMPACT_TONE: Record<string, string> = {
   HIGH: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
@@ -118,7 +119,7 @@ export function SiteAssessmentSection({ projectId, currency, onChange }: { proje
               row.recommendedBy && `Recommended by ${memberLabel(row.recommendedBy as MemberRef)}`,
               row.responsible && `Responsible: ${memberLabel(row.responsible as MemberRef)}`,
               row.estimatedCost != null && `Est. ${formatMoney(row.estimatedCost as number, currency)}`,
-              row.dueDate && `Due ${new Date(String(row.dueDate)).toLocaleDateString()}`,
+              row.dueDate && `Due ${formatDate(String(row.dueDate))}`,
               row.findings && `Findings: ${row.findings}`,
             ]
               .filter(Boolean)

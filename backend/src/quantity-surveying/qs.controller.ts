@@ -134,8 +134,11 @@ export class QsController {
     return this.plans.compare(projectId, user.sub, id, from, to === 'current' || !to ? 'current' : Number.parseInt(to, 10));
   }
 
+  // The QS prepares the tender from their bill (QS 4.5); Setjeka invites the
+  // tenderers, issues and awards it under Procurement. So it's a Commercial
+  // right (Setjeka and the QS), not a buying one, which only Setjeka holds.
   @Post('cost-plans/:id/tender')
-  @RequirePermission('PROCUREMENT', 'CREATE')
+  @RequirePermission('COMMERCIAL', 'CREATE')
   tender(@Param('projectId') projectId: string, @Param('id') id: string, @Body() dto: CreateTenderDto, @CurrentUser() user: JwtPayload) {
     return this.plans.createTender(projectId, user.sub, id, dto);
   }

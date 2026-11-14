@@ -6,6 +6,8 @@ import { JwtAccessGuard } from '../auth/guards/jwt-access.guard.js';
 import { AdminGuard } from '../auth/guards/admin.guard.js';
 import { PermissionsGuard } from './guards/permissions.guard.js';
 import { RequirePermission } from './decorators/require-permission.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { JwtPayload } from '../auth/jwt-payload.js';
 
 /** The admin-editable default matrix (ProjectMemberRole x module x
  * action) - see PermissionsService.can() for how it's applied. */
@@ -58,5 +60,18 @@ export class MemberPermissionOverridesController {
   @RequirePermission('TEAM', 'EDIT')
   async remove(@Param('overrideId') overrideId: string) {
     await this.permissionsService.deleteOverride(overrideId);
+  }
+}
+
+/** What the signed-in person may do on a project, area by area (critique
+ * M-09): screens show only the buttons the API will accept. */
+@Controller('projects/:projectId/my-permissions')
+@UseGuards(JwtAccessGuard)
+export class MyPermissionsController {
+  constructor(private readonly permissionsService: PermissionsService) {}
+
+  @Get()
+  mine(@Param('projectId') projectId: string, @CurrentUser() user: JwtPayload) {
+    return this.permissionsService.mine(user.sub, projectId);
   }
 }

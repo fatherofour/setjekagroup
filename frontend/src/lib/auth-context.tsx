@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from './api-client';
+import { setDateFormat } from './dates';
 
 export interface AuthUser {
   id: string;
@@ -14,6 +15,8 @@ export interface AuthUser {
   // stored before these existed won't have them until the next sign-in.
   clientId?: string | null;
   contractorId?: string | null;
+  /** How this person reads dates (M-07); DD/MM/YYYY when not set. */
+  dateFormat?: string;
 }
 
 interface TokenPair {
@@ -77,7 +80,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setStorageKind(kind);
           setAccessToken(storedAccess);
           setRefreshToken(storedRefresh);
-          setUser(JSON.parse(storedUser));
+          const u = JSON.parse(storedUser) as AuthUser;
+          setDateFormat(u.dateFormat);
+          setUser(u);
+          // A session stored before the date setting existed, or changed on
+          // another device: read it again (M-07).
+          apiFetch<AuthUser | null>('/auth/me', { accessToken: storedAccess })
+            .then((me) => {
+              if (me && me.dateFormat !== u.dateFormat) {
+                const next = { ...u, dateFormat: me.dateFormat };
+                setDateFormat(next.dateFormat);
+                store.setItem(USER_KEY, JSON.stringify(next));
+                setUser(next);
+              }
+            })
+            .catch(() => undefined);
           break;
         }
       }
@@ -94,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     store.setItem(ACCESS_KEY, tokens.accessToken);
     store.setItem(REFRESH_KEY, tokens.refreshToken);
     store.setItem(USER_KEY, JSON.stringify(nextUser));
+    setDateFormat(nextUser.dateFormat);
     setStorageKind(kind);
     setAccessToken(tokens.accessToken);
     setRefreshToken(tokens.refreshToken);

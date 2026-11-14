@@ -224,7 +224,7 @@ function Detail({ projectId, id, onBack, onChanged }: { projectId: string; id: s
             </div>
             <label className={labelCls}>
               Inspected by
-              <input className={`${inputCls} mt-0.5`} value={insp.inspector} onChange={(e) => setInsp({ ...insp, inspector: e.target.value })} placeholder="Name or firm" />
+              <input aria-label="Name or firm" className={`${inputCls} mt-0.5`} value={insp.inspector} onChange={(e) => setInsp({ ...insp, inspector: e.target.value })} placeholder="Name or firm" />
             </label>
             <label className={labelCls}>
               Next due {p.inspectionIntervalDays ? `(blank: in ${p.inspectionIntervalDays} days)` : ''}

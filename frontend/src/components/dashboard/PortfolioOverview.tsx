@@ -42,7 +42,8 @@ export function PortfolioOverview({ activeCount }: Props) {
   const [t, setT] = useState<Totals | null>(null);
   useEffect(() => {
     if (!internal) return;
-    authedFetch<{ totals: Totals }>('/portfolio')
+    // The light totals call (critique H-06/H-07), not the whole portfolio.
+    authedFetch<{ totals: Totals }>('/portfolio/totals')
       .then((p) => setT(p.totals))
       .catch(() => undefined);
   }, [authedFetch, internal]);

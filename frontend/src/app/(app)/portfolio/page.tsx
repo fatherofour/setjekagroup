@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { projectStageInfo, type ProjectStage } from '@/lib/projectStages';
+import { formatDate } from '@/lib/dates';
 
 type Health = 'GREEN' | 'AMBER' | 'RED' | 'NONE';
 
@@ -67,7 +68,7 @@ const short = (n: number, currency = 'ZAR') => {
     : `${Math.round(n)}`;
   return `${n < 0 ? '-' : ''}${sign}${body.replace(/^-/, '')}`;
 };
-const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const fmt = (d: string | null) => (d ? formatDate(d) : '—');
 
 function Dot({ h, label }: { h: Health; label: string }) {
   return (
@@ -316,7 +317,7 @@ export default function PortfolioPage() {
         </>
       )}
       <p className="text-[11px] text-slate-400">
-        Red: over budget by more than 5% of the budget and contingency, or contingency spent; programme more than 10 working days behind its baseline, or a contract past its revised completion; a client decision overdue; or a high risk open. Amber: any of these starting to slip. As at {new Date(data.generatedAt).toLocaleString('en-ZA')}.
+        Red: over budget by more than 5% of the budget and contingency, or contingency spent; programme more than 10 working days behind its baseline, or a contract past its revised completion; a client decision overdue; or a high risk open. Amber: any of these starting to slip. As at {formatDate(data.generatedAt)}.
       </p>
     </div>
   );

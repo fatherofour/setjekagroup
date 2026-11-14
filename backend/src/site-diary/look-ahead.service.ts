@@ -46,9 +46,15 @@ export class LookAheadService {
     const internal = user?.role === 'ADMIN' || user?.accountType === 'INTERNAL';
     const roles = members.map((m) => m.role);
     if (!internal && !roles.some((r) => r !== 'CLIENT')) throw new NotFoundException('Not found');
+    const contractorIds = new Set(members.flatMap((m) => (roles.includes('CONTRACTOR') && m.contractorId ? [m.contractorId] : [])));
+    const updater = internal || roles.some((r) => UPDATERS.includes(r));
     return {
-      updater: internal || roles.some((r) => UPDATERS.includes(r)),
-      contractorIds: new Set(members.flatMap((m) => (roles.includes('CONTRACTOR') && m.contractorId ? [m.contractorId] : []))),
+      updater,
+      contractorIds,
+      // A contractor (and nothing more) sees their own firm's work, and other
+      // firms' work linked to it, not the whole site (critique M-02; the
+      // user's choice, 14 Nov 2026).
+      ownWorkOnly: !updater && roles.every((r) => r === 'CONTRACTOR'),
     };
   }
 
@@ -84,6 +90,20 @@ export class LookAheadService {
       this.prisma.scheduleActivity.findMany({ where: { projectId, children: { some: {} } }, select: { id: true } }),
     ]);
     const summary = new Set(parents.map((p) => p.id));
+    // For a contractor: the other firms' activities linked to their own,
+    // and which way ("you're waiting on it" or "it's waiting on you").
+    const own = (a: { contractorId: string | null }) => Boolean(a.contractorId && w.contractorIds.has(a.contractorId));
+    const linked = new Map<string, 'WAITING_ON' | 'WAITS_FOR_YOU'>();
+    if (w.ownWorkOnly) {
+      const mine = activities.filter(own).map((a) => a.id);
+      const deps = mine.length ? await this.prisma.scheduleDependency.findMany({ where: { projectId, OR: [{ predecessorId: { in: mine } }, { successorId: { in: mine } }] }, select: { predecessorId: true, successorId: true } }) : [];
+      const mineSet = new Set(mine);
+      for (const d of deps) {
+        if (mineSet.has(d.successorId) && !mineSet.has(d.predecessorId)) linked.set(d.predecessorId, 'WAITING_ON');
+        else if (mineSet.has(d.predecessorId) && !mineSet.has(d.successorId) && !linked.has(d.successorId)) linked.set(d.successorId, 'WAITS_FOR_YOU');
+      }
+      activities.splice(0, activities.length, ...activities.filter((a) => own(a) || linked.has(a.id)));
+    }
     const holds = await Promise.all(activities.map((a) => unreleasedHolds(this.prisma, a.id)));
     const rows = activities
       .map((a, i) => ({ a, holds: holds[i] }))
@@ -103,8 +123,11 @@ export class LookAheadService {
           late,
           critical: a.isCriticalPath,
           contractor: a.contractor?.name ?? null,
-          heldBy: h.map((x) => `${x.number} ${x.title}`),
-          lastUpdate: a.progressEntries[0] ?? null,
+          // Another firm's work linked to a contractor's: its dates and
+          // progress, not its notes or hold points.
+          link: linked.get(a.id) ?? null,
+          heldBy: linked.has(a.id) ? [] : h.map((x) => `${x.number} ${x.title}`),
+          lastUpdate: linked.has(a.id) ? (a.progressEntries[0] ? { ...a.progressEntries[0], note: null, recordedBy: null } : null) : (a.progressEntries[0] ?? null),
           canUpdate: this.canUpdate(w, a.contractorId),
         };
       });
@@ -137,11 +160,13 @@ export class LookAheadService {
   }
 
   async history(projectId: string, userId: string, activityId: string) {
-    await this.who(projectId, userId);
-    const a = await this.prisma.scheduleActivity.findFirst({ where: { id: activityId, projectId }, select: { id: true, name: true, percentComplete: true } });
+    const w = await this.who(projectId, userId);
+    const a = await this.prisma.scheduleActivity.findFirst({ where: { id: activityId, projectId }, select: { id: true, name: true, percentComplete: true, contractorId: true } });
     if (!a) throw new NotFoundException('Activity not found');
+    // Another firm's progress notes stay with that firm and Setjeka.
+    if (w.ownWorkOnly && !(a.contractorId && w.contractorIds.has(a.contractorId))) throw new NotFoundException('Activity not found');
     const entries = await this.prisma.scheduleProgressEntry.findMany({ where: { activityId }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, date: true, percentComplete: true, previousPercent: true, note: true, recordedBy: { select: { fullName: true } } } });
-    return { ...a, entries };
+    return { id: a.id, name: a.name, percentComplete: a.percentComplete, entries };
   }
 }
 

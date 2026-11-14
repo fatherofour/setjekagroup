@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton } from '@/lib/stage0';
 import { CURRENCY_OPTIONS, type Currency } from '@/lib/projectMeta';
 import { COST_CODE_CATEGORY_LABEL, type CostCode, type CostCodeCategory } from '@/lib/commercial';
+import { formatDate } from '@/lib/dates';
 
 const CATEGORY_OPTIONS = (Object.keys(COST_CODE_CATEGORY_LABEL) as CostCodeCategory[]).map((c) => ({ value: c, label: COST_CODE_CATEGORY_LABEL[c] }));
 
@@ -193,7 +194,7 @@ export function FxRatesPanel() {
                 1 {r.fromCurrency} = {r.rate.toLocaleString(undefined, { maximumFractionDigits: 6 })} {r.toCurrency}
               </span>
               <span className="flex-1 text-xs text-slate-400">
-                from {new Date(r.effectiveDate).toLocaleDateString()}
+                from {formatDate(r.effectiveDate)}
                 {r.source && ` · ${r.source}`}
                 {r.enteredBy && ` · ${r.enteredBy.fullName}`}
               </span>

@@ -13,6 +13,7 @@ export interface TokenPair {
 }
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+const LOCKED = 'This account is locked after 6 wrong passwords. Ask a Setjeka administrator to unlock it.';
 
 @Injectable()
 export class AuthService {
@@ -47,11 +48,23 @@ export class AuthService {
         accountType: string;
         clientId: string | null;
         contractorId: string | null;
+        dateFormat: string;
       };
     }
   > {
+    // Six wrong passwords in a row lock the account until an administrator
+    // unlocks it (critique M-03). Resetting the password doesn't unlock it.
+    const found = await this.usersService.findByEmail(email);
+    if (found?.lockedAt) throw new UnauthorizedException(LOCKED);
     const user = await this.validateUser(email, password);
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) {
+      if (found) {
+        const after = await this.usersService.recordFailedLogin(found.id);
+        if (after.lockedAt) throw new UnauthorizedException(LOCKED);
+      }
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    if (user.failedLogins) await this.usersService.clearFailedLogins(user.id);
 
     const tokens = await this.issueTokens(
       { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },
@@ -69,6 +82,7 @@ export class AuthService {
         accountType: user.accountType,
         clientId: user.clientId,
         contractorId: user.contractorId,
+        dateFormat: user.dateFormat,
       },
     };
   }
@@ -85,6 +99,7 @@ export class AuthService {
 
     const user = await this.usersService.findById(payload.sub);
     if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('User no longer exists');
+    if (user.lockedAt) throw new UnauthorizedException(LOCKED);
 
     return this.issueTokens(
       { sub: user.id, email: user.email, role: user.role, accountType: user.accountType },

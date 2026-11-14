@@ -20,8 +20,10 @@ interface Row {
   critical: boolean;
   contractor: string | null;
   heldBy: string[];
-  lastUpdate: { date: string; percentComplete: number; note: string | null; recordedBy: { fullName: string } } | null;
+  lastUpdate: { date: string; percentComplete: number; note: string | null; recordedBy: { fullName: string } | null } | null;
   canUpdate: boolean;
+  /** For a contractor: another firm's work linked to theirs. */
+  link?: 'WAITING_ON' | 'WAITS_FOR_YOU' | null;
 }
 
 interface LookAhead {
@@ -66,11 +68,13 @@ function ActivityRow({ projectId, r, onSaved }: { projectId: string; r: Row; onS
           <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
             {r.name}
             {r.critical && <span className="ml-1.5 rounded bg-amber-50 px-1 text-[11px] font-normal text-amber-800 dark:bg-amber-950 dark:text-amber-300">critical</span>}
+            {r.link === 'WAITING_ON' && <span className="ml-1.5 rounded bg-sky-50 px-1 text-[11px] font-normal text-sky-800 dark:bg-sky-950 dark:text-sky-300">you&apos;re waiting on this</span>}
+            {r.link === 'WAITS_FOR_YOU' && <span className="ml-1.5 rounded bg-violet-50 px-1 text-[11px] font-normal text-violet-800 dark:bg-violet-950 dark:text-violet-300">waiting on your work</span>}
           </p>
           <p className="text-xs text-slate-500">
             {r.milestone ? `Due ${fmtDay(r.endDate)}` : `${fmtDay(r.startDate)} – ${fmtDay(r.endDate)}`}
             {r.contractor && ` · ${r.contractor}`}
-            {r.lastUpdate && ` · last updated ${fmtDay(r.lastUpdate.date)} by ${r.lastUpdate.recordedBy.fullName}`}
+            {r.lastUpdate && ` · last updated ${fmtDay(r.lastUpdate.date)}${r.lastUpdate.recordedBy ? ` by ${r.lastUpdate.recordedBy.fullName}` : ''}`}
           </p>
           {r.heldBy.length > 0 && (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-red-700 dark:text-red-400">

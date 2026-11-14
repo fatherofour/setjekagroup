@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import type { Contractor } from '@/lib/contractors';
+import { formatDate } from '@/lib/dates';
 
 type PoStatus = 'DRAFT' | 'APPROVED' | 'ISSUED' | 'CANCELLED';
 type DeliveryStatus = 'PENDING' | 'PARTIAL' | 'DELIVERED' | 'DELAYED' | 'REJECTED';
@@ -142,8 +143,8 @@ function DeliveriesSection({ projectId, poId, isExternal }: { projectId: string;
       )}
       {!isExternal && (
         <form onSubmit={add} className="flex flex-wrap gap-2">
-          <input placeholder="Item description" className={`${inputClass} flex-1`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <input type="number" placeholder="Qty" className={`${inputClass} w-20`} value={form.quantityOrdered} onChange={(e) => setForm({ ...form, quantityOrdered: e.target.value })} />
+          <input aria-label="Item description" placeholder="Item description" className={`${inputClass} flex-1`} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <input aria-label="Quantity" type="number" placeholder="Qty" className={`${inputClass} w-20`} value={form.quantityOrdered} onChange={(e) => setForm({ ...form, quantityOrdered: e.target.value })} />
           <input type="date" className={inputClass} value={form.expectedDate} onChange={(e) => setForm({ ...form, expectedDate: e.target.value })} />
           <button type="submit" disabled={saving} className="flex h-8 items-center gap-1 rounded-md bg-slate-100 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200">
             <Plus size={12} />
@@ -225,7 +226,7 @@ function PoDetailPanel({
 
         {!isExternal && po.status !== 'CANCELLED' && po.status !== 'ISSUED' && (
           <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
-            <input
+            <input aria-label="Comment for this status change"
               className={`${inputClass} mb-2 w-full`}
               placeholder="Comment for this status change (optional)"
               value={comment}
@@ -255,7 +256,7 @@ function PoDetailPanel({
             <ul className="space-y-1">
               {history.map((h) => (
                 <li key={h.id} className="text-xs text-slate-500 dark:text-slate-400">
-                  {h.previousStatus} → {h.newStatus} by {h.changedBy.fullName} · {new Date(h.changedAt).toLocaleString()}
+                  {h.previousStatus} → {h.newStatus} by {h.changedBy.fullName} · {formatDate(h.changedAt)}
                   {h.comment && <span className="block text-slate-600 dark:text-slate-300">{h.comment}</span>}
                 </li>
               ))}
@@ -269,12 +270,13 @@ function PoDetailPanel({
   );
 }
 
-export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: string; isExternal: boolean }) {
+/** `currency`: the project's own, which a new order starts in (critique M-04). */
+export function PurchaseOrdersPanel({ projectId, isExternal, currency = 'ZAR' }: { projectId: string; isExternal: boolean; currency?: string }) {
   const { authedFetch } = useAuth();
   const [pos, setPos] = useState<PurchaseOrder[] | null>(null);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ contractorId: '', value: '', currency: 'ZAR', costCode: '', budgetCodeId: '', scopeDescription: '' });
+  const [form, setForm] = useState({ contractorId: '', value: '', currency, costCode: '', budgetCodeId: '', scopeDescription: '' });
   const [codes, setCodes] = useState<{ id: string; code: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -309,7 +311,7 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
           scopeDescription: form.scopeDescription || undefined,
         },
       });
-      setForm({ contractorId: '', value: '', currency: 'ZAR', costCode: '', budgetCodeId: '', scopeDescription: '' });
+      setForm({ contractorId: '', value: '', currency, costCode: '', budgetCodeId: '', scopeDescription: '' });
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create purchase order.');
@@ -356,7 +358,7 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
               className={`${inputClass} flex-1`}
               options={[{ value: '', label: 'Select vendor…' }, ...contractors.map((c) => ({ value: c.id, label: c.name }))]}
             />
-            <input type="number" placeholder="Value" className={`${inputClass} w-28`} value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+            <input aria-label="Value" type="number" placeholder="Value" className={`${inputClass} w-28`} value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
             <Select value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} options={CURRENCY_OPTIONS} className={inputClass} />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -367,8 +369,8 @@ export function PurchaseOrdersPanel({ projectId, isExternal }: { projectId: stri
               options={[{ value: '', label: 'Budget cost code…' }, ...codes.map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))]}
               className={`${inputClass} w-52`}
             />
-            <input placeholder="Vendor ref (optional)" className={`${inputClass} w-40`} value={form.costCode} onChange={(e) => setForm({ ...form, costCode: e.target.value })} />
-            <input placeholder="Scope (optional)" className={`${inputClass} flex-1`} value={form.scopeDescription} onChange={(e) => setForm({ ...form, scopeDescription: e.target.value })} />
+            <input aria-label="Vendor reference" placeholder="Vendor ref (optional)" className={`${inputClass} w-40`} value={form.costCode} onChange={(e) => setForm({ ...form, costCode: e.target.value })} />
+            <input aria-label="Scope" placeholder="Scope (optional)" className={`${inputClass} flex-1`} value={form.scopeDescription} onChange={(e) => setForm({ ...form, scopeDescription: e.target.value })} />
             <button
               type="submit"
               disabled={saving || !form.contractorId || !form.value}

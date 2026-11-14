@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -123,17 +124,17 @@ function RiskDetailPanel({
 
         <div className="space-y-3">
           <input className={`${inputClass} h-9 w-full`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <textarea
+          <textarea aria-label="Description"
             className="h-16 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Description"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
-          <input className={`${inputClass} w-full`} placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+          <input aria-label="Category" className={`${inputClass} w-full`} placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Probability (1-5)</label>
-              <Select
+              <label htmlFor="projectriskspanel-probability-1-5" className="mb-1 block text-xs text-slate-400">Probability (1-5)</label>
+              <Select id="projectriskspanel-probability-1-5"
                 className={inputClass}
                 value={String(form.probability)}
                 onChange={(v) => setForm({ ...form, probability: Number(v) })}
@@ -141,8 +142,8 @@ function RiskDetailPanel({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-400">Impact (1-5)</label>
-              <Select
+              <label htmlFor="projectriskspanel-impact-1-5" className="mb-1 block text-xs text-slate-400">Impact (1-5)</label>
+              <Select id="projectriskspanel-impact-1-5"
                 className={inputClass}
                 value={String(form.impact)}
                 onChange={(v) => setForm({ ...form, impact: Number(v) })}
@@ -168,7 +169,7 @@ function RiskDetailPanel({
             onChange={(v) => setForm({ ...form, ownerId: v })}
             options={[{ value: '', label: '— Unassigned —' }, ...members.map((m) => ({ value: m.id, label: memberLabel(m) }))]}
           />
-          <textarea
+          <textarea aria-label="Mitigation plan"
             className="h-14 w-full resize-none rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             placeholder="Mitigation plan"
             value={form.mitigation}
@@ -202,7 +203,7 @@ export function ProjectRisksPanel({ projectId }: { projectId: string }) {
   const [impact, setImpact] = useState('3');
   const [ownerId, setOwnerId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [openRiskId, setOpenRiskId] = useState<string | null>(null);
+  const [openRiskId, setOpenRiskId] = useLinkedId('risk');
   const [statusFilter, setStatusFilter] = useState<RiskStatus | null>(null);
 
   const load = () => {
@@ -288,7 +289,7 @@ export function ProjectRisksPanel({ projectId }: { projectId: string }) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New risk title" className={`${inputClass} flex-1`} />
+        <input aria-label="New risk title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New risk title" className={`${inputClass} flex-1`} />
         <Select value={probability} onChange={setProbability} className={`${inputClass} w-20`} options={PROB_IMPACT_OPTIONS} />
         <span className="text-xs text-slate-400">×</span>
         <Select value={impact} onChange={setImpact} className={`${inputClass} w-20`} options={PROB_IMPACT_OPTIONS} />

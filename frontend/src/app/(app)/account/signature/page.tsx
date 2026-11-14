@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
 import { SignaturePad } from '@/components/signoff/SignaturePad';
 import type { SignatureInput, SignatureMethod } from '@/lib/signoff';
+import { formatDate } from '@/lib/dates';
 
 /** The signature a person reuses when they approve (App Review, 17 Oct
  * 2026): drawn, typed in a handwriting style, or uploaded. */
@@ -82,7 +83,7 @@ export default function MySignaturePage() {
               {savedUrl && <img src={savedUrl} alt="Your saved signature" className="max-h-20" />}
             </div>
             <p className="flex items-center gap-1 text-xs text-slate-500">
-              <CheckCircle2 size={13} className="text-emerald-600" /> Saved {new Date(saved.updatedAt).toLocaleDateString()}
+              <CheckCircle2 size={13} className="text-emerald-600" /> Saved {formatDate(saved.updatedAt)}
             </p>
             <button type="button" disabled={busy} onClick={remove} className="inline-flex items-center gap-1 text-xs text-red-600 hover:underline">
               <Trash2 size={12} /> Remove

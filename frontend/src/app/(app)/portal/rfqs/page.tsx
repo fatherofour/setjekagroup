@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, formatMoney, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface VendorRfq {
   id: string;
@@ -217,7 +218,7 @@ export default function VendorPortalRfqsPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {[context?.name, context?.location, r.discipline, r.dueDate && `Due ${new Date(r.dueDate).toLocaleDateString()}`].filter(Boolean).join(' · ')}
+                  {[context?.name, context?.location, r.discipline, r.dueDate && `Due ${formatDate(r.dueDate)}`].filter(Boolean).join(' · ')}
                 </p>
                 {r.scopeDescription && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{r.scopeDescription}</p>}
                 {r.myQuote && open !== r.id && (

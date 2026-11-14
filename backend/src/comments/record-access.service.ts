@@ -16,6 +16,7 @@ import { HandoverService } from '../handover/handover.service.js';
 import { DefectsService } from '../defects/defects.service.js';
 import { QualityTestsService } from '../quality-tests/quality-tests.service.js';
 import { SiteMeasureService } from '../quantity-surveying/site-measure.service.js';
+import { scheduleVisibility } from '../schedule/schedule-visibility.js';
 
 /** The screen (permission area) each kind of record lives on: a note thread
  * needs the same VIEW right as the record's own screen. */
@@ -96,6 +97,12 @@ export class RecordAccessService {
           const d = await this.prisma.dayworkSheet.findFirst({ where: { id, projectId: p }, select: { contractId: true } });
           if (!d) throw new NotFoundException('Daywork sheet not found');
           return this.get(SiteMeasureService).dayworks(p, u, d.contractId);
+        };
+      // A contractor: notes on their own firm's activities only (M-02).
+      case 'SCHEDULE_ACTIVITY':
+        return async (p, u, id) => {
+          const vis = await scheduleVisibility(this.prisma, p, u);
+          if (vis && !vis.mine.has(id)) throw new NotFoundException('Activity not found');
         };
       default: return null;
     }

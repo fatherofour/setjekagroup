@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
+import { formatDate } from '@/lib/dates';
 
 interface AuditLogEntry {
   id: string;
@@ -59,7 +60,7 @@ export function AuditLogPanel() {
                     {e.action.toLowerCase()}d on {e.module.toLowerCase().replace('_', ' ')}
                   </span>
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{new Date(e.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{formatDate(e.createdAt)}</p>
               </li>
             ))}
           </ul>

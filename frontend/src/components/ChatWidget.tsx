@@ -241,7 +241,7 @@ export function ChatWidget() {
           </div>
 
           <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
-            <input
+            <input aria-label="Message the AI assistant"
               type="text"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}

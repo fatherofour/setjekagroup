@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Download, Eye, EyeOff, FileSpreadsheet, FileText, Loader2, Presentation, Trash2, type LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, apiFetchBlobUrl } from '@/lib/api-client';
+import { formatDateTime } from '@/lib/dates';
 
 type Kind = 'PROGRESS_PPTX' | 'SUMMARY_PDF' | 'EXCEL_EXPORT' | 'CLOSEOUT_PDF';
 
@@ -158,7 +159,7 @@ export function ReportsPanel({ projectId, clientView = false }: { projectId: str
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-800 dark:text-slate-100">{r.title}</p>
                     <p className="text-xs text-slate-500">
-                      {kindMeta(r.kind).format} · {size(r.sizeBytes)} · {r.generatedBy.fullName}, {new Date(r.createdAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {kindMeta(r.kind).format} · {size(r.sizeBytes)} · {r.generatedBy.fullName}, {formatDateTime(r.createdAt)}
                     </p>
                   </div>
                   {internal && (

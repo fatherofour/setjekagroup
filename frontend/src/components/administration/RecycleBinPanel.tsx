@@ -6,6 +6,7 @@ import { RotateCcw, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { formatBytes } from '@/lib/files';
+import { formatDateTime } from '@/lib/dates';
 
 interface BinItem {
   id: string;
@@ -84,7 +85,7 @@ export function RecycleBinPanel() {
                     </Link>
                   </td>
                   <td className="py-2 pr-3 text-xs text-slate-500 dark:text-slate-400">
-                    {new Date(d.deletedAt).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+                    {formatDateTime(d.deletedAt)}
                     {d.deletedBy && <span className="block">by {d.deletedBy.fullName}</span>}
                   </td>
                   <td className="py-2 pr-3 text-xs text-slate-500 dark:text-slate-400">

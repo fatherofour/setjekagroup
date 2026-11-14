@@ -11,6 +11,17 @@ import { PortfolioService } from './portfolio.service.js';
 export class PortfolioController {
   constructor(private readonly portfolio: PortfolioService) {}
 
+  /** Headline totals for the dashboard (critique H-06). */
+  @Get('totals')
+  totals(@CurrentUser() user: JwtPayload) {
+    return this.portfolio.totals(user.sub);
+  }
+
+  @Get('today')
+  today(@CurrentUser() user: JwtPayload) {
+    return this.portfolio.today(user.sub);
+  }
+
   @Get()
   get(@CurrentUser() user: JwtPayload) {
     return this.portfolio.portfolio(user.sub);

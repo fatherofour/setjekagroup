@@ -8,6 +8,7 @@ import type { ContractorDetail, OrganisationRating } from '@/lib/contractors';
 import { RATER_TYPES, RATER_TYPE_LABEL, type RaterType } from '@/lib/organisationMeta';
 import { Select } from '@/components/ui/Select';
 import { StarRating } from '@/components/ui/StarRating';
+import { formatDate } from '@/lib/dates';
 
 const inputClass =
   'h-8 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100';
@@ -135,7 +136,7 @@ export function OrganisationRatingsTab({ contractor, onChange }: { contractor: C
                 </div>
                 {r.comment && <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">{r.comment}</p>}
                 <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                  {new Date(r.createdAt).toLocaleDateString()} · recorded by {r.recordedBy.fullName}
+                  {formatDate(r.createdAt)} · recorded by {r.recordedBy.fullName}
                 </p>
               </div>
               <button
@@ -168,7 +169,7 @@ export function OrganisationRatingsTab({ contractor, onChange }: { contractor: C
             <span className="text-xs text-slate-500 dark:text-slate-400">Rating:</span>
             <StarRating value={stars} onChange={setStars} size={20} />
           </div>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment (optional)" className={`${inputClass} w-full`} />
+          <input aria-label="Comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment (optional)" className={`${inputClass} w-full`} />
           <button
             type="submit"
             disabled={saving || !appointmentId || stars < 1}

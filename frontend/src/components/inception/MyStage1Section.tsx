@@ -8,6 +8,8 @@ import { ApiError } from '@/lib/api-client';
 import { cardClass, formatMoney, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { ADVICE_TOPICS, type AdviceTopic } from '@/lib/inception';
 import { projectMemberRoleLabel, type ProjectMemberRole } from '@/lib/projectMemberRoles';
+import { formatDate } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 type Evidence =
   | { kind: 'advice'; topic: AdviceTopic; orConstraintRaised?: boolean; orInvestigationRecommended?: boolean; orServiceRecommended?: boolean; orCriterionRaised?: boolean }
@@ -288,7 +290,7 @@ function MyAgreement({ projectId, appointment, onDone }: { projectId: string; ap
         {appointment.contractor.name}: {terms || 'terms being prepared by Setjeka'}
       </p>
       {appointment.agreementStatus === 'SIGNED' ? (
-        <p className="text-xs text-emerald-700 dark:text-emerald-400">Signed {appointment.agreementSignedAt && new Date(appointment.agreementSignedAt).toLocaleDateString()}</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-400">Signed {appointment.agreementSignedAt && formatDate(appointment.agreementSignedAt)}</p>
       ) : appointment.agreementStatus === 'ISSUED' ? (
         <button type="button" disabled={busy} onClick={sign} className={primaryButton}>
           <PenLine size={13} />
@@ -398,7 +400,7 @@ export function MyStage1Section({ projectId, onGoTo, onChange }: { projectId: st
               <li key={m.id} className="flex flex-wrap items-center gap-2">
                 <CalendarClock size={13} className="text-slate-400" />
                 <span className="text-slate-700 dark:text-slate-200">{m.title}</span>
-                <span className="text-xs text-slate-500">{new Date(m.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <span className="text-xs text-slate-500">{formatDateTime(m.scheduledAt)}</span>
                 <span className="text-xs text-slate-400">
                   {m.status === 'HELD' ? (m.attendees[0]?.present ? 'you attended' : 'held — attendance not recorded as present') : m.status.toLowerCase()}
                 </span>

@@ -6,6 +6,7 @@ import { GanttChart, ListChecks, AlertTriangle, ShieldCheck, ShieldAlert, Star, 
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { ProjectDealsPanel } from '@/components/firm-deals/FirmDeals';
+import { formatDate } from '@/lib/dates';
 
 interface Dashboard {
   schedule: {
@@ -126,7 +127,7 @@ export function ProjectOverviewDashboard({ projectId }: { projectId: string }) {
             {data.schedule.upcomingMilestones.map((m) => (
               <li key={m.id} className="flex justify-between">
                 <span>{m.name}</span>
-                <span className="text-slate-400">{new Date(m.date).toLocaleDateString()}</span>
+                <span className="text-slate-400">{formatDate(m.date)}</span>
               </li>
             ))}
           </ul>

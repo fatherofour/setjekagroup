@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { formatRate, type CostCode } from '@/lib/commercial';
+import { formatDate } from '@/lib/dates';
 
 interface Budget {
   currency: string;
@@ -82,7 +83,7 @@ export function BudgetPanel({ projectId, onChanged, internal = true }: { project
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Project budget ({cur})</h2>
             <p className="mt-1 max-w-2xl text-xs text-slate-500 dark:text-slate-400">
               {locked
-                ? `Locked as the approved budget${data.budget?.lockedBy ? ` by ${data.budget.lockedBy.fullName}` : ''} on ${new Date(data.budget!.lockedAt!).toLocaleDateString()}. Changes now come through variations.`
+                ? `Locked as the approved budget${data.budget?.lockedBy ? ` by ${data.budget.lockedBy.fullName}` : ''} on ${formatDate(data.budget!.lockedAt!)}. Changes now come through variations.`
                 : 'Build the budget by cost code, or adopt a final estimate. Lock it once it is approved; from then on it moves only through variations.'}
               {data.budget?.sourceEstimate && (
                 <>

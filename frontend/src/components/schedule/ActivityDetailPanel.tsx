@@ -190,7 +190,7 @@ export function ActivityDetailPanel({
     <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{activity ? 'Edit activity' : 'New activity'}</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{!data.canEdit ? 'Activity' : activity ? 'Edit activity' : 'New activity'}</h2>
           <button onClick={onClose} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800">
             <X size={16} />
           </button>
@@ -210,12 +210,12 @@ export function ActivityDetailPanel({
 
         <div className="space-y-3">
           <div>
-            <label className={labelClass}>Name</label>
-            <input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            <label htmlFor="activitydetailpanel-name" className={labelClass}>Name</label>
+            <input id="activitydetailpanel-name" className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
           </div>
           <div>
-            <label className={labelClass}>Description</label>
-            <textarea
+            <label htmlFor="activitydetailpanel-description" className={labelClass}>Description</label>
+            <textarea id="activitydetailpanel-description"
               className={`${inputClass} h-16 resize-none py-2`}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -223,8 +223,8 @@ export function ActivityDetailPanel({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Type</label>
-              <Select
+              <label htmlFor="activitydetailpanel-type" className={labelClass}>Type</label>
+              <Select id="activitydetailpanel-type"
                 className={selectClass}
                 value={form.activityType}
                 onChange={(v) => setForm({ ...form, activityType: v as ActivityType })}
@@ -235,15 +235,15 @@ export function ActivityDetailPanel({
               />
             </div>
             <div>
-              <label className={labelClass}>Start date</label>
-              <input type="date" className={inputClass} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+              <label htmlFor="activitydetailpanel-start-date" className={labelClass}>Start date</label>
+              <input id="activitydetailpanel-start-date" type="date" className={inputClass} value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
             </div>
           </div>
           {form.activityType === 'TASK' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Duration (working days)</label>
-                <input
+                <label htmlFor="activitydetailpanel-duration-working-days" className={labelClass}>Duration (working days)</label>
+                <input id="activitydetailpanel-duration-working-days"
                   type="number"
                   min={0}
                   className={inputClass}
@@ -252,8 +252,8 @@ export function ActivityDetailPanel({
                 />
               </div>
               <div>
-                <label className={labelClass}>% complete</label>
-                <input
+                <label htmlFor="activitydetailpanel-complete" className={labelClass}>% complete</label>
+                <input id="activitydetailpanel-complete"
                   type="number"
                   min={0}
                   max={100}
@@ -266,8 +266,8 @@ export function ActivityDetailPanel({
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Priority</label>
-              <Select
+              <label htmlFor="activitydetailpanel-priority" className={labelClass}>Priority</label>
+              <Select id="activitydetailpanel-priority"
                 className={selectClass}
                 value={form.priority}
                 onChange={(v) => setForm({ ...form, priority: v as SchedulePriority })}
@@ -275,8 +275,8 @@ export function ActivityDetailPanel({
               />
             </div>
             <div>
-              <label className={labelClass}>Status</label>
-              <Select
+              <label htmlFor="activitydetailpanel-status" className={labelClass}>Status</label>
+              <Select id="activitydetailpanel-status"
                 className={selectClass}
                 value={form.status}
                 onChange={(v) => setForm({ ...form, status: v as ScheduleActivityStatus })}
@@ -285,17 +285,17 @@ export function ActivityDetailPanel({
             </div>
           </div>
           <div>
-            <label className={labelClass}>Parent (WBS)</label>
-            <Select className={selectClass} value={form.parentId} onChange={(v) => setForm({ ...form, parentId: v })} options={parentOptions} />
+            <label htmlFor="activitydetailpanel-parent-wbs" className={labelClass}>Parent (WBS)</label>
+            <Select id="activitydetailpanel-parent-wbs" className={selectClass} value={form.parentId} onChange={(v) => setForm({ ...form, parentId: v })} options={parentOptions} />
           </div>
           <div>
-            <label className={labelClass}>Location</label>
-            <Select className={selectClass} value={form.projectNodeId} onChange={(v) => setForm({ ...form, projectNodeId: v })} options={nodeOptions} />
+            <label htmlFor="activitydetailpanel-location" className={labelClass}>Location</label>
+            <Select id="activitydetailpanel-location" className={selectClass} value={form.projectNodeId} onChange={(v) => setForm({ ...form, projectNodeId: v })} options={nodeOptions} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Contractor</label>
-              <Select
+              <label htmlFor="activitydetailpanel-contractor" className={labelClass}>Contractor</label>
+              <Select id="activitydetailpanel-contractor"
                 className={selectClass}
                 value={form.contractorId}
                 onChange={(v) => setForm({ ...form, contractorId: v })}
@@ -303,8 +303,8 @@ export function ActivityDetailPanel({
               />
             </div>
             <div>
-              <label className={labelClass}>Assigned to</label>
-              <Select
+              <label htmlFor="activitydetailpanel-assigned-to" className={labelClass}>Assigned to</label>
+              <Select id="activitydetailpanel-assigned-to"
                 className={selectClass}
                 value={form.assignedToId}
                 onChange={(v) => setForm({ ...form, assignedToId: v })}
@@ -354,7 +354,7 @@ export function ActivityDetailPanel({
                   onChange={(v) => setNewDependencyType(v as DependencyType)}
                   options={Object.keys(DEPENDENCY_TYPE_LABEL).map((value) => ({ value, label: value }))}
                 />
-                <input
+                <input aria-label="Lag (days)"
                   type="number"
                   className={`${inputClass} h-8 w-16`}
                   value={newLagDays}
@@ -397,7 +397,7 @@ export function ActivityDetailPanel({
         )}
 
         <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
-          {activity ? (
+          {activity && data.canDelete ? (
             <button onClick={remove} disabled={saving} className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50">
               <Trash2 size={13} />
               Delete
@@ -412,13 +412,15 @@ export function ActivityDetailPanel({
             >
               Cancel
             </button>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {(activity ? data.canEdit : data.canCreate) && (
+              <button
+                onClick={save}
+                disabled={saving}
+                className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>

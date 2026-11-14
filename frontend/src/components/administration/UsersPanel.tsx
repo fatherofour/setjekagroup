@@ -13,6 +13,8 @@ interface User {
   role: 'ADMIN' | 'MANAGER' | 'MEMBER';
   accountType: 'INTERNAL' | 'EXTERNAL';
   status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
+  /** Set when six wrong passwords in a row locked the account (M-03). */
+  lockedAt?: string | null;
   createdAt: string;
 }
 
@@ -88,6 +90,16 @@ export function UsersPanel() {
     }
   }
 
+  async function unlock(id: string) {
+    setError(null);
+    try {
+      await authedFetch(`/users/${id}/unlock`, { method: 'POST' });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to unlock the account.');
+    }
+  }
+
   async function resendInvite(id: string) {
     setError(null);
     try {
@@ -147,14 +159,28 @@ export function UsersPanel() {
                       {u.status}
                     </span>
                   )}
+                  {u.lockedAt && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Locked: 6 wrong passwords
+                    </span>
+                  )}
                 </p>
                 <p className="truncate text-xs text-slate-400 dark:text-slate-500">
                   {u.email} · {u.role} · {u.accountType === 'INTERNAL' ? 'Internal' : 'External'}
                 </p>
               </div>
+              {u.lockedAt && (
+                <button
+                  onClick={() => unlock(u.id)}
+                  className="shrink-0 rounded-md border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950"
+                >
+                  Unlock
+                </button>
+              )}
               <button
                 onClick={() => resendInvite(u.id)}
                 title="Generate a new set-password link"
+                aria-label={`Generate a new set-password link for ${u.fullName}`}
                 className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
               >
                 <RotateCcw size={14} />
@@ -163,6 +189,7 @@ export function UsersPanel() {
                 <button
                   onClick={() => setStatus(u.id, 'SUSPENDED')}
                   title="Suspend"
+                  aria-label={`Suspend ${u.fullName}`}
                   className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
                 >
                   <Ban size={14} />
@@ -171,6 +198,7 @@ export function UsersPanel() {
                 <button
                   onClick={() => setStatus(u.id, 'ACTIVE')}
                   title="Reactivate"
+                  aria-label={`Reactivate ${u.fullName}`}
                   className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950"
                 >
                   <Check size={14} />
@@ -183,8 +211,8 @@ export function UsersPanel() {
 
       <form onSubmit={handleInvite} className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
         <div className="flex flex-wrap gap-2">
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className={`${inputClass} flex-1`} />
-          <input
+          <input aria-label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className={`${inputClass} flex-1`} />
+          <input aria-label="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"

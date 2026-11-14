@@ -10,6 +10,7 @@ import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } fro
 import type { CostCode } from '@/lib/commercial';
 import { CommentThread } from '@/components/project/CommentThread';
 import { ITEM_TYPE_LABEL, KIND_LABEL, KIND_STAGE, PLAN_STATUS, download, money, type CostPlan, type CostPlanKind, type CostPlanSummary, type ItemType, type PlanItem } from '@/lib/qs';
+import { formatDate } from '@/lib/dates';
 
 const KIND_OPTIONS = (Object.keys(KIND_LABEL) as CostPlanKind[]).map((k) => ({ value: k, label: `${KIND_LABEL[k]} (${KIND_STAGE[k]})` }));
 const TYPE_OPTIONS = (Object.keys(ITEM_TYPE_LABEL) as ItemType[]).map((t) => ({ value: t, label: ITEM_TYPE_LABEL[t] }));
@@ -435,7 +436,7 @@ function BillEditor({ projectId, id, internal, onChanged, onClosed }: { projectI
               <li key={r.id} className="flex flex-wrap items-center gap-2 py-1.5">
                 <span className="font-mono">Rev {r.revision}</span>
                 <span className="flex-1 text-slate-500">
-                  {new Date(r.issuedAt).toLocaleDateString()} · {r.issuedBy.fullName} · {r.itemCount} items{r.reason ? ` · ${r.reason}` : ''}
+                  {formatDate(r.issuedAt)} · {r.issuedBy.fullName} · {r.itemCount} items{r.reason ? ` · ${r.reason}` : ''}
                 </span>
                 <span className="tabular-nums">{money(r.total, c)}</span>
               </li>

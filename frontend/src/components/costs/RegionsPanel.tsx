@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { CURRENCY_OPTIONS, type Currency } from '@/lib/projectMeta';
 import type { CostRegion } from '@/lib/commercial';
+import { formatDate } from '@/lib/dates';
 
 const empty = { name: '', country: '', currency: 'ZAR' as Currency, notes: '' };
 
@@ -133,7 +134,7 @@ export function RegionsPanel({ regions, onChange }: { regions: CostRegion[]; onC
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm font-medium ${r.isActive ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 line-through'}`}>{r.name}</p>
                   <p className="text-xs text-slate-500">
-                    {[r.country, r.currency, `${r._count?.prices ?? 0} prices`, r.lastPriceUpdate && `last updated ${new Date(r.lastPriceUpdate).toLocaleDateString()}`, r.notes].filter(Boolean).join(' · ')}
+                    {[r.country, r.currency, `${r._count?.prices ?? 0} prices`, r.lastPriceUpdate && `last updated ${formatDate(r.lastPriceUpdate)}`, r.notes].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 <button

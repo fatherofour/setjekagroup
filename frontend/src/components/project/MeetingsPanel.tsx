@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CalendarClock, ChevronDown, ListTodo, Plus, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
@@ -8,6 +9,8 @@ import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { memberLabel, type MemberRef } from '@/lib/inception';
 import { CommentThread } from './CommentThread';
+import { formatDate } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 type MeetingType = 'INITIATION' | 'DESIGN' | 'CONSULTANTS' | 'CLIENT' | 'SITE' | 'OTHER';
 
@@ -49,15 +52,18 @@ function MeetingCard({
   members,
   broughtForward,
   onChange,
+  linked = false,
 }: {
   projectId: string;
   meeting: Meeting;
   members: MemberRef[];
   broughtForward: CarriedAction[];
   onChange: (m?: Meeting) => void;
+  /** Opened from a link to this meeting (M-06). */
+  linked?: boolean;
 }) {
   const { authedFetch } = useAuth();
-  const [open, setOpen] = useState(meeting.status === 'SCHEDULED');
+  const [open, setOpen] = useState(linked || meeting.status === 'SCHEDULED');
   const [minutes, setMinutes] = useState(meeting.minutes ?? '');
   const [action, setAction] = useState({ title: '', assignedToId: '', dueDate: '' });
   const [busy, setBusy] = useState(false);
@@ -103,12 +109,12 @@ function MeetingCard({
   const invitedIds = meeting.attendees.map((a) => a.projectMemberId);
 
   return (
-    <div className={cardClass}>
+    <div id={`meeting-${meeting.id}`} className={`${cardClass} scroll-mt-24`}>
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full flex-wrap items-center gap-2 text-left">
         <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? '' : '-rotate-90'}`} />
         <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{meeting.title}</span>
         <span className="text-xs text-slate-400">{TYPE_LABEL[meeting.meetingType]}</span>
-        <span className="ml-auto text-xs tabular-nums text-slate-500">{new Date(meeting.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+        <span className="ml-auto text-xs tabular-nums text-slate-500">{formatDateTime(meeting.scheduledAt)}</span>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[meeting.status]}`}>
           {meeting.status === 'HELD' && meeting.minutesIssuedAt ? 'Minutes issued' : meeting.status.toLowerCase()}
         </span>
@@ -185,7 +191,7 @@ function MeetingCard({
                 {meeting.minutesIssuedAt ? 'Re-issue minutes' : 'Issue minutes to attendees'}
               </button>
             </div>
-            {meeting.minutesIssuedAt && <p className="mt-1 text-xs text-slate-500">Issued {new Date(meeting.minutesIssuedAt).toLocaleString()}</p>}
+            {meeting.minutesIssuedAt && <p className="mt-1 text-xs text-slate-500">Issued {formatDate(meeting.minutesIssuedAt)}</p>}
           </div>
 
           {broughtForward.length > 0 && (
@@ -199,7 +205,7 @@ function MeetingCard({
                   <li key={t.id} className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
                     <span className="min-w-0 flex-1 text-slate-800 dark:text-slate-100">{t.title}</span>
                     <span className="text-xs text-slate-500">{t.assignedTo ? memberLabel(t.assignedTo) : 'Unassigned'}</span>
-                    {t.dueDate && <span className={`text-xs ${new Date(t.dueDate) < new Date() ? 'font-semibold text-red-600' : 'text-slate-400'}`}>due {new Date(t.dueDate).toLocaleDateString()}</span>}
+                    {t.dueDate && <span className={`text-xs ${new Date(t.dueDate) < new Date() ? 'font-semibold text-red-600' : 'text-slate-400'}`}>due {formatDate(t.dueDate)}</span>}
                     <span className="w-full text-[11px] text-slate-400">from {t.from}</span>
                   </li>
                 ))}
@@ -218,7 +224,7 @@ function MeetingCard({
                   <li key={t.id} className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
                     <span className={`min-w-0 flex-1 ${t.status === 'DONE' ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-slate-100'}`}>{t.title}</span>
                     <span className="text-xs text-slate-500">{t.assignedTo ? memberLabel(t.assignedTo) : 'Unassigned'}</span>
-                    {t.dueDate && <span className="text-xs text-slate-400">due {new Date(t.dueDate).toLocaleDateString()}</span>}
+                    {t.dueDate && <span className="text-xs text-slate-400">due {formatDate(t.dueDate)}</span>}
                   </li>
                 ))}
               </ul>
@@ -266,6 +272,11 @@ export function MeetingsPanel({ projectId }: { projectId: string }) {
   const [invitees, setInvitees] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // A link to one meeting (?meeting=<id>) scrolls to it (critique M-06).
+  const linkedMeeting = useSearchParams().get('meeting');
+  useEffect(() => {
+    if (meetings && linkedMeeting) document.getElementById(`meeting-${linkedMeeting}`)?.scrollIntoView({ block: 'start' });
+  }, [meetings, linkedMeeting]);
 
   const load = () =>
     authedFetch<Meeting[]>(`/projects/${projectId}/meetings`)
@@ -417,10 +428,11 @@ export function MeetingsPanel({ projectId }: { projectId: string }) {
             key={m.id}
             projectId={projectId}
             meeting={m}
+            linked={m.id === linkedMeeting}
             members={members}
             broughtForward={meetings
               .filter((x) => x.id !== m.id && new Date(x.scheduledAt) < new Date(m.scheduledAt))
-              .flatMap((x) => x.actionItems.filter((t) => t.status !== 'DONE').map((t) => ({ ...t, from: `${x.title}, ${new Date(x.scheduledAt).toLocaleDateString()}` })))}
+              .flatMap((x) => x.actionItems.filter((t) => t.status !== 'DONE').map((t) => ({ ...t, from: `${x.title}, ${formatDate(x.scheduledAt)}` })))}
             onChange={(updated) => (updated ? setMeetings((prev) => prev?.map((x) => (x.id === updated.id ? updated : x)) ?? null) : load())}
           />
         ))

@@ -23,6 +23,7 @@ import {
 } from '@/lib/commercial';
 import { SearchPicker } from '@/components/costs/SearchPicker';
 import { ModelTakeoffPanel } from '@/components/estimates/ModelTakeoffPanel';
+import { formatDate } from '@/lib/dates';
 
 type LineKind = 'WORK_ITEM' | 'RESOURCE' | 'LUMP_SUM';
 
@@ -514,7 +515,7 @@ export default function EstimatePage() {
               </>
             )}
             {' · '}
-            <span className={readOnly ? 'font-medium text-emerald-700 dark:text-emerald-400' : ''}>{readOnly ? `Final ${estimate.finalisedAt ? new Date(estimate.finalisedAt).toLocaleDateString() : ''}` : 'Draft — prices are live'}</span>
+            <span className={readOnly ? 'font-medium text-emerald-700 dark:text-emerald-400' : ''}>{readOnly ? `Final ${estimate.finalisedAt ? formatDate(estimate.finalisedAt) : ''}` : 'Draft — prices are live'}</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

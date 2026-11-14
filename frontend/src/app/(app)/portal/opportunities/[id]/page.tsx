@@ -19,6 +19,7 @@ import {
   type OpportunityStage,
   type SiteStatus,
 } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 interface ClientOpportunity {
   id: string;
@@ -127,7 +128,7 @@ export default function ClientPortalOpportunityPage() {
           {o.visionConfirmedAt ? (
             <p className="mt-3 flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
               <CheckCircle2 size={13} />
-              Confirmed by {o.visionConfirmedBy?.fullName ?? 'you'} on {new Date(o.visionConfirmedAt).toLocaleDateString()}
+              Confirmed by {o.visionConfirmedBy?.fullName ?? 'you'} on {formatDate(o.visionConfirmedAt)}
             </p>
           ) : (
             !o.convertedProject && (
@@ -273,7 +274,7 @@ export default function ClientPortalOpportunityPage() {
               <li key={m.id} className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
                 <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-200">{m.name}</span>
                 <span className={`text-xs ${MILESTONE_TONE[m.status] ?? 'text-slate-500'}`}>
-                  {m.actualDate ? `Done ${new Date(m.actualDate).toLocaleDateString()}` : m.targetDate ? `Target ${new Date(m.targetDate).toLocaleDateString()}` : 'Not yet scheduled'}
+                  {m.actualDate ? `Done ${formatDate(m.actualDate)}` : m.targetDate ? `Target ${formatDate(m.targetDate)}` : 'Not yet scheduled'}
                 </span>
               </li>
             ))}
@@ -287,7 +288,7 @@ export default function ClientPortalOpportunityPage() {
           <ul className="space-y-1.5">
             {o.stageHistory.map((h) => (
               <li key={h.id} className="text-xs text-slate-600 dark:text-slate-300">
-                <span className="text-slate-400">{new Date(h.changedAt).toLocaleDateString()}</span> — {OPPORTUNITY_STAGE_LABEL[h.newStage as OpportunityStage] ?? h.newStage}
+                <span className="text-slate-400">{formatDate(h.changedAt)}</span> — {OPPORTUNITY_STAGE_LABEL[h.newStage as OpportunityStage] ?? h.newStage}
                 {h.comment && <span className="text-slate-400"> · {h.comment}</span>}
               </li>
             ))}

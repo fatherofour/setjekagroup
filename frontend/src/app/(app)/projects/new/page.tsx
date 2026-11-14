@@ -152,12 +152,12 @@ function NewProjectForm() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Basics</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className={labelClass}>Project name *</label>
-              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
+              <label htmlFor="page-project-name" className={labelClass}>Project name *</label>
+              <input id="page-project-name" className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className={labelClass}>Project code</label>
-              <input
+              <label htmlFor="page-project-code" className={labelClass}>Project code</label>
+              <input id="page-project-code"
                 className={inputClass}
                 value={projectCode}
                 onChange={(e) => {
@@ -168,16 +168,16 @@ function NewProjectForm() {
               />
             </div>
             <div>
-              <label className={labelClass}>Client</label>
-              <input className={inputClass} value={client} onChange={(e) => setClient(e.target.value)} />
+              <label htmlFor="page-client" className={labelClass}>Client</label>
+              <input id="page-client" className={inputClass} value={client} onChange={(e) => setClient(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>Developer</label>
-              <input className={inputClass} value={developer} onChange={(e) => setDeveloper(e.target.value)} />
+              <label htmlFor="page-developer" className={labelClass}>Developer</label>
+              <input id="page-developer" className={inputClass} value={developer} onChange={(e) => setDeveloper(e.target.value)} />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelClass}>Description</label>
-              <textarea
+              <label htmlFor="page-description" className={labelClass}>Description</label>
+              <textarea id="page-description"
                 className={`${inputClass} h-20 resize-none py-2`}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -190,8 +190,8 @@ function NewProjectForm() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Country, classification & currency</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Country</label>
-              <Select
+              <label htmlFor="page-country" className={labelClass}>Country</label>
+              <Select id="page-country"
                 aria-label="Country"
                 className={inputClass}
                 value={country}
@@ -205,8 +205,8 @@ function NewProjectForm() {
               <p className="mt-1 text-xs text-slate-500">Sets the site&apos;s day, and who incidents are reported to.</p>
             </div>
             <div>
-              <label className={labelClass}>Currency</label>
-              <Select
+              <label htmlFor="page-currency" className={labelClass}>Currency</label>
+              <Select id="page-currency"
                 className={inputClass}
                 value={currency}
                 onChange={(v) => setCurrency(v as Currency)}
@@ -214,8 +214,8 @@ function NewProjectForm() {
               />
             </div>
             <div>
-              <label className={labelClass}>Classification standard</label>
-              <Select
+              <label htmlFor="page-classification-standard" className={labelClass}>Classification standard</label>
+              <Select id="page-classification-standard"
                 className={inputClass}
                 value={classificationStandard}
                 onChange={(v) => setClassificationStandard(v as ClassificationStandard)}
@@ -223,8 +223,8 @@ function NewProjectForm() {
               />
             </div>
             <div>
-              <label className={labelClass}>Project type</label>
-              <Select
+              <label htmlFor="page-project-type" className={labelClass}>Project type</label>
+              <Select id="page-project-type"
                 className={inputClass}
                 value={projectType}
                 onChange={(v) => setProjectType(v as ProjectType | '')}
@@ -232,8 +232,8 @@ function NewProjectForm() {
               />
             </div>
             <div>
-              <label className={labelClass}>Contract form</label>
-              <Select
+              <label htmlFor="page-contract-form" className={labelClass}>Contract form</label>
+              <Select id="page-contract-form"
                 className={inputClass}
                 value={contractForm}
                 onChange={(v) => setContractForm(v as ContractForm | '')}
@@ -247,16 +247,16 @@ function NewProjectForm() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Location</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-3">
-              <label className={labelClass}>Site address / location</label>
-              <input className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)} />
+              <label htmlFor="page-site-address-location" className={labelClass}>Site address / location</label>
+              <input id="page-site-address-location" className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>Latitude (optional)</label>
-              <input className={inputClass} type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="-33.9249" />
+              <label htmlFor="page-latitude-optional" className={labelClass}>Latitude (optional)</label>
+              <input id="page-latitude-optional" className={inputClass} type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="-33.9249" />
             </div>
             <div>
-              <label className={labelClass}>Longitude (optional)</label>
-              <input className={inputClass} type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="18.4241" />
+              <label htmlFor="page-longitude-optional" className={labelClass}>Longitude (optional)</label>
+              <input id="page-longitude-optional" className={inputClass} type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="18.4241" />
             </div>
           </div>
           <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">Coordinates power the site map and weather.</p>
@@ -266,12 +266,12 @@ function NewProjectForm() {
           <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Budget</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Budget estimate ({currency})</label>
-              <input className={inputClass} type="number" value={value} onChange={(e) => setValue(e.target.value)} />
+              <label htmlFor="page-budget-estimate" className={labelClass}>Project value agreed with the client ({currency})</label>
+              <input id="page-budget-estimate" className={inputClass} type="number" value={value} onChange={(e) => setValue(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>Contingency %</label>
-              <input
+              <label htmlFor="page-contingency-of-the-budget" className={labelClass}>Contingency % of the budget</label>
+              <input id="page-contingency-of-the-budget"
                 className={inputClass}
                 type="number"
                 min={0}
@@ -284,12 +284,12 @@ function NewProjectForm() {
               )}
             </div>
             <div>
-              <label className={labelClass}>Start date</label>
-              <input className={inputClass} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <label htmlFor="page-start-date" className={labelClass}>Start date</label>
+              <input id="page-start-date" className={inputClass} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
-              <label className={labelClass}>End date</label>
-              <input className={inputClass} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <label htmlFor="page-end-date" className={labelClass}>End date</label>
+              <input id="page-end-date" className={inputClass} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
         </div>

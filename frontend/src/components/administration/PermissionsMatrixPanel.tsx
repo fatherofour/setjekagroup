@@ -150,6 +150,7 @@ export function PermissionsMatrixPanel() {
                     <td key={a} className="px-2 py-2 text-center">
                       <input
                         type="checkbox"
+                        aria-label={`${r.label}: ${a} on ${module.replace(/_/g, ' ').toLowerCase()}`}
                         checked={cell(r.value, a)}
                         disabled={saving}
                         onChange={() => toggle(r.value, a)}

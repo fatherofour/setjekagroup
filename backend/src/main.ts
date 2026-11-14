@@ -9,6 +9,8 @@ async function bootstrap() {
   // exceed Express's 100 KB default. File uploads are multipart and have
   // their own limits.
   app.useBodyParser('json', { limit: '2mb' });
+  // Don't advertise the framework (critique M-03).
+  app.disable('x-powered-by');
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({ origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000', credentials: true });

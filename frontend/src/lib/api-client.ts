@@ -30,7 +30,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!res.ok) {
     const payload = await res.json().catch(() => null);
-    const message = payload?.message ?? res.statusText;
+    // nginx answers too many sign-in attempts with a plain 429 (M-03).
+    const message = payload?.message ?? (res.status === 429 ? 'Too many attempts. Wait a minute and try again.' : res.statusText);
     throw new ApiError(res.status, Array.isArray(message) ? message.join(', ') : message);
   }
 

@@ -17,6 +17,7 @@ import { ScheduleCalendarView } from '@/components/schedule/ScheduleCalendarView
 import { ScheduleCardView } from '@/components/schedule/ScheduleCardView';
 import { ScheduleImportButton } from '@/components/schedule/ScheduleImportButton';
 import { ScheduleVarianceView } from '@/components/schedule/ScheduleVarianceView';
+import { formatDate } from '@/lib/dates';
 
 interface ProjectSummary {
   id: string;
@@ -107,7 +108,7 @@ function BaselinesMenu({ projectId }: { projectId: string }) {
               {baselines.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-slate-50 dark:hover:bg-slate-800">
                   <span className="truncate text-slate-600 dark:text-slate-300">
-                    {b.name} <span className="text-slate-400">· {new Date(b.createdAt).toLocaleDateString()}</span>
+                    {b.name} <span className="text-slate-400">· {formatDate(b.createdAt)}</span>
                   </span>
                   <button onClick={() => removeBaseline(b.id)} className="shrink-0 text-slate-400 hover:text-red-600" aria-label={`Delete ${b.name}`}>
                     <Trash2 size={12} />
@@ -129,6 +130,12 @@ export default function ProjectSchedulePage() {
   const { currentProject, setCurrentProject } = useCurrentProject();
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [view, setView] = useState('gantt');
+  // On a phone the Gantt's table and bars don't fit side by side; open on
+  // the Card view there (critique M-14). The Gantt stays one tap away.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (window.matchMedia('(max-width: 767px)').matches) setView('card');
+  }, []);
   const [panelMode, setPanelMode] = useState<ActivityPanelMode | null>(null);
   const scheduleData = useScheduleData(id);
 
@@ -167,15 +174,18 @@ export default function ProjectSchedulePage() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{project?.name ?? 'Loading…'}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <ScheduleImportButton projectId={id} onImported={scheduleData.reload} />
-            <BaselinesMenu projectId={id} />
-            <button
-              onClick={() => setPanelMode({ kind: 'create', parentId: null })}
-              className="flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-800"
-            >
-              <Plus size={14} />
-              Add activity
-            </button>
+            {/* Only for those who may change the programme (critique M-09). */}
+            {scheduleData.canCreate && <ScheduleImportButton projectId={id} onImported={scheduleData.reload} />}
+            {scheduleData.canCreate && <BaselinesMenu projectId={id} />}
+            {scheduleData.canCreate && (
+              <button
+                onClick={() => setPanelMode({ kind: 'create', parentId: null })}
+                className="flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-800"
+              >
+                <Plus size={14} />
+                Add activity
+              </button>
+            )}
           </div>
         </div>
       </div>

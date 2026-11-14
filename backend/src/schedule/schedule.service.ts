@@ -7,6 +7,7 @@ import type { CreateActivityDto } from './dto/create-activity.dto.js';
 import type { UpdateActivityDto } from './dto/update-activity.dto.js';
 import type { CreateDependencyDto } from './dto/create-dependency.dto.js';
 import type { UpdateDependencyDto } from './dto/update-dependency.dto.js';
+import { scheduleVisibility } from './schedule-visibility.js';
 
 const ACTIVITY_INCLUDE = {
   asSuccessorOf: true,
@@ -24,16 +25,36 @@ export class ScheduleService {
 
   async findAllActivities(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    return this.prisma.scheduleActivity.findMany({
+    const rows = await this.prisma.scheduleActivity.findMany({
       where: { projectId },
       include: ACTIVITY_INCLUDE,
       orderBy: [{ sortOrder: 'asc' }, { startDate: 'asc' }],
     });
+    // A contractor: their own work and other firms' work linked to it
+    // (critique M-02). Another firm's activity shows its dates and progress,
+    // not its description or who is assigned.
+    const vis = await scheduleVisibility(this.prisma, projectId, ownerId);
+    if (!vis) return rows;
+    return rows
+      .filter((a) => vis.ids.has(a.id))
+      .map((a) => {
+        const link = vis.link.get(a.id) ?? null;
+        const own = vis.mine.has(a.id);
+        return {
+          ...a,
+          link,
+          description: own ? a.description : null,
+          assignedTo: own ? a.assignedTo : null,
+          asSuccessorOf: a.asSuccessorOf.filter((d) => vis.ids.has(d.predecessorId)),
+        };
+      });
   }
 
   async findAllDependencies(projectId: string, ownerId: string) {
     await this.projectsService.findOneForOwner(projectId, ownerId);
-    return this.prisma.scheduleDependency.findMany({ where: { projectId } });
+    const rows = await this.prisma.scheduleDependency.findMany({ where: { projectId } });
+    const vis = await scheduleVisibility(this.prisma, projectId, ownerId);
+    return vis ? rows.filter((d) => vis.ids.has(d.predecessorId) && vis.ids.has(d.successorId)) : rows;
   }
 
   private async assertBelongsToProject(model: 'projectNode' | 'contractor' | 'projectMember', id: string, projectId: string) {

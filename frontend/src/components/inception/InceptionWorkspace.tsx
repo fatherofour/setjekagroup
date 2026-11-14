@@ -17,6 +17,7 @@ import { ProgrammeSection } from './ProgrammeSection';
 import { RegisterPanel } from './RegisterPanel';
 import { MilestonesPanel } from '@/components/opportunities/MilestonesPanel';
 import { MyStage1Section } from './MyStage1Section';
+import { formatDate } from '@/lib/dates';
 
 const SECTIONS = [
   { value: 'mine', label: 'My Stage 1', group: 'Overview' },
@@ -50,7 +51,7 @@ const INFO_STATUS = [
   { value: 'NOT_AVAILABLE', label: 'Not available' },
 ];
 
-const date = (v: unknown) => (v ? new Date(String(v)).toLocaleDateString() : null);
+const date = (v: unknown) => (v ? formatDate(String(v)) : null);
 
 /** PROCSA Stage 1 — Inception: everything every role does at this stage,
  * on one tab of the project workspace. */

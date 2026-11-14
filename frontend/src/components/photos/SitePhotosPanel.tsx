@@ -246,7 +246,7 @@ export function SitePhotosPanel({ projectId, clientView = false }: { projectId: 
         <label className="relative block">
           <span className="sr-only">Search photos</span>
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className={`${input} pl-9`} placeholder="Search captions, places, tags, people…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input aria-label="Search photos" className={`${input} pl-9`} placeholder="Search captions, places, tags, people…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="grid grid-cols-2 gap-2 sm:col-span-1 lg:col-span-2">
           <label className="block">

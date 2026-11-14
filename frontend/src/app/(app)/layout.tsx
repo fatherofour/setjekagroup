@@ -34,6 +34,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh">
+      {/* The first thing a keyboard reaches: past the menu to the page
+          (critique M-13). Hidden until focused. */}
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Skip to content
+      </a>
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/30 lg:hidden"
@@ -46,7 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           descendant (tab strips, tables), pushing the page sideways on phones. */}
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-slate-50 px-4 pb-24 pt-6 dark:bg-slate-950 sm:px-8 sm:pb-28 sm:pt-8">{children}</main>
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none bg-slate-50 px-4 pb-24 pt-6 dark:bg-slate-950 sm:px-8 sm:pb-28 sm:pt-8">{children}</main>
       </div>
       <ChatWidget />
       <SignoffReminder />

@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { EvidenceFiles } from './EvidenceFiles';
+import { formatDate } from '@/lib/dates';
 
 type Status = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 type Category = 'ZONING' | 'ENVIRONMENTAL' | 'INFRASTRUCTURE' | 'LEGAL' | 'OTHER';
@@ -178,7 +179,7 @@ export function LandRightsPanel({ opportunityId, sites, readOnly, onChange }: { 
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[i.status]}`} />
                         <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{i.approvalType}</span>
-                        <span className="text-xs text-slate-500">{[i.authority, i.site?.name, i.reference && `ref ${i.reference}`, i.dueDate && `needed by ${new Date(i.dueDate).toLocaleDateString()}`].filter(Boolean).join(' · ')}</span>
+                        <span className="text-xs text-slate-500">{[i.authority, i.site?.name, i.reference && `ref ${i.reference}`, i.dueDate && `needed by ${formatDate(i.dueDate)}`].filter(Boolean).join(' · ')}</span>
                         {!readOnly && (
                           <div className="ml-auto flex items-center gap-1">
                             <div className="w-40">

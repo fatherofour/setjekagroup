@@ -144,7 +144,7 @@ export function OrganisationAppointmentsTab({ contractorId, onChange }: { contra
             options={APPOINTMENT_STATUSES.map((s) => ({ value: s, label: APPOINTMENT_STATUS_LABEL[s] }))}
             className={inputClass}
           />
-          <input
+          <input aria-label="Contract value"
             type="number"
             value={contractValue}
             onChange={(e) => setContractValue(e.target.value)}

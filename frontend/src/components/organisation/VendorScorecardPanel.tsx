@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import type { ContractorDetail } from '@/lib/contractors';
 import { Select } from '@/components/ui/Select';
+import { formatDate } from '@/lib/dates';
 
 interface VendorScorecard {
   id: string;
@@ -111,7 +112,7 @@ export function VendorScorecardPanel({ contractor }: { contractor: ContractorDet
               </p>
               {s.comment && <p className="mt-0.5 text-slate-700 dark:text-slate-200">{s.comment}</p>}
               <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                {new Date(s.createdAt).toLocaleDateString()} · recorded by {s.recordedBy.fullName}
+                {formatDate(s.createdAt)} · recorded by {s.recordedBy.fullName}
               </p>
             </li>
           ))}
@@ -129,8 +130,8 @@ export function VendorScorecardPanel({ contractor }: { contractor: ContractorDet
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {DIMENSIONS.map((d) => (
               <div key={d.key}>
-                <label className="text-xs text-slate-400 dark:text-slate-500">{d.label}</label>
-                <input
+                <label htmlFor={`vendorscorecardpanel-${d.key}`} className="text-xs text-slate-400 dark:text-slate-500">{d.label}</label>
+                <input id={`vendorscorecardpanel-${d.key}`}
                   type="number"
                   min={1}
                   max={5}
@@ -141,7 +142,7 @@ export function VendorScorecardPanel({ contractor }: { contractor: ContractorDet
               </div>
             ))}
           </div>
-          <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment (optional)" className={`${inputClass} w-full`} />
+          <input aria-label="Comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Comment (optional)" className={`${inputClass} w-full`} />
           <button
             type="submit"
             disabled={saving || !appointmentId}

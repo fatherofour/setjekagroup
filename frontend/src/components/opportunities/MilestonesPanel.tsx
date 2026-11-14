@@ -5,6 +5,7 @@ import { Flag, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { cardClass, inputClass, primaryButton, secondaryButton } from '@/lib/stage0';
+import { formatDate } from '@/lib/dates';
 
 type Status = 'COMPLETED' | 'COMPLETED_LATE' | 'OVERDUE' | 'SLIPPED' | 'ON_TRACK' | 'NOT_SCHEDULED';
 
@@ -130,17 +131,17 @@ export function MilestonesPanel({ basePath, readOnly = false }: { basePath: stri
               {rows.map((m) => (
                 <tr key={m.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
                   <td className="py-1.5 pr-2 text-slate-800 dark:text-slate-100">{m.name}</td>
-                  <td className="py-1.5 pr-2 text-xs tabular-nums text-slate-500">{m.baselineDate ? new Date(m.baselineDate).toLocaleDateString() : '—'}</td>
+                  <td className="py-1.5 pr-2 text-xs tabular-nums text-slate-500">{m.baselineDate ? formatDate(m.baselineDate) : '—'}</td>
                   <td className="py-1.5 pr-2">
                     {readOnly ? (
-                      <span className="text-xs tabular-nums text-slate-600">{m.targetDate ? new Date(m.targetDate).toLocaleDateString() : '—'}</span>
+                      <span className="text-xs tabular-nums text-slate-600">{m.targetDate ? formatDate(m.targetDate) : '—'}</span>
                     ) : (
                       <input key={`t-${m.id}-${m.targetDate}`} aria-label={`Target for ${m.name}`} type="date" className={`${inputClass} h-8 w-36 text-xs`} defaultValue={day(m.targetDate)} onBlur={(e) => e.target.value !== day(m.targetDate) && setDate(m, 'targetDate', e.target.value)} />
                     )}
                   </td>
                   <td className="py-1.5 pr-2">
                     {readOnly ? (
-                      <span className="text-xs tabular-nums text-slate-600">{m.actualDate ? new Date(m.actualDate).toLocaleDateString() : '—'}</span>
+                      <span className="text-xs tabular-nums text-slate-600">{m.actualDate ? formatDate(m.actualDate) : '—'}</span>
                     ) : (
                       <input key={`a-${m.id}-${m.actualDate}`} aria-label={`Actual for ${m.name}`} type="date" className={`${inputClass} h-8 w-36 text-xs`} defaultValue={day(m.actualDate)} onBlur={(e) => e.target.value !== day(m.actualDate) && setDate(m, 'actualDate', e.target.value)} />
                     )}

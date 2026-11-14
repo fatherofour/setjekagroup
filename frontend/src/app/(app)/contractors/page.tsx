@@ -65,7 +65,7 @@ export default function ContractorsPage() {
       <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
+          <input aria-label="Search by name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name…"

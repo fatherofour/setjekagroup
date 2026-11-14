@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { useLinkedId } from '@/lib/deep-link';
 import { Plus, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { CommentThread } from './CommentThread';
+import { formatDate } from '@/lib/dates';
 
 type SubmittalStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'APPROVED_WITH_COMMENTS' | 'REVISE_AND_RESUBMIT' | 'REJECTED';
 
@@ -153,8 +155,8 @@ function SubmittalDetailPanel({
         <div className="space-y-3">
           <input className={`${inputClass} h-9 w-full`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="grid grid-cols-2 gap-2">
-            <input className={inputClass} placeholder="Spec section" value={form.specSection} onChange={(e) => setForm({ ...form, specSection: e.target.value })} />
-            <input className={inputClass} placeholder="Type" value={form.submittalType} onChange={(e) => setForm({ ...form, submittalType: e.target.value })} />
+            <input aria-label="Spec section" className={inputClass} placeholder="Spec section" value={form.specSection} onChange={(e) => setForm({ ...form, specSection: e.target.value })} />
+            <input aria-label="Type" className={inputClass} placeholder="Type" value={form.submittalType} onChange={(e) => setForm({ ...form, submittalType: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Select
@@ -186,7 +188,7 @@ function SubmittalDetailPanel({
               options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
             />
           </div>
-          <input
+          <input aria-label="Comment for this status change"
             className={`${inputClass} mt-2 w-full`}
             placeholder="Comment for this status change (optional)"
             value={statusComment}
@@ -204,7 +206,7 @@ function SubmittalDetailPanel({
                     {STATUS_LABEL[h.previousStatus as SubmittalStatus] ?? h.previousStatus} → {STATUS_LABEL[h.newStatus as SubmittalStatus] ?? h.newStatus}
                   </span>
                   <span className="ml-2 text-slate-400">
-                    by {h.changedBy.fullName} · {new Date(h.changedAt).toLocaleString()}
+                    by {h.changedBy.fullName} · {formatDate(h.changedAt)}
                   </span>
                   {h.comment && <p className="mt-0.5 text-slate-500 dark:text-slate-400">{h.comment}</p>}
                 </li>
@@ -229,7 +231,7 @@ export function SubmittalsPanel({ projectId }: { projectId: string }) {
   const [title, setTitle] = useState('');
   const [reviewerId, setReviewerId] = useState('');
   const [saving, setSaving] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useLinkedId('submittal');
 
   const load = () => {
     authedFetch<Submittal[]>(`/projects/${projectId}/submittals`)
@@ -288,7 +290,7 @@ export function SubmittalsPanel({ projectId }: { projectId: string }) {
       )}
 
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New submittal title" className={`${inputClass} flex-1`} />
+        <input aria-label="New submittal title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New submittal title" className={`${inputClass} flex-1`} />
         <Select
           value={reviewerId}
           onChange={setReviewerId}

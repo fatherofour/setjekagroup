@@ -7,6 +7,7 @@ import { ApiError } from '@/lib/api-client';
 import { Select } from '@/components/ui/Select';
 import { cardClass, inputClass, labelClass, primaryButton, secondaryButton } from '@/lib/stage0';
 import { formatRate } from '@/lib/commercial';
+import { formatDate } from '@/lib/dates';
 
 type Status = 'RECEIVED' | 'APPROVED' | 'PAID' | 'REJECTED';
 
@@ -199,9 +200,9 @@ export function InvoicesPanel({ projectId, readOnly, onChanged }: { projectId: s
                     <span className="font-medium">{i.invoiceNumber}</span> · {i.purchaseOrder.contractor.name} <span className="font-mono text-xs text-slate-400">{i.purchaseOrder.poNumber}</span>
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(i.invoiceDate).toLocaleDateString()} · recorded by {i.recordedBy.fullName}
+                    {formatDate(i.invoiceDate)} · recorded by {i.recordedBy.fullName}
                     {i.approvedBy && ` · approved by ${i.approvedBy.fullName}`}
-                    {i.paidAt && ` · paid ${new Date(i.paidAt).toLocaleDateString()} (${i.paymentReference})`}
+                    {i.paidAt && ` · paid ${formatDate(i.paidAt)} (${i.paymentReference})`}
                     {i.rejectionReason && ` · rejected: ${i.rejectionReason}`}
                   </p>
                 </div>

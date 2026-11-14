@@ -16,6 +16,8 @@ function toSummary(user: Awaited<ReturnType<UsersService['findById']>>) {
     role: user.role,
     accountType: user.accountType,
     status: user.status,
+    lockedAt: user.lockedAt,
+    failedLogins: user.failedLogins,
     createdAt: user.createdAt,
   };
 }
@@ -55,6 +57,14 @@ export class UsersController {
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const user = await this.usersService.updateProfile(id, dto);
     return toSummary(user);
+  }
+
+  /** Unlock an account locked by wrong passwords (critique M-03). */
+  @Post(':id/unlock')
+  async unlock(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user) throw new ForbiddenException('User not found');
+    return toSummary(await this.usersService.unlock(id));
   }
 
   @Patch(':id/status')

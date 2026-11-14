@@ -314,7 +314,7 @@ export function PermitsPanel({ projectId }: { projectId: string }) {
             </label>
             <label className={`${labelCls} sm:col-span-2`}>
               Crew (optional)
-              <input className={`${inputCls} mt-0.5`} value={form.workers} onChange={(e) => setForm({ ...form, workers: e.target.value })} placeholder="Names of the people doing the work" />
+              <input aria-label="Names of the people doing the work" className={`${inputCls} mt-0.5`} value={form.workers} onChange={(e) => setForm({ ...form, workers: e.target.value })} placeholder="Names of the people doing the work" />
             </label>
             <label className={`${labelCls} sm:col-span-4`}>
               Method: how the work will be done

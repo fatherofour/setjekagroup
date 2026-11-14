@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import type { Currency } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CommercialService } from '../commercial/commercial.service.js';
@@ -23,7 +23,17 @@ const round = (n: number) => Math.round(n * 100) / 100;
  * (the cost report, the baseline variance, the contracts), not a second
  * calculation. */
 @Injectable()
-export class PortfolioService {
+export class PortfolioService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(PortfolioService.name);
+  /** The last portfolio worked out, and the one being worked out now
+   * (critique H-07): every project's cost report and baseline is a few dozen
+   * queries, so it's built in the background and served from here. Setjeka's
+   * staff all see the same portfolio, so one copy serves everyone. */
+  private cached: { at: number; data: Awaited<ReturnType<PortfolioService['build']>> } | null = null;
+  private building: Promise<Awaited<ReturnType<PortfolioService['build']>>> | null = null;
+  /** Older than this, it's rebuilt in the background while the old copy is served. */
+  private static readonly FRESH_MS = 60_000;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly commercial: CommercialService,
@@ -31,9 +41,67 @@ export class PortfolioService {
     private readonly baselines: ScheduleBaselinesService,
   ) {}
 
-  async portfolio(userId: string) {
+  /** Build the first copy shortly after start-up, so the first visit is quick. */
+  onApplicationBootstrap() {
+    if (process.env.NODE_ENV === 'test') return;
+    setTimeout(() => void this.refresh().catch((e) => this.logger.warn(`Portfolio warm-up failed: ${e}`)), 5_000).unref();
+  }
+
+  private refresh() {
+    if (!this.building) {
+      const started = Date.now();
+      this.building = this.build()
+        .then((data) => {
+          this.cached = { at: Date.now(), data };
+          this.logger.log(`Portfolio built: ${data.projects.length} projects in ${Date.now() - started} ms`);
+          return data;
+        })
+        .finally(() => {
+          this.building = null;
+        });
+    }
+    return this.building;
+  }
+
+  private async assertStaff(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, accountType: true } });
     if (!(user?.role === 'ADMIN' || user?.accountType === 'INTERNAL')) throw new ForbiddenException('The portfolio is for Setjeka staff');
+  }
+
+  /** The portfolio: served from the last copy, rebuilt behind it once that
+   * copy is more than a minute old. */
+  async portfolio(userId: string) {
+    await this.assertStaff(userId);
+    if (!this.cached) return this.refresh();
+    if (Date.now() - this.cached.at > PortfolioService.FRESH_MS) void this.refresh().catch(() => undefined);
+    return this.cached.data;
+  }
+
+  /** The headline totals only, for the dashboard. */
+  async totals(userId: string) {
+    return { totals: (await this.portfolio(userId)).totals };
+  }
+
+  /** The dashboard's "Today" tiles (critique H-06): open work across the
+   * live projects. Plain counts, quick enough to read every time. */
+  async today(userId: string) {
+    await this.assertStaff(userId);
+    const live = { project: { status: { notIn: ['ARCHIVED', 'COMPLETED'] as ('ARCHIVED' | 'COMPLETED')[] } } };
+    const now = new Date();
+    const [tasks, overdueTasks, rfis, overdueRfis, incidents] = await Promise.all([
+      this.prisma.projectTask.count({ where: { ...live, status: { not: 'DONE' } } }),
+      this.prisma.projectTask.count({ where: { ...live, status: { not: 'DONE' }, dueDate: { lt: now } } }),
+      this.prisma.rfi.count({ where: { ...live, status: 'OPEN' } }),
+      this.prisma.rfi.count({ where: { ...live, status: 'OPEN', dueDate: { lt: now } } }),
+      this.prisma.hseIncident.count({ where: { ...live, status: { not: 'CLOSED' } } }),
+    ]);
+    return { tasks, overdueTasks, rfis, overdueRfis, incidents };
+  }
+
+  private async build() {
+    // An internal account is used to read each project's baseline variance.
+    const staff = await this.prisma.user.findFirst({ where: { OR: [{ role: 'ADMIN' }, { accountType: 'INTERNAL' }] }, select: { id: true } });
+    const userId = staff?.id ?? '';
     const projects = await this.prisma.project.findMany({
       where: { status: { not: 'ARCHIVED' } },
       select: { id: true, name: true, projectCode: true, status: true, stage: true, currency: true, client: true, members: { where: { role: 'PROJECT_MANAGER' }, select: { externalName: true, user: { select: { fullName: true } } } } },
@@ -48,7 +116,7 @@ export class PortfolioService {
     };
     // A few at a time: each project's cost report is a handful of queries.
     const rows: Awaited<ReturnType<PortfolioService['row']>>[] = [];
-    for (let i = 0; i < projects.length; i += 6) rows.push(...(await Promise.all(projects.slice(i, i + 6).map((p) => this.row(p, userId)))));
+    for (let i = 0; i < projects.length; i += 8) rows.push(...(await Promise.all(projects.slice(i, i + 8).map((p) => this.row(p, userId)))));
     const sum = (f: (r: (typeof rows)[number]) => number) => round(rows.reduce((s, r) => s + f(r), 0));
     const inRand = (f: (r: (typeof rows)[number]) => number) => sum((r) => rand(f(r), r.currency as Currency));
     return {

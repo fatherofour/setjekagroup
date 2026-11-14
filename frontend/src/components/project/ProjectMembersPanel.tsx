@@ -209,13 +209,13 @@ export function ProjectMembersPanel({ projectId, contractForm = null }: { projec
 
         {usingContractor ? (
           <div className="flex flex-wrap gap-2">
-            <input
+            <input aria-label="Contact person on this project"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Contact person on this project (optional)"
               className={`${inputClass} flex-1`}
             />
-            <input
+            <input aria-label="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email (optional)"
@@ -234,9 +234,9 @@ export function ProjectMembersPanel({ projectId, contractForm = null }: { projec
         ) : (
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={`${inputClass} flex-1`} />
-              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company (optional)" className={`${inputClass} flex-1`} />
-              <input
+              <input aria-label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className={`${inputClass} flex-1`} />
+              <input aria-label="Company" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company (optional)" className={`${inputClass} flex-1`} />
+              <input aria-label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email (optional)"
